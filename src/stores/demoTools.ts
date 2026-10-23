@@ -24,6 +24,8 @@ export function onDemoReset(handler: () => void): () => void {
 export const useDemoToolsStore = defineStore('demoTools', () => {
   const pageActions = shallowRef<DemoToolAction[]>([])
   const open = ref(false)
+  /** 화면 아래 고정 바 높이(px). 시연 도구 버튼이 그 바를 가리지 않게 위로 올린다 */
+  const bottomInset = ref(0)
 
   function setPageActions(actions: DemoToolAction[]): void {
     pageActions.value = actions
@@ -40,7 +42,7 @@ export const useDemoToolsStore = defineStore('demoTools', () => {
     for (const h of resetHandlers) h()
   }
 
-  return { pageActions, open, setPageActions, clearPageActions, resetAll }
+  return { pageActions, open, bottomInset, setPageActions, clearPageActions, resetAll }
 })
 
 /** 화면이 떠 있는 동안만 시연 도구에 버튼을 더한다. */

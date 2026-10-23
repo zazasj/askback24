@@ -1,0 +1,85 @@
+import { describe, expect, it } from 'vitest'
+import { POSTINGS, getAnalysis, getPosting } from '@shared/catalog'
+import type { EvidenceField, Posting } from '@shared/contract'
+import { checkPoints } from './checkpoints'
+import { marksOf, segmentsFor, splitByQuotes } from './highlight'
+
+const join = (segs: Array<{ text: string }>) => segs.map((s) => s.text).join('')
+
+describe('splitByQuotes', () => {
+  it('원문을 그대로 이어 붙일 수 있게 나누고 인용 자리에만 카드를 단다', () => {
+    const text = '서버 개발 및 기타 업무 지원'
+    const segs = splitByQuotes(text, [
+      { quote: '기타 업무 지원', cardId: 'BE07' },
+      { quote: '서버 개발', cardId: 'BE01' },
+    ])
+    expect(join(segs)).toBe(text)
+    expect(segs.filter((s) => s.cardIds.length).map((s) => [s.text, s.cardIds])).toEqual([
+      ['서버 개발', ['BE01']],
+      ['기타 업무 지원', ['BE07']],
+    ])
+  })
+
+  it('같은 인용을 쓴 카드 여럿은 형광펜 하나로 묶는다', () => {
+    const segs = splitByQuotes('고객사 상주 가능자, 정보처리기사', [
+      { quote: '고객사 상주 가능자', cardId: 'BE15' },
+      { quote: '고객사 상주 가능자', cardId: 'BE12' },
+    ])
+    expect(segs[0]).toEqual({ text: '고객사 상주 가능자', start: 0, cardIds: ['BE15', 'BE12'] })
+    expect(segs).toHaveLength(2)
+  })
+
+  it('원문에 없는 인용은 칠하지 않고, 겹치면 앞의 것만 칠한다', () => {
+    const segs = splitByQuotes('기타 업무 지원', [
+      { quote: '없는 문구', cardId: 'BE01' },
+      { quote: '기타 업무', cardId: 'BE07' },
+      { quote: '업무 지원', cardId: 'BE12' },
+    ])
+    expect(join(segs)).toBe('기타 업무 지원')
+    expect(segs.filter((s) => s.cardIds.length).map((s) => s.text)).toEqual(['기타 업무'])
+  })
+
+  it('빈 글이나 인용이 없으면 조각이 원문 그대로다', () => {
+    expect(splitByQuotes('', [{ quote: 'a', cardId: 'x' }])).toEqual([])
+    expect(splitByQuotes('abc', [])).toEqual([{ text: 'abc', start: 0, cardIds: [] }])
+  })
+})
+
+describe('모의 공고 형광펜', () => {
+  it('S4-03 (주)OO소프트: 형광펜 3개 이상, "기타 업무 지원"·"고객사 상주 가능자" 포함', () => {
+    const posting = getPosting('K-MOCK-0001') as Posting
+    const marks = marksOf(getAnalysis('K-MOCK-0001'))
+    const fields = [...new Set(marks.map((m) => m.field))]
+    const marked = fields.flatMap((f) => segmentsFor(f, String(posting[f]), marks).filter((s) => s.cardIds.length).map((s) => s.text))
+    expect(marked.length).toBeGreaterThanOrEqual(3)
+    expect(marked).toContain('기타 업무 지원')
+    expect(marked).toContain('고객사 상주 가능자')
+  })
+
+  it('모든 분석의 근거 인용이 공고 원문에 글자 그대로 있다(형광펜이 빠지지 않는다)', () => {
+    for (const posting of POSTINGS) {
+      const analysis = getAnalysis(posting.wantedAuthNo)
+      if (!analysis) continue
+      for (const m of marksOf(analysis)) {
+        expect(String(posting[m.field as EvidenceField]), `${posting.wantedAuthNo} ${m.cardId}`).toContain(m.quote)
+      }
+    }
+  })
+})
+
+describe('AI가 찾은 확인할 점', () => {
+  it('S4-05 (주)OO소프트: 3개 이상이고 모호한 표현(기존 시스템 유지보수)이 맨 위', () => {
+    const points = checkPoints(getAnalysis('K-MOCK-0001'))
+    expect(points.length).toBeGreaterThanOrEqual(3)
+    expect(points[0]).toMatchObject({ tag: '모호한 표현', title: '기존 시스템 유지보수', cardId: 'BE07', hasMark: true })
+    expect(points.some((p) => p.tag === '공고에 없음' && p.title === '근로시간')).toBe(true)
+  })
+
+  it('"확인 필요" 근로조건(처우 질문 재료)은 넣지 않는다', () => {
+    for (const posting of POSTINGS) {
+      const points = checkPoints(getAnalysis(posting.wantedAuthNo))
+      expect(points.length, posting.wantedAuthNo).toBeGreaterThanOrEqual(3)
+      expect(points.some((p) => p.title === '수습' && p.tag !== '공고에 없음'), posting.wantedAuthNo).toBe(false)
+    }
+  })
+})

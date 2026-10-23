@@ -51,7 +51,7 @@ async function resetDemo(): Promise<void> {
 </script>
 
 <template>
-  <div ref="root" class="demo-tools">
+  <div ref="root" class="demo-tools" :style="tools.bottomInset > 0 ? { bottom: `calc(${tools.bottomInset}px + 1.6rem)` } : undefined">
     <div v-show="tools.open" id="demo-tools-panel" class="panel" role="group" aria-labelledby="demo-tools-title">
       <p id="demo-tools-title" class="panel-title">시연용 버튼</p>
       <ul v-if="tools.pageActions.length" class="actions">

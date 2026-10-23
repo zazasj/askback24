@@ -24,13 +24,20 @@ export function usePrepRoute(defaultMode: MaybeRefOrGetter<Mode>) {
     { immediate: true },
   )
 
+  /** 지금 주소 쿼리에서 한 번만 쓰는 값(?card= 형광펜 켜기)을 뺀 것 */
+  function keptQuery() {
+    const q = { ...route.query }
+    delete q.card
+    return q
+  }
+
   function goStep(n: StepNo) {
-    return router.push({ query: { ...route.query, step: String(n) } })
+    return router.push({ query: { ...keptQuery(), step: String(n) } })
   }
 
   /** 면접 종류를 바꾼다. 단계를 주지 않으면 지금 단계 번호를 그대로 둔다 */
   function setMode(m: Mode, n: StepNo = step.value) {
-    return router.push({ query: { ...route.query, step: String(n), mode: m } })
+    return router.push({ query: { ...keptQuery(), step: String(n), mode: m } })
   }
 
   return { step, mode, goStep, setMode }
