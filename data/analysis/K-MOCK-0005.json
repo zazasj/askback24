@@ -1,0 +1,67 @@
+{
+  "wantedAuthNo": "K-MOCK-0005",
+  "cards": [
+    {
+      "card_id": "BE10",
+      "state": "explicit",
+      "evidence": { "field": "jobCont", "quote": "기존 데이터 이관" },
+      "reason": "직무내용에 '기존 데이터 이관'이 적혀 있어요"
+    },
+    {
+      "card_id": "BE14",
+      "state": "explicit",
+      "evidence": { "field": "jobCont", "quote": "설계서·산출물 작성" },
+      "reason": "직무내용에 '설계서·산출물 작성'이 적혀 있어요"
+    },
+    {
+      "card_id": "BE15",
+      "state": "explicit",
+      "evidence": { "field": "jobCont", "quote": "발주처 파견 근무(프로젝트 기간 중)" },
+      "reason": "직무내용에 '발주처 파견 근무(프로젝트 기간 중)'가 적혀 있어요"
+    },
+    {
+      "card_id": "BE12",
+      "state": "inferred",
+      "evidence": { "field": "jobCont", "quote": "발주처 파견 근무(프로젝트 기간 중)" },
+      "reason": "발주처에 파견되면 발주처 담당자와 요구사항을 직접 협의할 수 있어요(직무내용에서 유추)"
+    },
+    {
+      "card_id": "BE13",
+      "state": "inferred",
+      "evidence": { "field": "pfCond", "quote": "Java·JSP 개발 가능자" },
+      "reason": "우대조건 'Java·JSP 개발 가능자'에서 화면(JSP) 개발도 함께 맡는다고 유추했어요"
+    }
+  ],
+  "blanks": [
+    {
+      "topic": "sal",
+      "status": "vague",
+      "label": "임금 · 공고 모호",
+      "basis": "급여가 '회사내규에 따름'으로만 적혀 있어요",
+      "evidence": { "field": "sal", "quote": "회사내규에 따름" },
+      "question": "신입 연봉은 어느 범위이고, 기본급과 수당은 어떻게 구성되나요?"
+    },
+    {
+      "topic": "workHours",
+      "status": "missing",
+      "label": "근로시간 · 공고 누락",
+      "basis": "공고에 근무 시간이 없어요",
+      "question": "프로젝트 마감 전에는 근무 시간이 어떻게 되고, 연장근로는 월 평균 어느 정도인가요?"
+    },
+    {
+      "topic": "onsite",
+      "status": "check",
+      "label": "파견 근무 조건",
+      "basis": "직무내용에 발주처 파견 근무가 적혀 있어요",
+      "evidence": { "field": "jobCont", "quote": "발주처 파견 근무(프로젝트 기간 중)" },
+      "question": "파견 근무지가 바뀔 때 교통비나 숙소, 프로젝트 수당은 어떤 기준으로 지원되나요?"
+    },
+    {
+      "topic": "probation",
+      "status": "missing",
+      "label": "수습 · 공고 누락",
+      "basis": "공고에 수습 정보가 없어요",
+      "question": "수습 기간이 있나요? 있다면 기간과 급여 조건은 어떻게 되나요?"
+    }
+  ]
+}

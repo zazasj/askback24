@@ -10,6 +10,10 @@ import presetsJson from '../data/presets.json' with { type: 'json' }
 import analysis0001 from '../data/analysis/K-MOCK-0001.json' with { type: 'json' }
 import analysis0002 from '../data/analysis/K-MOCK-0002.json' with { type: 'json' }
 import analysis0003 from '../data/analysis/K-MOCK-0003.json' with { type: 'json' }
+import analysis0004 from '../data/analysis/K-MOCK-0004.json' with { type: 'json' }
+import analysis0005 from '../data/analysis/K-MOCK-0005.json' with { type: 'json' }
+import analysis0006 from '../data/analysis/K-MOCK-0006.json' with { type: 'json' }
+import analysis0007 from '../data/analysis/K-MOCK-0007.json' with { type: 'json' }
 
 export const CARD_BOOK = cardBookJson as unknown as CardBook
 export const CARDS: readonly CardDef[] = CARD_BOOK.cards
@@ -27,7 +31,15 @@ export function getPosting(wantedAuthNo: string): Posting | undefined {
 }
 
 // 공고를 더할 때 여기에 분석 파일 import 를 한 줄씩 더한다(분석이 없는 공고는 질문을 만들 수 없다).
-export const ANALYSES: readonly PostingAnalysis[] = [analysis0001, analysis0002, analysis0003] as unknown as PostingAnalysis[]
+export const ANALYSES: readonly PostingAnalysis[] = [
+  analysis0001,
+  analysis0002,
+  analysis0003,
+  analysis0004,
+  analysis0005,
+  analysis0006,
+  analysis0007,
+] as unknown as PostingAnalysis[]
 const analysisById = new Map(ANALYSES.map((a) => [a.wantedAuthNo, a]))
 
 export function getAnalysis(wantedAuthNo: string): PostingAnalysis | undefined {

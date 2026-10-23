@@ -1,0 +1,61 @@
+{
+  "wantedAuthNo": "K-MOCK-0004",
+  "cards": [
+    {
+      "card_id": "BE01",
+      "state": "explicit",
+      "evidence": { "field": "jobCont", "quote": "결제 승인 API 개발" },
+      "reason": "직무내용에 '결제 승인 API 개발'이 적혀 있어요"
+    },
+    {
+      "card_id": "BE06",
+      "state": "explicit",
+      "evidence": { "field": "jobCont", "quote": "가맹점 정산 배치 프로그램 개발" },
+      "reason": "직무내용에 '가맹점 정산 배치 프로그램 개발'이 적혀 있어요"
+    },
+    {
+      "card_id": "BE05",
+      "state": "explicit",
+      "evidence": { "field": "jobCont", "quote": "카드사·은행 시스템 연동" },
+      "reason": "직무내용에 '카드사·은행 시스템 연동'이 적혀 있어요"
+    },
+    {
+      "card_id": "BE08",
+      "state": "explicit",
+      "evidence": { "field": "jobCont", "quote": "24시간 서비스 모니터링(당직 순번제)" },
+      "reason": "직무내용에 '24시간 서비스 모니터링(당직 순번제)'이 적혀 있어요"
+    },
+    {
+      "card_id": "BE16",
+      "state": "inferred",
+      "evidence": { "field": "pfCond", "quote": "금융권 프로젝트 경험자" },
+      "reason": "우대조건 '금융권 프로젝트 경험자'에서 보안 점검 업무를 유추했어요"
+    }
+  ],
+  "blanks": [
+    {
+      "topic": "sal",
+      "status": "vague",
+      "label": "임금 · 공고 모호",
+      "basis": "급여가 '면접 후 결정'으로만 적혀 있어요",
+      "evidence": { "field": "sal", "quote": "면접 후 결정" },
+      "question": "신입 연봉은 어느 범위이고, 기본급과 수당은 어떻게 구성되나요?"
+    },
+    {
+      "topic": "workHours",
+      "status": "check",
+      "label": "근로시간 · 확인 필요",
+      "basis": "당직이 있고 당직 뒤 대체휴무가 있다고 적혀 있어요",
+      "evidence": { "field": "workdayWorkhrCont", "quote": "당직 시 대체휴무" },
+      "question": "당직은 한 달에 몇 번쯤이고, 당직 다음 날 대체휴무는 어떻게 쓰나요?"
+    },
+    {
+      "topic": "probation",
+      "status": "check",
+      "label": "수습 · 확인 필요",
+      "basis": "공고에 수습 3개월이 적혀 있어요",
+      "evidence": { "field": "empTpNm", "quote": "수습 3개월" },
+      "question": "수습 3개월 동안 급여는 연봉 기준과 같게 지급되나요?"
+    }
+  ]
+}
