@@ -1,0 +1,12 @@
+node_modules
+dist
+.env
+.env.local
+.env.*.local
+test-results
+playwright-report
+review/screens
+review/tmp
+review/e2e-results.json
+.vercel
+*.log
