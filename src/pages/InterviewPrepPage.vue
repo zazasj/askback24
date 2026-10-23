@@ -41,6 +41,8 @@ const labels = computed(() => STEP_LABELS[mode.value])
 const focusCard = computed(() => (typeof route.query.card === 'string' ? route.query.card : null))
 /** 시험 장치: 가짜 응답 모드에서 질문 생성이 실패한 것처럼 */
 const apiFail = computed(() => route.query.apiFail === '1')
+/** 1차 결과(시드 포함)가 있어야 최종 흐름의 정리 단계로 갈 수 있다 */
+const hasFirst = computed(() => !!(application.value && questions.firstOf(application.value.apply_id)))
 
 function makeQuestions(): void {
   const app = application.value
@@ -118,7 +120,9 @@ useDemoToolActions(demoActions)
       :signals="signals"
       :next-label="NEXT_FROM_POSTING[mode]"
       :focus-card="focusCard"
+      :needs-first="mode === 'final' && !hasFirst"
       @next="goStep(2)"
+      @first="toFirst"
     />
     <CardPickStep
       v-else-if="mode === 'first' && step === 2"

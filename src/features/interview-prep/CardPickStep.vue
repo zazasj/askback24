@@ -5,10 +5,10 @@
  */
 import { computed, nextTick, ref, watch } from 'vue'
 import { CARDS, CARD_BOOK, getCard } from '@shared/catalog'
-import type { PostingAnalysis, PostingState, Pref } from '@shared/contract'
+import type { PostingAnalysis, Pref } from '@shared/contract'
 import { PERSONA } from '@/demoData'
 import { usePrepStore } from '@/stores/prep'
-import { POSTING_TAGS } from './checkpoints'
+import { postingTag } from './checkpoints'
 import { EXPERIENCE_MAX, PREFS, countByPref, experienceTarget, oneLine, prefOf } from './picks'
 import TaskCard from './TaskCard.vue'
 
@@ -38,8 +38,8 @@ async function showMore(): Promise<void> {
   document.getElementById(`card-${MORE[0]?.id ?? ''}`)?.focus()
 }
 
-function stateOf(cardId: string): PostingState {
-  return props.analysis?.cards.find((c) => c.card_id === cardId)?.state ?? 'absent'
+function tagOf(cardId: string): string | null {
+  return postingTag(props.analysis?.cards.find((c) => c.card_id === cardId))
 }
 
 const counts = computed(() => countByPref(picks.value))
@@ -84,7 +84,7 @@ const experienceHint = computed(() => {
         <TaskCard
           :card="card"
           :pref="prefOf(picks, card.id)"
-          :tag="POSTING_TAGS[stateOf(card.id)]"
+          :tag="tagOf(card.id)"
           @toggle="(p) => toggle(card.id, p)"
         />
       </li>

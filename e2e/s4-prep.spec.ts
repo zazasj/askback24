@@ -498,11 +498,19 @@ test('R-04 "1차 면접 다녀온 것으로 채우기"가 예시 세트(들은 �
   expect(onsite?.text, '"프로젝트마다 달라서요"는 고객사 상주 질문의 답').toContain('상주')
   expect(onsite?.vague, '고객사 상주 개발 = 모호했어요').toBe(true)
   expect(onsite?.concrete).toBe(false)
-  for (const a of [R04_ANSWERS.maintenance, R04_ANSWERS.design, R04_ANSWERS.newApi]) {
+  const concreteCards: [string, string][] = [
+    [R04_ANSWERS.maintenance, '기존 시스템 유지보수'],
+    [R04_ANSWERS.design, '서비스 구조 설계'],
+    [R04_ANSWERS.newApi, '신규 API 개발'],
+  ]
+  for (const [a, card] of concreteCards) {
+    expect(byAnswer(a)?.text, `"${a}"는 ${card} 질문의 답`).toContain(card)
     expect(byAnswer(a)?.concrete, `"${a}" = 구체적이었어요`).toBe(true)
     expect(byAnswer(a)?.vague).toBe(false)
   }
-  expect(rows.find((r) => r.notAsked)?.reason, 'DB 테이블 설계 = 못 물어봤어요 · 시간이 없었어요').toBe('시간이 없었어요')
+  const notAsked = rows.find((r) => r.notAsked)
+  expect(notAsked?.text, '못 물어봤어요 = DB 테이블 설계 질문').toContain('DB 테이블 설계')
+  expect(notAsked?.reason, 'DB 테이블 설계 = 못 물어봤어요 · 시간이 없었어요').toBe('시간이 없었어요')
 
   const tasks = page.getByRole('group', { name: '회사가 물어본 업무' }).first()
   await expect(tasks.getByRole('checkbox', { name: '장애 대응·온콜' })).toBeChecked()

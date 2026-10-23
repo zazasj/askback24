@@ -5,10 +5,13 @@
  */
 import { useRouter } from 'vue-router'
 import { CARD_BOOK } from '@shared/catalog'
+import { API_MODE } from '@/api/client'
 import AiLabel from '@/components/ui/AiLabel.vue'
+import MockModeTag from '@/components/ui/MockModeTag.vue'
 import { auditNumbers, sourceRows } from '@/features/about/aboutData'
 
 const router = useRouter()
+const isMock = API_MODE === 'mock'
 const numbers = auditNumbers()
 const sources = sourceRows()
 const typeOrder = Object.values(CARD_BOOK.type_labels).join(' → ')
@@ -30,6 +33,11 @@ function goBack(): void {
     <p class="lead">
       면접 역질문 준비는 AI 혼자 질문을 정하지 않아요. 공고 근거와 정해 둔 순서 규칙이 먼저 질문을 고르고, AI는 그 질문의 문장을 써요. AI가 쓴
       문장도 검사를 통과해야 화면에 나와요.
+    </p>
+    <!-- 결과·만드는 중 화면과 같은 태그(D-082). 확인하러 온 이 자리에서 실제 AI 결과로 읽히지 않게(DR-r2-04) -->
+    <p v-if="isMock" class="mock-note">
+      <MockModeTag />
+      <span>지금 시연은 가짜 응답 모드라 3단계 문장을 AI 대신 규칙과 예시 문장으로 만들어요. 순서·근거·검사는 같아요.</span>
     </p>
 
     <section class="block" aria-labelledby="about-steps">
@@ -164,6 +172,21 @@ function goBack(): void {
   max-width: 80rem;
   margin-top: -1.6rem;
   font-size: var(--krds-pc-font-size-body-medium);
+  color: var(--krds-light-color-text-basic);
+}
+
+.mock-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+  max-width: 80rem;
+  margin-top: -1.6rem;
+  padding: 1.2rem 1.6rem;
+  border: 1px solid var(--krds-light-color-border-gray-light);
+  border-radius: var(--krds-radius-large1);
+  background: var(--krds-light-color-surface-white);
+  font-size: var(--krds-pc-font-size-body-small);
   color: var(--krds-light-color-text-basic);
 }
 
@@ -363,8 +386,13 @@ function goBack(): void {
     gap: 2.4rem;
   }
 
-  .lead {
+  .lead,
+  .mock-note {
     margin-top: -0.8rem;
+  }
+
+  .mock-note {
+    padding: 1rem 1.2rem;
   }
 
   .step {

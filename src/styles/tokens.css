@@ -12,6 +12,10 @@
   --rq-accent-border: #d6caf3;
   --rq-on-accent: #ffffff;
 
+  /* 유형 칩 "충돌" 주황(DESIGN-REVIEW D7). 오류 빨강(danger)·걱정 호박색(warning)과 다른 색. 흰·연한 바탕 모두 대비 5:1 이상 */
+  --rq-tone-orange: #a84300;
+  --rq-tone-orange-subtle: #ffede0;
+
   /* 공고 형광펜 */
   --rq-mark: #fff0a0;
   --rq-mark-active: #ffd23f;

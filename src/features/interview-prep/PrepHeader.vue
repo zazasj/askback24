@@ -16,10 +16,10 @@ const MODES: readonly Mode[] = ['first', 'final']
     <div class="summary">
       <p class="target">
         <strong class="corp">{{ corpNm }}</strong>
-        <span class="sep" aria-hidden="true">·</span>
+        <span class="sep sep-title" aria-hidden="true">·</span>
         <span class="title">{{ wantedTitle }}</span>
         <span class="sep" aria-hidden="true">·</span>
-        <span class="result"><span class="result-label">지원결과 </span><b>{{ result }}</b></span>
+        <span class="result" :class="{ 'is-empty': result === '-' }"><span class="result-label">지원결과 </span><b>{{ result }}</b></span>
       </p>
       <fieldset class="mode">
         <legend class="mode-legend">준비할 면접</legend>
@@ -132,7 +132,8 @@ const MODES: readonly Mode[] = ['first', 'final']
   outline-offset: 0.2rem;
 }
 
-/* 휴대폰: 머리가 첫 화면을 덜 차지하게 요약은 한 줄(넘치면 채용제목 말줄임), 라디오는 2열 세그먼트(DR-r1-02) */
+/* 휴대폰: 머리가 첫 화면을 덜 차지하게 라디오는 2열 세그먼트(DR-r1-02).
+   요약은 두 줄: 회사명·지원결과 / 채용제목(지원 조건이 잘리지 않게 두 줄까지, DR-r2-06) */
 @media (max-width: 767px) {
   .page-title {
     margin-bottom: 1.2rem;
@@ -145,32 +146,39 @@ const MODES: readonly Mode[] = ['first', 'final']
   }
 
   .target {
-    flex-wrap: nowrap;
     min-width: 0;
-    gap: 0 0.6rem;
+    gap: 0.2rem 0.6rem;
     font-size: var(--krds-pc-font-size-body-small);
-    white-space: nowrap;
   }
 
-  .corp,
-  .result {
-    flex: none;
+  .sep-title {
+    display: none;
   }
 
   .title {
+    order: 1;
+    flex-basis: 100%;
     min-width: 0;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     overflow: hidden;
-    text-overflow: ellipsis;
+    color: var(--krds-light-color-text-basic);
   }
 
-  /* 글자는 화면낭독기에 남긴다 */
-  .result-label {
+  /* 지원결과가 있으면 값만으로 뜻이 보여 글자는 화면낭독기에 남기고, "-"이면 글자를 같이 보인다 */
+  .result:not(.is-empty) .result-label {
     position: absolute;
     width: 1px;
     height: 1px;
     overflow: hidden;
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
+  }
+
+  .result.is-empty .result-label {
+    color: var(--krds-light-color-text-subtle);
   }
 
   .mode {

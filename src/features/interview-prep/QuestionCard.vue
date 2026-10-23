@@ -129,9 +129,10 @@ const emit = defineEmits<{ copy: []; keep: [] }>()
   color: var(--krds-light-color-text-basic);
 }
 
+/* 충돌은 오류가 아니라 확인할 차이라 빨강 대신 주황(DR-r2-02) */
 .type-chip.is-conflict {
-  background: var(--krds-light-color-surface-danger-subtler);
-  color: var(--krds-light-color-text-danger);
+  background: var(--rq-tone-orange-subtle);
+  color: var(--rq-tone-orange);
 }
 
 .type-chip.is-opportunity {

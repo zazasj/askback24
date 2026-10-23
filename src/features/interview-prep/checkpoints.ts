@@ -3,7 +3,7 @@
  * 회사를 평가하는 말 대신 "공고에 어떻게 적혀 있는지"만 짧게 붙인다.
  */
 import { getCard } from '@shared/catalog'
-import type { OfferBlank, PostingAnalysis, PostingState } from '@shared/contract'
+import type { AnalysisCard, OfferBlank, PostingAnalysis, PostingState } from '@shared/contract'
 
 /** 카드·확인할 점에 다는 공고 상태 표시. 공고에 없는 카드는 표시하지 않는다 */
 export const POSTING_TAGS: Record<PostingState, string | null> = {
@@ -15,6 +15,16 @@ export const POSTING_TAGS: Record<PostingState, string | null> = {
 
 /** 근로조건이 공고에 어떻게 적혔는지. ① 확인할 점과 최종 ③ 처우 질문이 같은 말을 쓰게 여기서만 정한다(DR-r1-12) */
 export const BLANK_TAGS: Record<OfferBlank['status'], string> = { missing: '공고에 없음', vague: '모호한 표현', check: '확인 필요' }
+
+/**
+ * 분석 카드 한 장의 공고 상태 표시. 유추했지만 근거 인용이 없으면 공고 문장에서 유추한 게 아니라
+ * 공고에 적히지 않은 점이라 "공고에 없음"으로 붙인다(DR-r2-03)
+ */
+export function postingTag(found: Pick<AnalysisCard, 'state' | 'evidence'> | undefined): string | null {
+  if (!found) return null
+  if (found.state === 'inferred' && !found.evidence) return BLANK_TAGS.missing
+  return POSTING_TAGS[found.state]
+}
 
 export interface CheckPoint {
   key: string
@@ -37,7 +47,7 @@ export function checkPoints(analysis: PostingAnalysis | undefined): CheckPoint[]
 
   analysis.cards.forEach((c, i) => {
     const card = getCard(c.card_id)
-    const tag = POSTING_TAGS[c.state]
+    const tag = postingTag(c)
     if (!card || !tag) return
     const w = c.state === 'vague' ? 0 : card.kind === 'context' ? 1 : c.state === 'inferred' ? 4 : 5
     ranked.push({

@@ -8,7 +8,7 @@ import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue'
 import { onKeyStroke, useEventListener } from '@vueuse/core'
 import { getCard } from '@shared/catalog'
 import type { CompanySignal, Posting, PostingAnalysis } from '@shared/contract'
-import { POSTING_TAGS, checkPoints } from './checkpoints'
+import { checkPoints, postingTag } from './checkpoints'
 import { markKey, marksOf, splitByQuotes, type Segment } from './highlight'
 
 const props = defineProps<{
@@ -17,8 +17,10 @@ const props = defineProps<{
   signals: readonly CompanySignal[]
   nextLabel: string
   focusCard?: string | null
+  /** 최종 흐름인데 1차 결과가 없다: 다음 단계 대신 1차 질문 만들기를 먼저 권한다(DR-r2-05) */
+  needsFirst?: boolean
 }>()
-const emit = defineEmits<{ next: [] }>()
+const emit = defineEmits<{ next: []; first: [] }>()
 
 type PostingKey = keyof Posting & string
 
@@ -91,7 +93,7 @@ const bubbleCards = computed(() =>
     const card = getCard(id)
     const found = props.analysis?.cards.find((c) => c.card_id === id)
     if (!card || !found) return []
-    return [{ id, label: card.label, tag: POSTING_TAGS[found.state], reason: found.reason }]
+    return [{ id, label: card.label, tag: postingTag(found), reason: found.reason }]
   }),
 )
 
@@ -159,7 +161,10 @@ const isMarked = (s: Segment) => s.cardIds.length > 0
   <section ref="root" class="posting-step" aria-labelledby="posting-step-title">
     <div class="intro">
       <h2 id="posting-step-title" class="section-title">공고 확인</h2>
-      <p class="lead">AI가 공고 문장을 업무 카드와 맞춰 봤어요. 노란 형광펜을 누르면 어떤 업무와 연결했는지 보여요.</p>
+      <p class="lead">
+        <span class="lead-full">AI가 공고 문장을 업무 카드와 맞춰 봤어요. 노란 형광펜을 누르면 어떤 업무와 연결했는지 보여요.</span>
+        <span class="lead-short">형광펜을 누르면 AI가 연결한 업무가 보여요.</span>
+      </p>
     </div>
 
     <div class="layout">
@@ -292,7 +297,14 @@ const isMarked = (s: Segment) => s.cardIds.length > 0
     </div>
 
     <!-- 다음 버튼이 긴 공고·확인할 점 아래로 묻히지 않게 아래 고정 바(② .pick-bar와 같은 모양, DR-r1-03) -->
-    <div class="step-bar">
+    <div v-if="needsFirst" class="step-bar is-blocked">
+      <p class="step-bar-notice">먼저 1차 면접 질문을 만들어 주세요</p>
+      <div class="step-bar-actions">
+        <button type="button" class="btn btn-tertiary btn-lg" @click="emit('next')">{{ nextLabel }}</button>
+        <button type="button" class="btn btn-accent btn-lg" @click="emit('first')">1차 면접 질문 만들기</button>
+      </div>
+    </div>
+    <div v-else class="step-bar">
       <p v-if="points.length" class="step-bar-note">AI가 확인할 점 <strong>{{ points.length }}개</strong>를 찾았어요</p>
       <button type="button" class="btn btn-accent btn-lg next" @click="emit('next')">{{ nextLabel }}</button>
     </div>
@@ -312,6 +324,10 @@ const isMarked = (s: Segment) => s.cardIds.length > 0
 
 .lead {
   color: var(--krds-light-color-text-subtle);
+}
+
+.lead-short {
+  display: none;
 }
 
 .layout {
@@ -669,6 +685,19 @@ mark[data-active='true'] {
   margin-left: auto;
 }
 
+.step-bar-notice {
+  font-size: var(--krds-pc-font-size-body-small);
+  font-weight: 700;
+  color: var(--krds-light-color-text-bolder);
+}
+
+.step-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-left: auto;
+}
+
 @media (max-width: 1023px) {
   .layout {
     grid-template-columns: minmax(0, 1fr);
@@ -676,6 +705,42 @@ mark[data-active='true'] {
 }
 
 @media (max-width: 767px) {
+  /* 첫 화면에 공고 첫 행(형광펜)이 고정 바 위로 보이게 머리를 줄인다(DR-r2-01).
+     "공고 확인"은 바로 위 단계 표시와 같은 말이라 화면낭독기에만 남긴다 */
+  .posting-step {
+    gap: 1.6rem;
+  }
+
+  .intro .section-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .lead {
+    font-size: var(--krds-pc-font-size-body-small);
+  }
+
+  .lead-full {
+    display: none;
+  }
+
+  .lead-short {
+    display: inline;
+  }
+
+  .corp-meta {
+    display: none;
+  }
+
+  .posting {
+    gap: 1.2rem;
+  }
+
   .posting-table th,
   .posting-table td {
     padding: 1rem 1rem;
@@ -706,6 +771,29 @@ mark[data-active='true'] {
     width: 100%;
     min-height: var(--rq-touch);
     font-size: var(--krds-pc-font-size-label-small);
+  }
+
+  /* 1차 결과가 없을 때: 안내 한 줄 + 버튼 두 개를 한 줄에 */
+  .step-bar.is-blocked {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.8rem;
+  }
+
+  .step-bar-notice {
+    font-size: var(--krds-pc-font-size-body-xsmall);
+  }
+
+  .step-bar-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    margin-left: 0;
+  }
+
+  .step-bar-actions .btn {
+    min-height: var(--rq-touch);
+    padding: 0 0.8rem;
+    font-size: var(--krds-pc-font-size-label-xsmall);
   }
 }
 </style>

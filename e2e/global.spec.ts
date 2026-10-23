@@ -60,8 +60,8 @@ test('G-02 어느 화면에도 "공식 전자정부 누리집", "누리집입니
   expect.soft(await govTextFound(page), '시연 도구를 연 상태').toEqual([])
 })
 
-test('G-03 주 메뉴 다섯 항목 · "채용정보"는 /jobs · 나머지는 범위 밖 알림이 뜨고 주소가 그대로', async ({ page, isMobile }) => {
-  test.skip(isMobile, '휴대폰 폭은 주 메뉴가 접혀 모양이 정해져 있지 않아 데스크톱에서 본다')
+test('G-03 주 메뉴 다섯 항목 · "채용정보"는 /jobs · 나머지는 범위 밖 알림이 뜨고 주소가 그대로', async ({ page }) => {
+  // 휴대폰 주 메뉴는 가로로 미는 한 줄(D-026·D-071)이라 화면 밖 항목은 밀어서 보이게 한 뒤 누른다
   await gotoApplications(page)
   const nav = page.getByRole('navigation', { name: '주 메뉴' })
   const item = (name: string) => nav.getByRole('link', { name, exact: true }).or(nav.getByRole('button', { name, exact: true })).first()
@@ -69,11 +69,13 @@ test('G-03 주 메뉴 다섯 항목 · "채용정보"는 /jobs · 나머지는 �
 
   for (const name of MAIN_MENU.slice(1)) {
     const before = page.url()
+    await item(name).scrollIntoViewIfNeeded()
     await item(name).click()
     await expect(page.getByRole('status').filter({ hasText: OUT_OF_SCOPE }).first(), `"${name}" → 알림`).toBeVisible()
     expect(page.url(), `"${name}" 뒤 주소`).toBe(before)
   }
 
+  await item('채용정보').scrollIntoViewIfNeeded()
   await item('채용정보').click()
   await expect(page).toHaveURL(/\/jobs(?:[?#].*)?$/)
 })

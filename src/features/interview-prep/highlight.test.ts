@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { POSTINGS, getAnalysis, getPosting } from '@shared/catalog'
+import { POSTINGS, getAnalysis, getPosting, getSignals } from '@shared/catalog'
 import type { EvidenceField, Posting } from '@shared/contract'
-import { BLANK_TAGS, checkPoints } from './checkpoints'
+import { BLANK_TAGS, checkPoints, postingTag } from './checkpoints'
 import { offerMeta } from './questionView'
 import { marksOf, segmentsFor, splitByQuotes } from './highlight'
 
@@ -82,6 +82,33 @@ describe('AI가 찾은 확인할 점', () => {
       expect(points.length, posting.wantedAuthNo).toBeGreaterThanOrEqual(3)
       expect(points.some((p) => p.title === '수습' && p.tag !== '공고에 없음'), posting.wantedAuthNo).toBe(false)
     }
+  })
+})
+
+describe('근거 인용 없는 유추 카드(DR-r2-03)', () => {
+  it('"공고에서 유추" 대신 "공고에 없음"을 달고, 설명이 회사 신호 문장을 그대로 옮기지 않는다', () => {
+    let seen = 0
+    for (const posting of POSTINGS) {
+      const analysis = getAnalysis(posting.wantedAuthNo)
+      const signals = getSignals(posting.wantedAuthNo).map((s) => s.text.replace(/요$/, ''))
+      const points = checkPoints(analysis)
+      for (const c of analysis?.cards ?? []) {
+        if (c.state !== 'inferred' || c.evidence) continue
+        seen++
+        const where = `${posting.wantedAuthNo} ${c.card_id}`
+        expect(postingTag(c), where).toBe('공고에 없음')
+        expect(points.find((p) => p.key === `card:${c.card_id}`)?.tag, where).toBe('공고에 없음')
+        for (const s of signals) expect(c.reason, `${where}: 회사 신호 "${s}"`).not.toContain(s)
+      }
+    }
+    expect(seen, '시험할 카드가 있다(OO소프트 BE17 등)').toBeGreaterThan(0)
+  })
+
+  it('근거 인용이 있는 유추·공고에 있음·모호는 그대로, 분석에 없는 카드는 표시 없음', () => {
+    expect(postingTag({ state: 'inferred', evidence: { field: 'pfCond', quote: '고객사 상주 가능자' } })).toBe('공고에서 유추')
+    expect(postingTag({ state: 'explicit', evidence: { field: 'jobCont', quote: '서버 개발' } })).toBe('공고에 있음')
+    expect(postingTag({ state: 'vague', evidence: { field: 'jobCont', quote: '기타 업무 지원' } })).toBe('모호한 표현')
+    expect(postingTag(undefined)).toBeNull()
   })
 })
 
