@@ -1,0 +1,24 @@
+/* KRDS 기본 서체 Pretendard GOV(krds-uiux 패키지 포함 subset). 쓰는 굵기 3개만. */
+@font-face {
+  font-family: 'Pretendard GOV';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../../node_modules/krds-uiux/resources/fonts/PretendardGOV-Regular.subset.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Pretendard GOV';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../../node_modules/krds-uiux/resources/fonts/PretendardGOV-Medium.subset.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Pretendard GOV';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../../node_modules/krds-uiux/resources/fonts/PretendardGOV-Bold.subset.woff2') format('woff2');
+}

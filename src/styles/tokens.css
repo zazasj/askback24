@@ -1,0 +1,35 @@
+/*
+ * 우리 쪽 디자인 값. 색 값(hex·rgba)은 이 파일에만 쓴다(NF-04).
+ * 고용24 기존 영역은 KRDS 토큰(--krds-*)을 그대로 쓰고,
+ * 새로 붙인 기능(S1 "면접 준비" 열, S4)만 --rq-accent* 연한 보라 계열로 구분한다.
+ */
+:root {
+  /* 강조색: 흰 바탕 대비 6:1 이상 */
+  --rq-accent: #6645c0;
+  --rq-accent-strong: #4b2d97;
+  --rq-accent-subtle: #f3effc;
+  --rq-accent-subtler: #faf8fe;
+  --rq-accent-border: #d6caf3;
+  --rq-on-accent: #ffffff;
+
+  /* 공고 형광펜 */
+  --rq-mark: #fff0a0;
+  --rq-mark-active: #ffd23f;
+
+  /* 그림자·겹침 */
+  --rq-shadow-pop: 0 6px 20px rgba(19, 20, 22, 0.16);
+  --rq-shadow-card: 0 1px 3px rgba(19, 20, 22, 0.08);
+  --rq-scrim: rgba(19, 20, 22, 0.5);
+
+  /* 크기 */
+  --rq-container: 128rem;
+  --rq-side-width: 24rem;
+  --rq-gutter: 2.4rem;
+  --rq-touch: 4.4rem;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --rq-gutter: 1.6rem;
+  }
+}

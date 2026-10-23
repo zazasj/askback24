@@ -1,0 +1,23 @@
+[
+  {
+    "apply_id": "A-0001",
+    "wantedAuthNo": "K-MOCK-0001",
+    "applied_days_ago": 10,
+    "viewed_days_ago": 9,
+    "result": "서류합격"
+  },
+  {
+    "apply_id": "A-0002",
+    "wantedAuthNo": "K-MOCK-0002",
+    "applied_days_ago": 16,
+    "viewed_days_ago": 15,
+    "result": "1차 합격"
+  },
+  {
+    "apply_id": "A-0003",
+    "wantedAuthNo": "K-MOCK-0003",
+    "applied_days_ago": 4,
+    "viewed_days_ago": null,
+    "result": "-"
+  }
+]

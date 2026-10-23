@@ -1,0 +1,82 @@
+{
+  "name": "김00",
+  "basic": {
+    "name": "김00",
+    "gender": "남",
+    "birth_year": 2000,
+    "age": 26,
+    "address": "서울특별시 ○○구 (시연용)",
+    "phone": "010-0000-0000",
+    "email": "kim00@example.com",
+    "military": "군필 (육군 만기 전역)"
+  },
+  "hope": {
+    "job": "웹 개발자 (백엔드)",
+    "career": "신입",
+    "region": "서울·경기",
+    "salary": "연 3,000만 원 이상",
+    "employment": "기간의 정함이 없는 근로계약",
+    "workdays": "주 5일"
+  },
+  "education": [
+    { "school": "○○대학교", "major": "컴퓨터공학과", "degree": "학사 졸업", "graduated": "2026.02" }
+  ],
+  "careers": [
+    {
+      "company": "(주)□□랩",
+      "role": "백엔드 인턴",
+      "period": "2025.07 ~ 2025.12 (6개월)",
+      "summary": "FastAPI로 사내 예약 API를 설계부터 배포까지 맡았어요. MySQL 테이블 설계에도 참여했어요."
+    }
+  ],
+  "trainings": [
+    {
+      "name": "국민내일배움카드 「클라우드 기반 백엔드 개발자 과정」",
+      "period": "2026.03 ~ 2026.08",
+      "summary": "AWS EC2와 Docker로 서비스를 배포하는 실습을 했어요."
+    }
+  ],
+  "projects": [
+    {
+      "name": "졸업 프로젝트 「중고거래 주문·결제 API」",
+      "stack": "Spring Boot · JPA",
+      "summary": "4명 팀에서 DB 설계를 맡았어요."
+    }
+  ],
+  "certificates": [
+    { "name": "정보처리기사", "date": "2025.11" },
+    { "name": "TOEIC 805", "date": "2025.08" }
+  ],
+  "skills": ["Python (FastAPI)", "Java (Spring Boot 기초)", "MySQL", "Git", "AWS EC2", "Docker 기초"],
+  "self_intro": [
+    {
+      "title": "지원 동기",
+      "body": "인턴 때 만든 예약 API가 실제 사용자에게 쓰이는 걸 보며 서버 개발의 재미를 알았습니다. 사용자가 매일 쓰는 서비스를 안정적으로 만드는 백엔드 개발자로 일하고 싶어 지원했습니다."
+    },
+    {
+      "title": "나의 강점",
+      "body": "설계부터 배포까지 한 기능을 끝까지 맡아 본 경험이 있습니다. 졸업 프로젝트에서는 DB 설계를 맡아 팀원들이 같은 기준으로 데이터를 다루도록 정리했습니다."
+    },
+    {
+      "title": "입사 후 포부",
+      "body": "처음에는 작은 기능을 정확하게 만드는 데 집중하겠습니다. 코드 리뷰와 장애 기록에서 배우며 1년 안에 한 서비스의 API를 혼자 맡을 수 있는 개발자가 되겠습니다."
+    }
+  ],
+  "experience_chips": [
+    {
+      "card_id": "BE01",
+      "label": "인턴 · 예약 API 설계와 배포",
+      "text": "인턴 때 FastAPI로 API를 설계부터 배포까지 맡아 봤는데"
+    },
+    {
+      "card_id": "BE03",
+      "label": "졸업 프로젝트 · DB 설계",
+      "text": "졸업 프로젝트에서 4명 팀의 DB 설계를 맡아 봤는데"
+    },
+    {
+      "card_id": "BE09",
+      "label": "직업훈련 · AWS 배포 실습",
+      "text": "직업훈련 과정에서 AWS EC2와 Docker로 배포를 실습해 봤는데"
+    }
+  ]
+}

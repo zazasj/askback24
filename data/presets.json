@@ -1,0 +1,27 @@
+{
+  "A": {
+    "label": "예시 구직자 A",
+    "summary": "새 기능 개발을 기대하고, 유지보수와 고객사 상주를 걱정하는 신입",
+    "picks": [
+      { "card_id": "BE01", "pref": "want", "has_exp": true },
+      { "card_id": "BE02", "pref": "want", "has_exp": false },
+      { "card_id": "BE03", "pref": "want", "has_exp": false },
+      { "card_id": "BE07", "pref": "avoid", "has_exp": false },
+      { "card_id": "BE15", "pref": "avoid", "has_exp": false },
+      { "card_id": "BE08", "pref": "unsure", "has_exp": false }
+    ],
+    "experience": "인턴 때 FastAPI로 API를 설계부터 배포까지 맡아 봤는데"
+  },
+  "B": {
+    "label": "예시 구직자 B",
+    "summary": "배포·데이터 일을 기대하고, 고객 협의와 화면 개발 겸업을 걱정하는 신입",
+    "picks": [
+      { "card_id": "BE09", "pref": "want", "has_exp": false },
+      { "card_id": "BE04", "pref": "want", "has_exp": false },
+      { "card_id": "BE12", "pref": "avoid", "has_exp": false },
+      { "card_id": "BE13", "pref": "avoid", "has_exp": false },
+      { "card_id": "BE08", "pref": "unsure", "has_exp": false }
+    ],
+    "experience": ""
+  }
+}

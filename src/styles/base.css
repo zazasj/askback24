@@ -1,0 +1,338 @@
+/*
+ * 공통 바탕·부품 모양. KRDS 부품 CSS(component.css)는 넣지 않고 토큰만 써서 같은 계열로 다시 짠다(D-017).
+ * KRDS 토큰은 rem = 10px 기준이라 html 글자 크기를 62.5%로 둔다.
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 62.5%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 32rem;
+  font-family: 'Pretendard GOV', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif;
+  font-size: var(--krds-pc-font-size-body-medium);
+  line-height: 1.6;
+  color: var(--krds-light-color-text-basic);
+  background: var(--krds-light-color-background-white);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+ul,
+ol,
+dl,
+dd,
+figure,
+fieldset {
+  margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+fieldset {
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+legend {
+  padding: 0;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: var(--krds-light-color-link-default);
+  text-underline-offset: 0.3rem;
+}
+
+a:hover {
+  color: var(--krds-light-color-link-hover);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+:focus-visible {
+  outline: 0.3rem solid var(--krds-light-color-border-primary);
+  outline-offset: 0.2rem;
+}
+
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* ── 제목 ─────────────────────────────────────────────── */
+.page-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.8rem 1.2rem;
+  font-size: var(--krds-pc-font-size-heading-large);
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--krds-light-color-text-bolder);
+}
+
+.section-title {
+  font-size: var(--krds-pc-font-size-heading-small);
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--krds-light-color-text-bolder);
+}
+
+@media (max-width: 767px) {
+  .page-title {
+    font-size: var(--krds-mobile-font-size-heading-large, 2.8rem);
+  }
+}
+
+/* ── 버튼 (KRDS button_hierarchy 계열) ─────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 4rem;
+  padding: 0 1.6rem;
+  border: 1px solid transparent;
+  border-radius: var(--krds-radius-medium2);
+  font-size: var(--krds-pc-font-size-label-small);
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+}
+
+.btn-lg {
+  min-height: 5.6rem;
+  padding: 0 2.4rem;
+  font-size: var(--krds-pc-font-size-label-medium);
+}
+
+.btn-sm {
+  min-height: 3.2rem;
+  padding: 0 1.2rem;
+  font-size: var(--krds-pc-font-size-label-xsmall);
+}
+
+.btn-primary {
+  background: var(--krds-light-color-button-primary-fill);
+  color: var(--krds-light-color-text-basic-inverse);
+}
+
+.btn-primary:hover {
+  background: var(--krds-light-color-button-primary-fill-hover);
+}
+
+.btn-primary:active {
+  background: var(--krds-light-color-button-primary-fill-pressed);
+}
+
+.btn-secondary {
+  background: var(--krds-light-color-button-secondary-fill);
+  border-color: var(--krds-light-color-button-secondary-border);
+  color: var(--krds-light-color-text-primary);
+}
+
+.btn-secondary:hover {
+  background: var(--krds-light-color-button-secondary-fill-hover);
+}
+
+.btn-tertiary {
+  background: var(--krds-light-color-button-tertiary-fill);
+  border-color: var(--krds-light-color-button-tertiary-border);
+  color: var(--krds-light-color-text-basic);
+}
+
+.btn-tertiary:hover {
+  background: var(--krds-light-color-button-tertiary-fill-hover);
+}
+
+/* 우리 기능 버튼(면접 준비 열·S4)만 강조색 */
+.btn-accent {
+  background: var(--rq-accent);
+  color: var(--rq-on-accent);
+}
+
+.btn-accent:hover {
+  background: var(--rq-accent-strong);
+}
+
+.btn-accent-outline {
+  background: var(--rq-accent-subtle);
+  border-color: var(--rq-accent);
+  color: var(--rq-accent-strong);
+}
+
+.btn-accent-outline:hover {
+  background: var(--rq-accent-border);
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  background: var(--krds-light-color-button-disabled-fill);
+  border-color: var(--krds-light-color-button-disabled-border);
+  color: var(--krds-light-color-text-disabled-on);
+}
+
+.btn-text {
+  background: none;
+  border: 0;
+  padding: 0 0.4rem;
+  color: var(--krds-light-color-text-subtle);
+  font-weight: 500;
+}
+
+.btn-text:hover {
+  color: var(--krds-light-color-text-basic);
+  text-decoration: underline;
+}
+
+@media (max-width: 767px) {
+  .btn {
+    min-height: var(--rq-touch);
+  }
+}
+
+/* ── 입력 ────────────────────────────────────────────── */
+.input {
+  min-height: 4rem;
+  padding: 0 1.2rem;
+  border: 1px solid var(--krds-light-color-border-gray-dark);
+  border-radius: var(--krds-radius-medium2);
+  background: var(--krds-light-color-surface-white);
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-basic);
+}
+
+.input:focus-visible {
+  border-color: var(--krds-light-color-border-primary);
+}
+
+@media (max-width: 767px) {
+  .input {
+    min-height: var(--rq-touch);
+  }
+}
+
+/* ── 배지·라벨 ───────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.4rem;
+  padding: 0 0.8rem;
+  border-radius: var(--krds-radius-small2);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  border: 1px solid var(--krds-light-color-border-gray-light);
+  background: var(--krds-light-color-surface-gray-subtler);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.badge-primary {
+  border-color: var(--krds-light-color-border-primary-light);
+  background: var(--krds-light-color-surface-primary-subtler);
+  color: var(--krds-light-color-text-primary);
+}
+
+/* ── 표 (KRDS table 계열) ────────────────────────────── */
+.gov-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-top: 2px solid var(--krds-light-color-border-gray-darker);
+  font-size: var(--krds-pc-font-size-body-small);
+}
+
+.gov-table th,
+.gov-table td {
+  padding: 1.4rem 1.2rem;
+  border-bottom: 1px solid var(--krds-light-color-divider-gray-light);
+  text-align: center;
+  vertical-align: middle;
+}
+
+.gov-table thead th {
+  background: var(--krds-light-color-surface-gray-subtler);
+  font-weight: 700;
+  color: var(--krds-light-color-text-bolder);
+}
+
+/* ── 기타 ────────────────────────────────────────────── */
+/* 내용이 짧은 화면에서도 바닥글이 화면 아래에 붙게 */
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* 다음 마일스톤에서 채울 자리 */
+.pending-note {
+  padding: 3.2rem 2rem;
+  border: 1px dashed var(--krds-light-color-border-gray);
+  border-radius: var(--krds-radius-large1);
+  color: var(--krds-light-color-text-subtle);
+  text-align: center;
+}
+
+.muted {
+  color: var(--krds-light-color-text-subtle);
+}
+
+.stack > * + * {
+  margin-top: var(--krds-gap-5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

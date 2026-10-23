@@ -1,0 +1,126 @@
+import { describe, expect, it } from 'vitest'
+import { PRESETS, getAnalysis } from './catalog'
+import type { PostingAnalysis } from './contract'
+import { anchorText, classify, pickTop5, rankPicks, typeLabel } from './rules'
+
+function analysisOf(id: string): PostingAnalysis {
+  const a = getAnalysis(id)
+  if (!a) throw new Error(`분석 ${id} 없음`)
+  return a
+}
+
+const OO = analysisOf('K-MOCK-0001') // (주)OO소프트 · SI 개발사
+const COMMERCE = analysisOf('K-MOCK-0002') // (주)△△커머스 · 자사 서비스
+
+describe('API-01 예시 구직자 A × (주)OO소프트', () => {
+  const top = pickTop5(PRESETS.A, OO)
+
+  it('API-01 pickTop5 = 데모 v0.2와 같은 순서·유형', () => {
+    expect(top.map((q) => [q.card_id, q.type])).toEqual([
+      ['BE15', 'conflict'],
+      ['BE07', 'conflict'],
+      ['BE02', 'opportunity'],
+      ['BE03', 'opportunity'],
+      ['BE01', 'depth'],
+    ])
+  })
+
+  it('API-01 유형 칩 순서: 충돌 확인, 충돌 확인, 기회 확인, 기회 확인, 깊이 확인', () => {
+    expect(top.map((q) => typeLabel(q.type))).toEqual(['충돌 확인', '충돌 확인', '기회 확인', '기회 확인', '깊이 확인'])
+  })
+
+  it('API-01 1번 질문은 상주, 5번 질문에만 경험이 붙는다', () => {
+    expect(top[0]?.template_text).toContain('상주')
+    expect(top[4]?.has_exp).toBe(true)
+    expect(top[4]?.template_text).toContain('FastAPI')
+    expect(top.slice(0, 4).every((q) => !q.has_exp)).toBe(true)
+  })
+
+  it('API-01 공고에 있는 카드는 근거 인용을, 없는 카드는 "근거 없음" 설명을 갖는다', () => {
+    expect(top[0]?.evidence).toEqual({ field: 'pfCond', quote: '고객사 상주 가능자' })
+    expect(top[1]?.evidence).toEqual({ field: 'jobCont', quote: '기타 업무 지원' })
+    expect(top[2]?.evidence).toBeUndefined()
+    expect(top[2]?.reason).toContain('근거가 없어')
+  })
+
+  it('API-01 주의할 답은 내 선호 쪽 해석을 쓴다', () => {
+    expect(top[0]?.watch_out).toContain('상주 비중이 절반 이상')
+    expect(top[2]?.watch_out).toContain('설계는 상위 조직')
+  })
+})
+
+describe('API-02 예시 구직자 A × (주)△△커머스', () => {
+  const top = pickTop5(PRESETS.A, COMMERCE)
+
+  it('API-02 BE15(고객사 상주)는 prevent(충돌 예방)', () => {
+    const be15 = top.find((q) => q.card_id === 'BE15')
+    expect(be15?.type).toBe('prevent')
+    expect(typeLabel('prevent')).toBe('충돌 예방')
+  })
+
+  it('API-02 상주 질문은 공고 내용을 전제하지 않는 문장', () => {
+    for (const q of top) expect(q.template_text).not.toMatch(/공고에 고객사 상주/)
+    expect(top.find((q) => q.card_id === 'BE15')?.template_text).toContain('투입되는 경우도 있나요')
+  })
+
+  it('API-02 순서 = 기회 확인 2 → 깊이 확인 → 충돌 예방 2', () => {
+    expect(top.map((q) => [q.card_id, q.type])).toEqual([
+      ['BE02', 'opportunity'],
+      ['BE03', 'opportunity'],
+      ['BE01', 'depth'],
+      ['BE07', 'prevent'],
+      ['BE15', 'prevent'],
+    ])
+  })
+})
+
+describe('규칙 표(gap_rules)', () => {
+  it('걱정 × 공고에 있음 = 충돌 확인 1, 걱정 × 모호 = 1.5', () => {
+    expect(classify('avoid', 'explicit', false)).toEqual({ type: 'conflict', priority: 1 })
+    expect(classify('avoid', 'inferred', false)).toEqual({ type: 'conflict', priority: 1 })
+    expect(classify('avoid', 'vague', false)).toEqual({ type: 'conflict', priority: 1.5 })
+  })
+
+  it('기대 × 공고에 있음 = 깊이 확인 3, 경험이 붙으면 2.8', () => {
+    expect(classify('want', 'explicit', false)).toEqual({ type: 'depth', priority: 3 })
+    expect(classify('want', 'explicit', true)).toEqual({ type: 'depth', priority: 2.8 })
+    expect(classify('want', 'absent', true)).toEqual({ type: 'opportunity', priority: 2 })
+  })
+
+  it('모르겠어요 = 탐색(공고에 없으면 예비 5)', () => {
+    expect(classify('unsure', 'vague', false)).toEqual({ type: 'explore', priority: 4.5 })
+    expect(classify('unsure', 'absent', false)).toEqual({ type: 'explore', priority: 5 })
+  })
+
+  it('경험 한 줄이 비어 있으면 경험이 붙지 않고 깊이 확인은 3', () => {
+    const top = pickTop5({ picks: PRESETS.A.picks, experience: '   ' }, OO)
+    const be01 = top.find((q) => q.card_id === 'BE01')
+    expect(be01?.priority).toBe(3)
+    expect(be01?.has_exp).toBe(false)
+    expect(be01?.template_text).not.toContain('{anchor}')
+  })
+
+  it('경험 끝의 쉼표·마침표는 떼고 ", "를 붙인다', () => {
+    expect(anchorText('인턴 때 API를 만들어 봤는데.')).toBe('인턴 때 API를 만들어 봤는데, ')
+    expect(anchorText('')).toBe('')
+  })
+
+  it('없는 카드 ID는 건너뛰고, 같은 우선순위면 먼저 고른 것이 위', () => {
+    const ranked = rankPicks(
+      {
+        picks: [
+          { card_id: 'BE03', pref: 'want', has_exp: false },
+          { card_id: 'NOPE', pref: 'want', has_exp: false },
+          { card_id: 'BE02', pref: 'want', has_exp: false },
+        ],
+      },
+      OO,
+    )
+    expect(ranked.map((q) => q.card_id)).toEqual(['BE03', 'BE02'])
+  })
+
+  it('6개를 골라도 5개까지만', () => {
+    expect(rankPicks(PRESETS.A, OO)).toHaveLength(6)
+    expect(pickTop5(PRESETS.A, OO)).toHaveLength(5)
+  })
+})
