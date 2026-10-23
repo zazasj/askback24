@@ -12,6 +12,7 @@ import {
   applicationPostingTitle,
   columnIndex,
   dataRows,
+  entryField,
   gotoApplications,
   heading,
   modeRadio,
@@ -54,6 +55,11 @@ test('S1-03 처음 상태 3건: (주)OO소프트(서류합격) · (주)△△커
     await expect(rowCells(rows.nth(0)).nth(result)).toHaveText('서류합격')
     await expect(rowCells(rows.nth(1)).nth(result)).toHaveText('1차 합격')
     await expect(rowCells(rows.nth(2)).nth(result)).toHaveText('-')
+  } else {
+    // 휴대폰은 표 대신 카드: 카드 글의 「지원결과」 칸 값을 읽는다
+    expect(await entryField(entries.nth(0), '지원결과'), '1번째 카드 지원결과').toBe('서류합격')
+    expect(await entryField(entries.nth(1), '지원결과'), '2번째 카드 지원결과').toBe('1차 합격')
+    expect(await entryField(entries.nth(2), '지원결과'), '3번째 카드 지원결과').toBe('-')
   }
 })
 
@@ -68,14 +74,15 @@ test('S1-04 행마다 면접 준비 버튼: 1·3행 "면접 역질문 준비", 2
   await expect(entries.nth(1).getByRole('button', { name: '면접 역질문 준비' })).toHaveCount(0)
 })
 
-test('S1-05 1행 버튼 → S4 ①(/mypage/applications/<id>/prep?step=1), 머리에 회사명·지원결과, "1차·기술 면접" 선택됨', async ({ page, isMobile }) => {
+test('S1-05 1행 버튼 → S4 ①(/mypage/applications/<id>/prep?step=1), 머리에 회사명·지원결과, "1차·기술 면접" 선택됨', async ({ page }) => {
   await gotoApplications(page)
-  const posting = isMobile ? '' : await applicationPostingTitle(page, 'oo')
+  const posting = await applicationPostingTitle(page, 'oo')
+  expect(posting, 'S1에서 읽은 채용제목').not.toBe('')
   await applicationEntries(page).nth(0).getByRole('button', { name: '면접 역질문 준비' }).click()
   await expect(page).toHaveURL(/\/mypage\/applications\/[^/?#]+\/prep\?step=1(?:&|#|$)/)
   await expect(page.getByText(COMPANY.oo).first()).toBeVisible()
   await expect(page.getByText('서류합격').first()).toBeVisible()
-  if (posting) await expect(page.getByText(posting).first(), `채용제목 "${posting}"`).toBeVisible()
+  await expect(page.getByText(posting).first(), `채용제목 "${posting}"`).toBeVisible()
   await expect(modeRadio(page, MODE_FIRST)).toBeChecked()
   await expect(modeRadio(page, MODE_FINAL)).not.toBeChecked()
 })
@@ -120,17 +127,18 @@ function parseYmd(text: string): Ymd | null {
 
 const dayNumber = ([y, m, d]: Ymd) => Date.UTC(y, m - 1, d) / 86_400_000
 
-async function expectApplyDatesWithin30Days(page: Page) {
+async function expectApplyDatesWithin30Days(page: Page, isMobile: boolean) {
   const today = await page.evaluate((): [number, number, number] => {
     const d = new Date()
     return [d.getFullYear(), d.getMonth() + 1, d.getDate()]
   })
-  const col = await columnIndex(page, '지원일')
-  const rows = dataRows(page)
+  // 데스크톱은 표의 「지원일」 칸, 휴대폰은 카드 글의 「지원일 YYYY.MM.DD」
+  const col = isMobile ? -1 : await columnIndex(page, '지원일')
+  const rows = isMobile ? applicationEntries(page) : dataRows(page)
   const n = await rows.count()
   expect(n).toBeGreaterThan(0)
   for (let i = 0; i < n; i++) {
-    const text = normalize(await rowCells(rows.nth(i)).nth(col).innerText())
+    const text = isMobile ? await entryField(rows.nth(i), '지원일') : normalize(await rowCells(rows.nth(i)).nth(col).innerText())
     const date = parseYmd(text)
     expect(date, `${i + 1}행 지원일 "${text}"`).not.toBeNull()
     const diff = dayNumber(today) - dayNumber(date as Ymd)
@@ -140,14 +148,12 @@ async function expectApplyDatesWithin30Days(page: Page) {
 }
 
 test('S1-09 지원일이 모두 오늘로부터 30일 안의 날짜다', async ({ page, isMobile }) => {
-  test.skip(isMobile, '표의 지원일 칸을 읽으므로 데스크톱에서 본다')
   await gotoApplications(page)
-  await expectApplyDatesWithin30Days(page)
+  await expectApplyDatesWithin30Days(page, isMobile)
 })
 
 test('S1-09 시계를 2027-03-15로 옮겨도 지원일이 그날로부터 30일 안이다(고정 날짜 아님)', async ({ page, isMobile }) => {
-  test.skip(isMobile, '표의 지원일 칸을 읽으므로 데스크톱에서 본다')
   await page.clock.setFixedTime(new Date('2027-03-15T10:00:00+09:00'))
   await gotoApplications(page)
-  await expectApplyDatesWithin30Days(page)
+  await expectApplyDatesWithin30Days(page, isMobile)
 })

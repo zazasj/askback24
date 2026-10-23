@@ -56,6 +56,7 @@ async function resetDemo(): Promise<void> {
 <template>
   <div ref="root" class="demo-tools">
     <button
+      id="demo-tools-toggle"
       ref="toggle"
       type="button"
       class="toggle tap-target"

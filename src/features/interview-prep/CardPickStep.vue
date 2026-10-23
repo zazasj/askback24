@@ -6,7 +6,9 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { CARDS, CARD_BOOK, getCard } from '@shared/catalog'
 import type { PostingAnalysis, Pref } from '@shared/contract'
+import { API_MODE } from '@/api/client'
 import { PERSONA } from '@/demoData'
+import { useDemoToolsStore } from '@/stores/demoTools'
 import { usePrepStore } from '@/stores/prep'
 import { postingTag } from './checkpoints'
 import { EXPERIENCE_MAX, PREFS, countByPref, experienceTarget, oneLine, prefOf } from './picks'
@@ -50,6 +52,17 @@ function toggle(cardId: string, pref: Pref): void {
   prep.togglePref(props.applyId, cardId, pref)
 }
 
+// 휴대폰은 단계 표시로 스크롤해 와서(D-078) 시연 띠의 "시연 도구"가 화면 밖이다. 예시 구직자 채우기 단서를 ② 안에 둔다(DR-r3-03)
+const demoTools = useDemoToolsStore()
+const showDemoHint = computed(() => API_MODE === 'mock' || demoTools.pageActions.length > 0)
+
+async function openDemoTools(): Promise<void> {
+  window.scrollTo({ top: 0 })
+  demoTools.open = true
+  await nextTick()
+  document.getElementById('demo-tools-toggle')?.focus({ preventScroll: true })
+}
+
 // ── 경험 한 줄 ────────────────────────────────────────
 const CHIPS = PERSONA.experience_chips
 const experience = computed(() => selection.value.experience)
@@ -77,6 +90,10 @@ const experienceHint = computed(() => {
       <h2 id="pick-step-title" class="section-title">내 기대·걱정</h2>
       <p class="lead">백엔드 개발자가 실제로 하는 일 17가지예요. 아는 만큼만 골라도 돼요.</p>
       <p class="hint">카드마다 기대돼요 · 걱정돼요 · 모르겠어요 중 하나를 골라요. 고른 것을 다시 누르면 풀려요.</p>
+      <p v-if="showDemoHint" class="demo-hint">
+        <span>시연: 예시 구직자로 한 번에 채울 수 있어요</span>
+        <button type="button" class="btn btn-tertiary btn-sm" @click="openDemoTools">시연 도구 열기</button>
+      </p>
     </div>
 
     <ul class="card-grid">
@@ -160,6 +177,22 @@ const experienceHint = computed(() => {
 .hint {
   font-size: var(--krds-pc-font-size-body-small);
   color: var(--krds-light-color-text-subtle);
+}
+
+/* 시연용 단서: 우리 기능 강조색이 아니라 시연 띠·가짜 응답 태그와 같은 회색 점선 계열 */
+.demo-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-self: start;
+  gap: 0.6rem 1.2rem;
+  margin-top: 0.4rem;
+  padding: 0.6rem 0.6rem 0.6rem 1.2rem;
+  border: 1px dashed var(--krds-light-color-border-gray);
+  border-radius: var(--krds-radius-medium2);
+  background: var(--krds-light-color-surface-gray-subtler);
+  font-size: var(--krds-pc-font-size-body-xsmall);
+  color: var(--krds-light-color-text-basic);
 }
 
 .card-grid {
@@ -306,6 +339,22 @@ const experienceHint = computed(() => {
 @media (max-width: 767px) {
   .card-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 글은 두 줄로 접고 버튼은 같은 줄 오른쪽에(카드가 덜 밀리게) */
+  .demo-hint {
+    flex-wrap: nowrap;
+    justify-self: stretch;
+  }
+
+  .demo-hint > span {
+    flex: 1;
+    min-width: 0;
+    text-wrap: balance;
+  }
+
+  .demo-hint .btn {
+    flex: none;
   }
 
   .experience {

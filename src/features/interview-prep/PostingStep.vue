@@ -110,9 +110,18 @@ function markEl(key: string): HTMLElement | null {
   return root.value?.querySelector<HTMLElement>(`mark[data-mark-key="${key}"]`) ?? null
 }
 
-function open(key: string): void {
+/**
+ * 말풍선은 형광펜 줄 아래에 펼쳐져 아래 고정 바에 가릴 수 있어 바 위까지 끌어올린다(DR-r3-01).
+ * 바 높이만큼의 여백은 html scroll-padding-bottom(base.css)이 맡는다. 확인할 점에서 올 때는 형광펜 가운데 맞춤을 따른다.
+ */
+function open(key: string, reveal = true): void {
   openKey.value = key
   activeKey.value = key
+  if (!reveal) return
+  void nextTick(() => {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    document.getElementById('mark-bubble')?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' })
+  })
 }
 
 function close(returnFocus: boolean): void {
@@ -131,7 +140,7 @@ function toggleMark(key: string): void {
 function goToCard(cardId: string, focus: boolean): void {
   const spot = spotFor(cardId)
   if (!spot) return
-  open(spot.key)
+  open(spot.key, false)
   void nextTick(() => {
     const el = markEl(spot.key)
     el?.scrollIntoView({ block: 'center' })

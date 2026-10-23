@@ -314,6 +314,27 @@ input[type='date']:focus-within {
 }
 
 /* ── 기타 ────────────────────────────────────────────── */
+/*
+ * S4 아래 고정 바(① .step-bar · ② .pick-bar)가 있는 화면: Tab 초점 이동·scrollIntoView·앵커 이동이
+ * 바 밑이 아니라 바 위에서 멈추게 한다(WCAG 2.4.11 초점 가려짐, DR-r3-02). 값 = 바 높이 + bottom 0.8rem + 여유
+ */
+html:has(.pick-bar),
+html:has(.step-bar) {
+  scroll-padding-bottom: 10rem;
+}
+
+@media (max-width: 767px) {
+  html:has(.pick-bar),
+  html:has(.step-bar) {
+    scroll-padding-bottom: 8.4rem;
+  }
+
+  /* 1차 결과가 없을 때의 ① 바는 안내 한 줄 + 버튼 줄이라 더 높다 */
+  html:has(.step-bar.is-blocked) {
+    scroll-padding-bottom: 12rem;
+  }
+}
+
 /* 내용이 짧은 화면에서도 바닥글이 화면 아래에 붙게 */
 #app {
   display: flex;

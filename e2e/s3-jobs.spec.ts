@@ -10,6 +10,7 @@ import {
   applyToPosting,
   columnIndex,
   dataRows,
+  entryField,
   escapeRe,
   findUnappliedPosting,
   gotoApplications,
@@ -77,6 +78,9 @@ test('S3-04 지원 뒤 지원 내역이 4건, 맨 위가 방금 지원한 공고
   if (!isMobile) {
     const result = await columnIndex(page, '지원결과')
     await expect(rowCells(dataRows(page).first()).nth(result)).toHaveText('-')
+  } else {
+    // 휴대폰은 표 대신 카드: 맨 위 카드 글의 「지원결과」 칸 값
+    expect(await entryField(entries.first(), '지원결과'), '맨 위 카드 지원결과').toBe('-')
   }
 })
 

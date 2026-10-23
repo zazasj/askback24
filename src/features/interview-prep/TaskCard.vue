@@ -38,7 +38,7 @@ const basis = computed(() =>
       <label v-for="p in PREFS" :key="p" class="choice" :class="`is-${p}`">
         <input
           type="radio"
-          class="sr-only"
+          class="choice-input"
           :name="`pref-${card.id}`"
           :value="p"
           :checked="pref === p"
@@ -136,6 +136,20 @@ const basis = computed(() =>
 .choice {
   position: relative;
   display: inline-flex;
+}
+
+/*
+ * 라디오는 보이지 않게 칩 크기로 덮어 둔다. sr-only(1px, 칩 왼쪽 위)면 Tab 초점이 갈 때 브라우저가 그 1px만
+ * 고정 바 위로 들여 칩 아래쪽이 바에 가린다(DR-r3-02 실측). 누르기는 칩(label)이 받는다
+ */
+.choice-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .chip {

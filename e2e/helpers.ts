@@ -5,7 +5,8 @@
  */
 import { expect, type Locator, type Page } from '@playwright/test'
 import { AxeBuilder } from '@axe-core/playwright'
-import { dirname, resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -65,6 +66,14 @@ export const R04_ANSWERS = {
   design: '설계 리뷰에 신입도 들어가고 작은 기능은 직접 설계해요',
   newApi: '수습 끝나면 작은 API부터 맡겨요',
 } as const
+
+/** S4-11: 김00 이력서의 경험 칩(칩 글자 label → 입력칸에 들어갈 경험 문장 text). 정본은 data/persona.json. */
+export function resumeChips(): ReadonlyArray<{ label: string; text: string }> {
+  const persona = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'persona.json'), 'utf8')) as {
+    experience_chips?: Array<{ label: string; text: string }>
+  }
+  return persona.experience_chips ?? []
+}
 
 // ── 작은 도구 ──────────────────────────────────────────────────
 export const normalize = (s: string): string => s.replace(/\s+/g, ' ').trim()
@@ -135,12 +144,39 @@ export async function columnIndex(page: Page, header: string): Promise<number> {
   return i
 }
 
-/** 데스크톱 표 「회사명 / 지원공고」 칸에서 회사명을 뗀 채용제목. */
+/** 휴대폰 지원 내역 카드의 칸 이름(S1 열 이름 중 표가 아니어도 카드에 보이는 것). */
+export const ENTRY_FIELDS = ['지원일', '열람일', '지원결과', '면접 준비'] as const
+export type EntryField = (typeof ENTRY_FIELDS)[number]
+
+/**
+ * 지원 내역 한 건에서 회사명을 뗀 채용제목.
+ * 데스크톱은 표 「회사명 / 지원공고」 칸, 휴대폰은 카드 글에서 회사명 줄과 칸(지원일·열람일·지원결과·면접 준비)을 뺀 첫 줄.
+ */
 export async function applicationPostingTitle(page: Page, key: CompanyKey): Promise<string> {
-  const col = await columnIndex(page, '회사명 / 지원공고')
-  const row = dataRows(page).filter({ hasText: COMPANY[key] }).first()
-  const cell = normalize(await rowCells(row).nth(col).innerText())
-  return normalize(cell.replace(COMPANY[key], '')).replace(/^[/·|\-\s]+/, '')
+  if (await isShown(page.getByRole('table').first())) {
+    const col = await columnIndex(page, '회사명 / 지원공고')
+    const row = dataRows(page).filter({ hasText: COMPANY[key] }).first()
+    const cell = normalize(await rowCells(row).nth(col).innerText())
+    return normalize(cell.replace(COMPANY[key], '')).replace(/^[/·|\-\s]+/, '')
+  }
+  const entry = applicationEntries(page).filter({ hasText: COMPANY[key] }).first()
+  await expect(entry, `${COMPANY[key]} 지원 건`).toBeVisible()
+  const lines = (await entry.innerText()).split('\n').map(normalize).filter(Boolean)
+  const end = lines.findIndex((l) => ENTRY_FIELDS.some((f) => l.startsWith(f)))
+  const head = (end < 0 ? lines : lines.slice(0, end))
+    .map((l) => normalize(l.replace(COMPANY[key], '')).replace(/^[/·|\-\s]+/, ''))
+    .filter(Boolean)
+  if (!head[0]) throw new Error(`${COMPANY[key]} 카드에서 채용제목을 찾지 못했다: ${lines.join(' | ')}`)
+  return head[0]
+}
+
+/** 지원 내역 카드(휴대폰)의 칸 값. 칸 이름 뒤부터 다음 칸 이름 전까지(예: "지원일" → "2026.10.14"). */
+export async function entryField(entry: Locator, label: EntryField): Promise<string> {
+  const text = normalize(await entry.innerText())
+  const others = ENTRY_FIELDS.filter((f) => f !== label).map(escapeRe).join('|')
+  const m = new RegExp(`${escapeRe(label)}\\s*(.*?)\\s*(?=${others}|$)`).exec(text)
+  if (!m) throw new Error(`"${label}" 칸을 찾지 못했다: ${text}`)
+  return m[1] ?? ''
 }
 
 /** S1에서 해당 회사의 면접 준비 버튼을 눌러 S4로 간다. 반환값은 S4 주소의 경로(쿼리 제외). */

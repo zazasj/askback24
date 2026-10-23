@@ -421,7 +421,13 @@ function setMood(m: Mood): void {
   gap: 0.8rem 1.6rem;
 }
 
+/* 한 줄 이름과 두 줄 이름이 같은 행에 있어도 칸 높이를 맞춘다 */
+.task-grid > li {
+  display: flex;
+}
+
 .task-check {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 0.8rem;
@@ -512,8 +518,27 @@ function setMood(m: Mood): void {
     min-height: var(--rq-touch);
   }
 
+  /* "면접 분위기" 칩 3개가 한 줄에 들어가게 */
+  .chip {
+    padding: 0 1rem;
+  }
+
+  /* 체크 17개가 1열이면 약 900px로 질문 정리보다 길어진다. 2열 + 두 줄 이름 허용(DR-r3-04) */
   .task-grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem 0.8rem;
+  }
+
+  .task-check {
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 1rem 1rem;
+    line-height: 1.4;
+  }
+
+  /* 첫 줄 글자 가운데에 체크 상자를 맞춘다 */
+  .task-check input {
+    margin-top: 0.15rem;
   }
 
   /* 입력칸을 한 줄 전체로 쓰고 글자 수는 칸 아래 오른쪽에(DR-r1-08) */

@@ -127,9 +127,13 @@ const FINAL_LEADS: Record<FinalQType, (item: FinalDraftItem) => readonly string[
   opportunity: () => ['꼭 해 보고 싶은 일이라 여쭤요. ', '제가 기대하는 일이라 궁금했어요. '],
 }
 
-/** 완충 문장 + 앞말 + 검수 문장. 표현 단계가 "직접"이면 앞말 없이 바로 묻는다 */
-export function mockFinalSentence(item: FinalDraftItem, variant = 0): string {
-  const lead = item.tone === 'direct' ? '' : pick(FINAL_LEADS[item.type](item), variant + item.rank)
+/**
+ * 완충 문장 + 앞말 + 검수 문장. 표현 단계가 "직접"이면 앞말 없이 바로 묻는다.
+ * 완충 문장이 있으면 앞말을 빼 면접에서 그대로 말할 수 있는 길이로 둔다(DR-r3-05).
+ * nth = 앞말 순번(기본 순위). 처우 질문은 결과 안 처우 순번을 받아 연달아 같은 앞말이 나오지 않게 한다.
+ */
+export function mockFinalSentence(item: FinalDraftItem, variant = 0, nth = item.rank): string {
+  const lead = item.tone === 'direct' || item.cushion ? '' : pick(FINAL_LEADS[item.type](item), variant + nth)
   return `${item.cushion}${lead}${item.template}`
 }
 
@@ -170,8 +174,10 @@ export function createMockProvider(options: MockOptions = {}): LlmProvider {
     async writeFinal(input: FinalDraftInput, signal: AbortSignal): Promise<FinalDraft[]> {
       if (delayMs > 0) await wait(delayMs - Math.round(delayMs / 2), signal)
       if (fail) throw new Error('mock provider failure')
+      let offers = 0
       return input.items.map((item) => {
-        const draft: FinalDraft = { key: item.key, text: mockFinalSentence(item, variant) }
+        const nth = item.type === 'offer' ? offers++ : item.rank
+        const draft: FinalDraft = { key: item.key, text: mockFinalSentence(item, variant, nth) }
         if (item.evidence) draft.evidence = item.evidence
         return draft
       })

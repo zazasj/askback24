@@ -119,6 +119,26 @@ describe('R 판정·표현 단계', () => {
     expect(normal.final_questions.some((q) => q.text.includes('여쭤도 될까요'))).toBe(false)
   })
 
+  it('가짜 공급자: 완충 문장이 붙은 질문은 앞말 없이 완충 + 검수 문장, 처우 질문 앞말은 연달아 같지 않다(DR-r3-05)', async () => {
+    // 가짜 판정(BE07 기대와 다름)과 같은 판정으로 세운 순서·검수 문장
+    const judged = ruleJudgements(r04Review()).map((j) => (j.card_id === 'BE07' ? { ...j, state: 'mismatch' as const } : j))
+    const ranked = rankFinal({ picks: PRESETS.A.picks, judged, mood: 'pressured', analysis: ANALYSES[0]! })
+    for (const variant of [0, 1, 2, 3]) {
+      const res = await generateFinal(reqR04(), { provider: createMockProvider({ variant }) })
+      expect(res.final_questions.map((q) => q.rank)).toEqual(ranked.map((r) => r.rank))
+      const leads = res.final_questions.map((q, i) => {
+        const r = ranked[i]!
+        expect(q.text.endsWith(r.template), `${i + 1}번 끝은 검수 문장`).toBe(true)
+        if (r.cushion) expect(q.text, `${i + 1}번 완충 문장 뒤 앞말 없음`).toBe(r.template_text)
+        return { offer: q.type === 'offer', lead: q.text.slice(0, q.text.length - r.template.length) }
+      })
+      for (let i = 1; i < leads.length; i++) {
+        const [a, b] = [leads[i - 1]!, leads[i]!]
+        if (a.offer && b.offer && a.lead && b.lead) expect(b.lead, `variant ${variant} 처우 ${i}·${i + 1}번 앞말`).not.toBe(a.lead)
+      }
+    }
+  })
+
   it('못 물은 이유 "분위기가 아니었어요"는 분위기와 상관없이 그 질문에 완충 문장', async () => {
     const review = r04Review()
     review.not_asked = [{ question_id: 'q4', card_id: 'BE03', reason: 'bad_mood' }]

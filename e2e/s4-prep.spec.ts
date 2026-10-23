@@ -57,6 +57,7 @@ import {
   questionItems,
   questionSentences,
   readClipboard,
+  resumeChips,
   reviewItems,
   selectedLabel,
   showAllCards,
@@ -88,15 +89,16 @@ async function expectPresetA(page: Page) {
 
 // ── S4 머리·단계 ───────────────────────────────────────────────
 
-test('S4-01 제목 "면접 역질문 준비"와 라벨 "AI", 머리 요약에 회사명·채용제목·지원결과', async ({ page, isMobile }) => {
+test('S4-01 제목 "면접 역질문 준비"와 라벨 "AI", 머리 요약에 회사명·채용제목·지원결과', async ({ page }) => {
   await gotoApplications(page)
-  const posting = isMobile ? '' : await applicationPostingTitle(page, 'oo')
+  const posting = await applicationPostingTitle(page, 'oo')
+  expect(posting, 'S1에서 읽은 채용제목').not.toBe('')
   await applicationEntries(page).filter({ hasText: COMPANY.oo }).first().getByRole('button', { name: PREP_BUTTON }).click()
   await expect(heading(page, S4_TITLE)).toBeVisible()
   await expect(page.getByText('AI', { exact: true }).first(), '라벨 "AI"').toBeVisible()
   await expect(page.getByText(COMPANY.oo).first()).toBeVisible()
   await expect(page.getByText('서류합격').first()).toBeVisible()
-  if (posting) await expect(page.getByText(posting).first(), `채용제목 "${posting}"`).toBeVisible()
+  await expect(page.getByText(posting).first(), `채용제목 "${posting}"`).toBeVisible()
 })
 
 test('S4-02 단계 표시 3개, 현재 단계 aria-current="step", 주소 ?step= 과 맞고 뒤로 가기로 이전 단계', async ({ page }) => {
@@ -243,11 +245,16 @@ test('S4-11 ② "경험 한 줄" 최대 100자, "이력서에서 가져오기" �
   await expect(chips).toBeVisible()
   const buttons = chips.getByRole('button')
   await expect(buttons).toHaveCount(3)
+  // 칩마다 그 칩의 이력서 경험 문장(data/persona.json experience_chips 에서 label 이 칩 글자와 같은 항목의 text)이 들어가야 한다
+  const resume = resumeChips()
   const filled: string[] = []
   for (let i = 0; i < 3; i++) {
+    const label = normalize(await buttons.nth(i).innerText())
+    const chip = resume.find((c) => normalize(c.label) === label)
+    expect(chip, `칩 ${i + 1} "${label}"이 이력서 경험(persona.json experience_chips)에 있어야 한다`).toBeDefined()
     await input.fill('')
     await buttons.nth(i).click()
-    await expect(input, `칩 ${i + 1}`).not.toHaveValue('')
+    await expect(input, `칩 ${i + 1} "${label}"`).toHaveValue(chip?.text ?? '')
     const value = await input.inputValue()
     expect(value.length).toBeLessThanOrEqual(100)
     filled.push(value)

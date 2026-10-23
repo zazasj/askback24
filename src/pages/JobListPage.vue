@@ -98,12 +98,16 @@ const rows = computed(() =>
 
     <!-- 휴대폰: 카드 -->
     <ul v-else class="job-cards" aria-label="채용정보 목록">
+      <!-- 카드 어디를 눌러도 상세로 가게 제목 링크를 카드 전체로 늘린다(링크는 하나라 화면낭독기에는 제목만, DR-r3-06) -->
       <li v-for="r in rows" :key="r.p.wantedAuthNo" class="job-card">
         <p class="corp">{{ r.p.corpNm }}</p>
         <p class="title-line">
-          <RouterLink :to="r.to" class="posting tap-target">{{ r.p.wantedTitle }}</RouterLink>
+          <RouterLink :to="r.to" class="posting">{{ r.p.wantedTitle }}</RouterLink>
           <span v-if="r.applied" class="badge badge-primary">지원함</span>
         </p>
+        <svg class="card-chevron" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+          <path d="M6 3.5l4.5 4.5L6 12.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
         <dl class="meta">
           <div>
             <dt>임금</dt>
@@ -266,10 +270,35 @@ const rows = computed(() =>
   }
 
   .job-card {
-    padding: 1.6rem;
+    position: relative;
+    padding: 1.6rem 4rem 1.6rem 1.6rem;
     border: 1px solid var(--krds-light-color-border-gray-light);
     border-radius: var(--krds-radius-large1);
     background: var(--krds-light-color-surface-white);
+  }
+
+  .job-card:active,
+  .job-card:focus-within {
+    border-color: var(--krds-light-color-border-primary);
+  }
+
+  .job-card .posting {
+    font-weight: 700;
+  }
+
+  .job-card .posting::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  .card-chevron {
+    position: absolute;
+    top: 1.8rem;
+    right: 1.4rem;
+    width: 1.8rem;
+    height: 1.8rem;
+    color: var(--krds-light-color-text-subtle);
   }
 
   .meta {
