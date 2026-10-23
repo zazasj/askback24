@@ -77,7 +77,7 @@ const rows = computed(() =>
             <td class="cell-posting">
               <strong class="corp">{{ r.p.corpNm }}</strong>
               <span class="title-line">
-                <RouterLink :to="r.to" class="posting">{{ r.p.wantedTitle }}</RouterLink>
+                <RouterLink :to="r.to" class="posting tap-target">{{ r.p.wantedTitle }}</RouterLink>
                 <span v-if="r.applied" class="badge badge-primary">지원함</span>
               </span>
             </td>
@@ -101,7 +101,7 @@ const rows = computed(() =>
       <li v-for="r in rows" :key="r.p.wantedAuthNo" class="job-card">
         <p class="corp">{{ r.p.corpNm }}</p>
         <p class="title-line">
-          <RouterLink :to="r.to" class="posting">{{ r.p.wantedTitle }}</RouterLink>
+          <RouterLink :to="r.to" class="posting tap-target">{{ r.p.wantedTitle }}</RouterLink>
           <span v-if="r.applied" class="badge badge-primary">지원함</span>
         </p>
         <dl class="meta">

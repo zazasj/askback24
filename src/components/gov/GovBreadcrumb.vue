@@ -12,7 +12,7 @@ const crumbs = computed<Crumb[]>(() => [{ label: '홈', to: '/' }, ...(route.met
   <nav class="breadcrumb" aria-label="현재 위치">
     <ol>
       <li v-for="(c, i) in crumbs" :key="`${i}-${c.label}`">
-        <RouterLink v-if="c.to && i < crumbs.length - 1" :to="c.to">{{ c.label }}</RouterLink>
+        <RouterLink v-if="c.to && i < crumbs.length - 1" :to="c.to" class="tap-target">{{ c.label }}</RouterLink>
         <span v-else :aria-current="i === crumbs.length - 1 ? 'location' : undefined">{{ c.label }}</span>
       </li>
     </ol>

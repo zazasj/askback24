@@ -86,7 +86,9 @@ button:disabled {
   cursor: not-allowed;
 }
 
-:focus-visible {
+:focus-visible,
+/* 크롬은 날짜 입력의 달력 단추 칸에 초점이 가면 :focus·:focus-visible 을 풀어 테두리가 사라진다(:focus-within 만 남음) */
+input[type='date']:focus-within {
   outline: 0.3rem solid var(--krds-light-color-border-primary);
   outline-offset: 0.2rem;
 }
@@ -325,6 +327,23 @@ button:disabled {
 
 .stack > * + * {
   margin-top: var(--krds-gap-5);
+}
+
+/* 휴대폰: 글자 크기 그대로 두고 누르는 영역만 44px로 넓힌다(DESIGN-REVIEW D9) */
+@media (max-width: 767px) {
+  .tap-target {
+    position: relative;
+  }
+
+  .tap-target::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, var(--rq-touch));
+    height: max(100%, var(--rq-touch));
+    transform: translate(-50%, -50%);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

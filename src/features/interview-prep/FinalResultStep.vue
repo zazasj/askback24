@@ -187,7 +187,7 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
           <div class="side-box">
             <button type="button" class="btn btn-accent-outline side-btn" @click="copyAll">전체 복사</button>
             <button type="button" class="btn btn-tertiary side-btn" @click="printSheet">면접에 들고 갈 한 장 인쇄</button>
-            <RouterLink class="about-link" to="/about-ai">이 질문은 어떻게 만들어지나요</RouterLink>
+            <RouterLink class="about-link tap-target" to="/about-ai">이 질문은 어떻게 만들어지나요</RouterLink>
           </div>
         </aside>
       </div>

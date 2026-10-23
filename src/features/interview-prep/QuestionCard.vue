@@ -62,7 +62,7 @@ const emit = defineEmits<{ copy: []; keep: [] }>()
             <span v-if="evidenceLabel" class="evidence">{{ evidenceLabel }}</span>
             <span v-else class="evidence is-none">공고에 근거 없음 · 직접 확인</span>
             <span class="basis">{{ basis }}</span>
-            <RouterLink v-if="evidenceTo" class="evidence-link" :to="evidenceTo">근거 보기</RouterLink>
+            <RouterLink v-if="evidenceTo" class="evidence-link tap-target" :to="evidenceTo">근거 보기</RouterLink>
           </dd>
         </div>
         <div class="why-row">

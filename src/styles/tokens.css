@@ -20,6 +20,8 @@
   --rq-shadow-pop: 0 6px 20px rgba(19, 20, 22, 0.16);
   --rq-shadow-card: 0 1px 3px rgba(19, 20, 22, 0.08);
   --rq-scrim: rgba(19, 20, 22, 0.5);
+  /* 가로로 밀리는 줄의 끝을 흐리게 하는 가림(mask) 색. 불투명한 부분만 보인다 */
+  --rq-mask-solid: #000;
 
   /* 크기 */
   --rq-container: 128rem;

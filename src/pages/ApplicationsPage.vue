@@ -3,7 +3,7 @@
  * S1 알선/입사지원 내역(메인). 고용24 표의 열은 그대로 두고 오른쪽에 "면접 준비" 열을 하나 더한다.
  * 그 열과 안내 띠만 우리 기능 강조색 + AI 라벨(DESIGN-REVIEW D4).
  */
-import { computed, reactive, ref } from 'vue'
+import { computed, nextTick, reactive, ref, useTemplateRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { getPosting } from '@shared/catalog'
 import AiLabel from '@/components/ui/AiLabel.vue'
@@ -89,11 +89,19 @@ function openPrep(r: Row): void {
 }
 
 const hasResult = (result: string) => result !== '-'
+
+// 닫기 단추가 사라지면 초점이 문서 처음으로 튀므로 화면 제목으로 옮긴다
+const titleEl = useTemplateRef<HTMLHeadingElement>('title')
+async function closeGuide(): Promise<void> {
+  demo.closeGuide()
+  await nextTick()
+  titleEl.value?.focus()
+}
 </script>
 
 <template>
   <div class="s1">
-    <h1 class="page-title">알선/입사지원 내역</h1>
+    <h1 ref="title" class="page-title" tabindex="-1">알선/입사지원 내역</h1>
 
     <section v-if="!demo.guideClosed" class="guide" aria-labelledby="guide-title">
       <div class="guide-body">
@@ -101,9 +109,9 @@ const hasResult = (result: string) => result !== '-'
           <AiLabel />
           <span><strong>새 기능</strong> 지원한 공고로 면접에서 물어볼 질문을 준비해 보세요</span>
         </p>
-        <p class="guide-text">첫 줄의 <strong>면접 역질문 준비</strong>를 누르면 1분 안에 질문까지 받아 볼 수 있어요.</p>
+        <p class="guide-text">맨 위 지원 건의 <strong>면접 역질문 준비</strong>를 누르면 1분 안에 질문까지 받아 볼 수 있어요.</p>
       </div>
-      <button type="button" class="guide-close" aria-label="안내 닫기" @click="demo.closeGuide()">
+      <button type="button" class="guide-close" aria-label="안내 닫기" @click="closeGuide">
         <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
           <path d="M3 3l10 10M13 3L3 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
         </svg>
@@ -169,7 +177,7 @@ const hasResult = (result: string) => result !== '-'
           <tr v-for="(r, i) in filtered" :key="r.app.apply_id">
             <td class="cell-posting">
               <strong class="corp">{{ r.corpNm }}</strong>
-              <RouterLink :to="`/jobs/${r.app.wantedAuthNo}`" class="posting">{{ r.title }}</RouterLink>
+              <RouterLink :to="`/jobs/${r.app.wantedAuthNo}`" class="posting tap-target">{{ r.title }}</RouterLink>
             </td>
             <td>{{ r.appliedText }}</td>
             <td>{{ r.viewedText }}</td>
@@ -198,7 +206,7 @@ const hasResult = (result: string) => result !== '-'
     <ul class="app-cards" aria-label="알선/입사지원 내역">
       <li v-for="(r, i) in filtered" :key="r.app.apply_id" class="app-card">
         <p class="corp">{{ r.corpNm }}</p>
-        <RouterLink :to="`/jobs/${r.app.wantedAuthNo}`" class="posting">{{ r.title }}</RouterLink>
+        <RouterLink :to="`/jobs/${r.app.wantedAuthNo}`" class="posting tap-target">{{ r.title }}</RouterLink>
         <dl class="meta">
           <div>
             <dt>지원일</dt>
@@ -426,9 +434,9 @@ fieldset.search-row > legend {
   text-align: center;
 }
 
-/* 처음 온 사람에게 첫 행 버튼을 은은하게 알린다 */
+/* 처음 온 사람에게 첫 행 버튼을 은은하게 알린다. 두 번(4.8초)만: 5초 넘게 움직이면 멈출 방법이 있어야 함(WCAG 2.2.2) */
 .prep-btn.is-pulse {
-  animation: prep-pulse 2.4s ease-in-out infinite;
+  animation: prep-pulse 2.4s ease-in-out 2;
 }
 
 @keyframes prep-pulse {
@@ -459,6 +467,10 @@ fieldset.search-row > legend {
   .search-row {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.6rem;
+  }
+
+  .radio {
+    min-height: var(--rq-touch);
   }
 
   .date-range .input {

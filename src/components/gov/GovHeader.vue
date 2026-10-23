@@ -83,6 +83,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.8rem;
+  min-height: var(--rq-touch);
   color: var(--krds-light-color-text-bolder);
   text-decoration: none;
 }

@@ -112,15 +112,23 @@ const toast = useToastStore()
     padding: 0;
   }
 
+  /* 오른쪽 끝을 흐리게 해 옆으로 더 있다는 걸 보인다. 끝까지 밀면 흐린 자리는 빈 여백에 걸린다 */
   .menu-list {
     overflow-x: auto;
-    padding: 0 var(--rq-gutter);
+    padding: 0 3.2rem 0 var(--rq-gutter);
     scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, var(--rq-mask-solid) calc(100% - 3.2rem), transparent);
+    mask-image: linear-gradient(to right, var(--rq-mask-solid) calc(100% - 3.2rem), transparent);
   }
 
   .menu-item {
     min-height: var(--rq-touch);
     padding: 0 0.8rem;
+  }
+
+  /* 밀리는 줄 밖으로 나간 초점 테두리는 잘리므로 안쪽에 그린다 */
+  .menu-item:focus-visible {
+    outline-offset: -0.3rem;
   }
 
   .chev,

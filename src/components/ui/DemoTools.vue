@@ -37,6 +37,8 @@ async function showGuideAgain(): Promise<void> {
   close(true)
   demo.showGuide()
   await router.push('/mypage/applications')
+  // 이미 지원 내역에 있으면 이동이 없어 안내 띠가 화면 밖에 남을 수 있다
+  window.scrollTo({ top: 0 })
 }
 
 async function resetDemo(): Promise<void> {

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- 헤더 로고와 같은 직접 만든 원형 마크(공식 문양 아님). 색은 KRDS primary-50 -->
+  <circle cx="16" cy="16" r="13" fill="none" stroke="#256ef4" stroke-width="4"/>
+  <path d="M16 3a13 13 0 0 1 0 26z" fill="#256ef4"/>
+</svg>
