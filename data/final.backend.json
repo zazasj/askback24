@@ -1,0 +1,77 @@
+{
+  "meta": {
+    "version": "0.1",
+    "job_id": "backend",
+    "created": "2026-10-24",
+    "purpose": "1차 면접 정리(최소판) 뒤 최종 면접·처우 질문을 만드는 규칙과 검수 문장. 근거: 「추가 개발 - 1차 면접 복기와 최종면접 맞춤 질문」 4·6·7절, D-013.",
+    "rule_note": "preference 'none' = 이 카드를 고르지 않았음(회사가 먼저 물은 카드). 우선순위는 작을수록 위. confirmed 는 규칙이 없어 내보내지 않는다.",
+    "template_note": "{label} 자리에 카드 이름이 들어간다. 1차 면접관의 말을 인용하지 않고(아까·하셨는데·말씀하신 금지), 합격을 전제하지 않는다(혹시 함께하게 된다면)."
+  },
+  "type_labels": {
+    "recheck": "다시 확인",
+    "signal": "신호 확인",
+    "scope": "범위 확인",
+    "offer": "처우 확인",
+    "opportunity": "기회 확인"
+  },
+  "state_labels": {
+    "confirmed": "확인됨",
+    "mismatch": "기대와 다름",
+    "still_unknown": "아직 모름",
+    "company_signal": "회사가 먼저 물은 것"
+  },
+  "final_rules": [
+    { "state": "still_unknown", "preference": ["avoid"], "type": "recheck", "priority": 0.5 },
+    { "state": "company_signal", "preference": ["avoid"], "type": "signal", "priority": 1.0 },
+    { "state": "company_signal", "preference": ["unsure", "none"], "type": "signal", "priority": 1.2 },
+    { "state": "mismatch", "preference": ["want", "avoid", "unsure", "none"], "type": "scope", "priority": 1.5 },
+    { "state": "still_unknown", "preference": ["want", "unsure", "none"], "type": "recheck", "priority": 2.5 },
+    { "state": "company_signal", "preference": ["want"], "type": "opportunity", "priority": 3.0 }
+  ],
+  "offer_priority": 2.0,
+  "offer_status_order": ["missing", "vague", "check"],
+  "limits": { "total": 8, "cards": 5, "offers": 3 },
+  "basis": {
+    "asked_clear": "구체적인 답을 들어 확인됐어요",
+    "asked_vague": "답이 모호해 아직 확인되지 않았어요",
+    "asked_unmarked": "답이 구체적이었는지 정리하지 않아 아직 모름으로 두었어요",
+    "not_asked": {
+      "no_time": "시간이 없어 묻지 못했어요. 그대로 다시 올려요",
+      "bad_mood": "분위기가 아니어서 묻지 못했어요. 더 조심스러운 표현으로 올려요",
+      "forgot": "잊어버려서 묻지 못했어요. 먼저 물어보면 좋아요",
+      "no_chance": "질문할 기회가 없었어요. 최종 면접에서는 질문 시간이 더 길 수 있어요",
+      "explained": "회사가 먼저 설명해 줘서 확인됐어요",
+      "unmarked": "물어봤는지 정리하지 않아 아직 모름으로 두었어요"
+    },
+    "received": "회사가 면접에서 이 업무를 먼저 물었어요. 실제로 맡게 될 수 있어요",
+    "mismatch": "들은 답이 이 카드의 주의할 답과 맞아 내 기대와 달라요",
+    "good_sign": "들은 답이 이 카드의 좋은 신호와 맞아 확인됐어요"
+  },
+  "templates": {
+    "recheck_vague_tail": "대략적인 숫자나 최근 예를 하나 들어 주시면 이해하는 데 도움이 될 것 같아요.",
+    "scope": {
+      "avoid": "혹시 함께하게 된다면 {label} 업무의 비중이 앞으로 달라질 수 있는지, 달라진다면 어떤 시점이나 조건에서인지 궁금해요.",
+      "want": "혹시 함께하게 된다면 {label} 업무를 맡아 볼 수 있는 시점이나 조건이 있는지, 그 전까지는 어떤 일로 준비하면 좋을지 궁금해요."
+    },
+    "signal_lead": "혹시 함께하게 된다면 {label} 업무도 맡게 될 수 있는지 궁금해요."
+  },
+  "cushions": ["괜찮으시다면 하나 여쭤도 될까요? ", "조심스럽지만 하나만 더 여쭤도 될까요? "],
+  "offer_topics": {
+    "sal": {
+      "watch_out": "'회사내규에 따름'이나 '면접 후 결정'만 되풀이하고 범위나 구성을 말하지 않는다",
+      "good_sign": "신입 연봉 범위와 기본급·수당 구성을 숫자로 설명한다"
+    },
+    "workHours": {
+      "watch_out": "바쁠 때는 다 같이 한다고만 하고 연장근로 시간이나 보상 방식을 말하지 않는다",
+      "good_sign": "월 평균 연장근로 시간과 보상(수당·대체 휴무) 방식을 구체적으로 말한다"
+    },
+    "probation": {
+      "watch_out": "수습 기간 급여나 평가 기준을 그때 가서 정한다고 한다",
+      "good_sign": "수습 기간·급여 비율·평가 기준이 정해져 있다"
+    },
+    "onsite": {
+      "watch_out": "상주 때 지원이 있는지 정해진 기준 없이 그때그때 다르다고만 한다",
+      "good_sign": "교통비·출장 수당 같은 지원 기준이 정해져 있다"
+    }
+  }
+}

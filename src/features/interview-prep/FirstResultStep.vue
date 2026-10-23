@@ -32,6 +32,7 @@ const questions = computed<Question[]>(() => result.value?.response.questions ??
 const failed = computed(() => store.hasFailed(props.applyId))
 const stale = computed(() => !!result.value && !store.isCurrent(props.applyId, props.posting.wantedAuthNo))
 
+const seeded = computed(() => result.value?.seed === true)
 const templateCount = computed(() => questions.value.filter((q) => q.source === 'template').length)
 const allTemplate = computed(() => questions.value.length > 0 && templateCount.value === questions.value.length)
 
@@ -89,7 +90,10 @@ function printSheet(): void {
 
     <template v-else-if="questions.length">
       <p class="sr-only" aria-live="polite">질문 {{ questions.length }}개를 만들었어요.</p>
-      <p v-if="allTemplate" class="notice is-fallback">
+      <p v-if="seeded" class="notice">
+        시연용 예시 지원 건이라 예시 구직자 A의 1차 질문을 미리 검수한 문장으로 만들어 두었어요. "AI로 다시 만들기"를 누르면 AI 문장으로 바꿔요.
+      </p>
+      <p v-else-if="allTemplate" class="notice is-fallback">
         AI 응답을 받지 못해 미리 검수한 문장으로 보여 드려요. 질문 순서와 근거는 같아요.
       </p>
       <p v-else-if="templateCount > 0" class="notice is-fallback">

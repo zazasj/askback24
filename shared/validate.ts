@@ -79,10 +79,21 @@ export interface FinalQuestionCheck {
   evidence?: Evidence
 }
 
+/** 이보다 짧은 들은 답("네")은 우연히 겹칠 수 있어 보지 않는다 */
+export const HEARD_QUOTE_MIN = 6
+
+/** 들은 답을 글자 그대로 옮겼는지(1차 면접관 말 인용과 같고, 들은 답이 결과에 남는다) */
+export function quotesHeard(text: string, heard: readonly string[]): boolean {
+  return heard.some((h) => {
+    const t = h.trim()
+    return t.length >= HEARD_QUOTE_MIN && text.includes(t)
+  })
+}
+
 /** 최종 면접·처우 질문 검사. 1차 면접관 말을 인용하지 않는다(추가 개발 노트 7절) */
-export function checkFinalQuestion(q: FinalQuestionCheck, posting: Posting): Issue[] {
+export function checkFinalQuestion(q: FinalQuestionCheck, posting: Posting, heard: readonly string[] = []): Issue[] {
   const issues = commonIssues(q.text, q.evidence, posting)
   if (q.state === 'absent' && PRESUPPOSE.test(q.text)) issues.push('absent_presupposition')
-  if (INTERVIEWER_QUOTE.test(q.text)) issues.push('interviewer_quote')
+  if (INTERVIEWER_QUOTE.test(q.text) || quotesHeard(q.text, heard)) issues.push('interviewer_quote')
   return issues
 }

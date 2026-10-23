@@ -12,6 +12,8 @@ export interface Application {
   /** null = 아직 열람 안 함 */
   viewed_days_ago: number | null
   result: ApplyResult
+  /** 시드만: 이 예시 구직자의 ② 선택과 1차 결과(검수 문장)를 가진 채로 시작한다(R-07) */
+  prep_seed?: 'A' | 'B'
 }
 
 export interface Persona {

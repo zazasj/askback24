@@ -144,6 +144,16 @@ const emit = defineEmits<{ copy: []; keep: [] }>()
   color: var(--krds-light-color-text-information);
 }
 
+.type-chip.is-warning {
+  background: var(--krds-light-color-surface-warning-subtler);
+  color: var(--krds-light-color-text-warning);
+}
+
+.type-chip.is-offer {
+  background: var(--rq-accent-subtle);
+  color: var(--rq-accent-strong);
+}
+
 .exp-tag {
   background: var(--rq-accent-subtle);
   color: var(--rq-accent-strong);

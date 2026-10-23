@@ -1,9 +1,12 @@
 /** 질문 카드에 보일 글·색(1차·최종 공용). 판단은 하지 않고 형식만 바꾼다 */
-import { CARD_BOOK, getCard } from '@shared/catalog'
-import type { Evidence, EvidenceField, Pref, QType } from '@shared/contract'
+import { CARD_BOOK, FINAL_BOOK, getCard } from '@shared/catalog'
+import type { Evidence, EvidenceField, FinalQType, FinalQuestion, Pref, QType } from '@shared/contract'
 
-/** 유형 칩 색: 충돌 주황 · 기회 초록 · 깊이 파랑 · 예방/탐색 회색(DESIGN-REVIEW D7) */
-export type ChipTone = 'conflict' | 'opportunity' | 'depth' | 'muted'
+/**
+ * 유형 칩 색: 충돌 주황 · 기회 초록 · 깊이 파랑 · 예방/탐색 회색(DESIGN-REVIEW D7).
+ * 최종: 다시 확인 노랑 · 신호 확인 파랑 · 범위 확인 주황 · 처우 확인 보라(우리 강조색) · 기회 확인 초록
+ */
+export type ChipTone = 'conflict' | 'opportunity' | 'depth' | 'muted' | 'warning' | 'offer'
 
 export const FIRST_TONES: Record<QType, ChipTone> = {
   conflict: 'conflict',
@@ -40,4 +43,25 @@ export const FIELD_LABELS: Record<EvidenceField, string> = {
 /** "우대조건 '고객사 상주 가능자'" */
 export function evidenceLabel(e: Evidence | undefined): string | undefined {
   return e ? `${FIELD_LABELS[e.field] ?? '공고'} '${e.quote}'` : undefined
+}
+
+export const FINAL_TONES: Record<FinalQType, ChipTone> = {
+  recheck: 'warning',
+  signal: 'depth',
+  scope: 'conflict',
+  offer: 'offer',
+  opportunity: 'opportunity',
+}
+
+/** 최종 질문 칩 옆 설명: "고객사 상주 개발 · 걱정돼요 · 아직 모름". 처우 질문은 근로조건 이름("근로시간 · 공고 누락") */
+export function finalMeta(q: FinalQuestion, pref: Pref | null, stateLabel: string | undefined, offerLabel: string | undefined): string {
+  if (!q.card_id) return offerLabel ?? ''
+  const parts = [getCard(q.card_id)?.label ?? q.card_id]
+  if (pref) parts.push(CARD_BOOK.preference_options[pref])
+  if (stateLabel) parts.push(stateLabel)
+  return parts.join(' · ')
+}
+
+export function finalTypeLabel(type: FinalQType): string {
+  return FINAL_BOOK.type_labels[type]
 }

@@ -1,8 +1,10 @@
 /**
- * 질문 문장을 쓰는 공급자(LLM) 형식. 순서·유형·근거는 규칙(shared/rules)이 정하고 공급자는 문장만 쓴다.
- * 공급자가 틀리거나 늦어도 shared/generate.ts 가 검수 문장으로 대신한다.
+ * 질문 문장을 쓰는 공급자(LLM) 형식. 순서·유형·근거는 규칙(shared/rules · shared/finalRules)이 정하고 공급자는 문장만 쓴다.
+ * 최종 면접에서는 들은 답을 읽고 카드 상태를 판정하는 일(judgeReview)도 맡는다.
+ * 공급자가 틀리거나 늦어도 shared/generate.ts 가 검수 문장·단순 규칙으로 대신한다.
  */
-import type { Evidence, Posting, PostingState, Pref, QType } from '../contract'
+import type { BlankTopic, Clarity, Evidence, FinalPref, FinalQType, Posting, PostingState, Pref, QType, ReviewState } from '../contract'
+import type { Origin, Tone } from '../finalRules'
 
 export interface DraftItem {
   rank: number
@@ -35,8 +37,75 @@ export interface Draft {
   evidence?: Evidence
 }
 
+// ── 최종 면접 ─────────────────────────────────────────────────
+/** 판정할 질문 하나(물어봤고 들은 답이 있는 것만). 들은 답은 판정에만 쓰고 저장·기록하지 않는다 */
+export interface JudgeItem {
+  card_id: string
+  card_label: string
+  pref: FinalPref
+  heard: string
+  /** 사람이 고른 답의 모양(없으면 고르지 않음) */
+  clarity?: Clarity
+  /** 이 카드의 주의할 답(내 선호 기준)과 좋은 신호: 판정 기준 */
+  watch_out: string
+  good_sign: string
+}
+
+export interface JudgeInput {
+  mode: 'final'
+  posting: Posting
+  items: JudgeItem[]
+}
+
+/** 공급자 판정. basis 에 들은 답을 그대로 옮기면 받지 않는다 */
+export interface Judgement {
+  card_id: string
+  state: Extract<ReviewState, 'confirmed' | 'mismatch' | 'still_unknown'>
+  basis: string
+}
+
+export interface FinalDraftItem {
+  rank: number
+  /** 카드 ID 또는 "offer:<topic>" */
+  key: string
+  card_id?: string
+  topic?: BlankTopic
+  label: string
+  type: FinalQType
+  origin: Origin | 'offer'
+  /** 카드 질문만: 공고 상태 · 면접 뒤 상태 */
+  state?: PostingState
+  review_state?: ReviewState
+  evidence?: Evidence
+  /** 표현 단계: 기본(합격 전제 없음) · 완충(앞에 완충 문장) · 직접(앞말 없이 바로) */
+  tone: Tone
+  /** 완충 단계일 때 앞에 붙일 문장(아니면 빈 문자열) */
+  cushion: string
+  /** 완충 문장을 뺀 검수 문장 */
+  template: string
+  /** 완충 문장 + 검수 문장 */
+  template_text: string
+}
+
+/** 들은 답은 넘기지 않는다(문장이 1차 면접관 말을 옮기지 않게) */
+export interface FinalDraftInput {
+  mode: 'final'
+  posting: Posting
+  items: FinalDraftItem[]
+}
+
+export interface FinalDraft {
+  key: string
+  text: string
+  evidence?: Evidence
+}
+
 export interface LlmProvider {
   /** 로그용 이름(mock · ennoia) */
   readonly name: string
   writeFirst(input: FirstDraftInput, signal: AbortSignal): Promise<Draft[]>
+  /** 없으면 단순 규칙으로 판정한다 */
+  judgeReview?(input: JudgeInput, signal: AbortSignal): Promise<Judgement[]>
+  /** 없으면 최종 질문을 검수 문장으로 쓴다 */
+  writeFinal?(input: FinalDraftInput, signal: AbortSignal): Promise<FinalDraft[]>
 }

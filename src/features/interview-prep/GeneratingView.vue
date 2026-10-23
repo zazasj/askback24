@@ -4,9 +4,10 @@
  */
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
-const props = withDefaults(defineProps<{ count?: number }>(), { count: 5 })
-
-const STAGES = ['공고 근거 확인', '질문 순서 정하기', 'AI가 문장 쓰는 중'] as const
+const props = withDefaults(defineProps<{ count?: number; stages?: readonly string[] }>(), {
+  count: 5,
+  stages: () => ['공고 근거 확인', '질문 순서 정하기', 'AI가 문장 쓰는 중'],
+})
 const STAGE_MS = 450
 
 const active = ref(0)
@@ -14,7 +15,7 @@ let timer: ReturnType<typeof setInterval> | undefined
 
 onMounted(() => {
   timer = setInterval(() => {
-    if (active.value < STAGES.length - 1) active.value++
+    if (active.value < props.stages.length - 1) active.value++
     else if (timer) clearInterval(timer)
   }, STAGE_MS)
 })
@@ -30,7 +31,7 @@ const stateOf = (i: number) => (i < active.value ? 'done' : i === active.value ?
     <div class="stages" role="status" aria-live="polite">
       <p class="stages-title">질문을 만들고 있어요</p>
       <ol class="stage-list">
-        <li v-for="(s, i) in STAGES" :key="s" class="stage" :data-state="stateOf(i)">
+        <li v-for="(s, i) in props.stages" :key="s" class="stage" :data-state="stateOf(i)">
           <span class="dot" aria-hidden="true"></span>
           <span class="stage-text">{{ s }}</span>
           <span class="sr-only">{{ stateOf(i) === 'done' ? '(완료)' : stateOf(i) === 'active' ? '(진행 중)' : '' }}</span>

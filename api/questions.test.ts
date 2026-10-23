@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { PRESETS } from '../shared/catalog'
-import type { FirstQuestionsResponse } from '../shared/contract'
+import type { FinalQuestionsResponse, FirstQuestionsResponse } from '../shared/contract'
 import { handleQuestions, type Logger } from './_lib/handler'
 import { providerFor } from './_lib/provider'
 import { parseQuestionsRequest } from './_lib/request'
@@ -47,9 +47,29 @@ describe('POST /api/questions', () => {
     expect(body.questions.every((q) => q.source === 'ai')).toBe(true)
   })
 
-  it('mode=final 은 자리만(501, M5에서 판정·최종 질문)', async () => {
-    const res = await handleQuestions(post(finalBody), {}, memoryLog())
-    expect(res.status).toBe(501)
+  it('mode=final + 가짜 공급자 → 200, 판정·최종 질문·요약', async () => {
+    const log = memoryLog()
+    const res = await handleQuestions(post(finalBody), {}, log)
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as FinalQuestionsResponse
+    expect(body.mode).toBe('final')
+    expect(Object.keys(body).sort()).toEqual(['card_states', 'elapsed_ms', 'final_questions', 'mode', 'summary'])
+    expect(body.final_questions.length).toBeGreaterThan(0)
+    expect(body.final_questions.length).toBeLessThanOrEqual(8)
+    expect(body.summary.company_signal).toBe(1)
+    expect(log.lines.join('\n')).toMatch(/^\[questions\] mode=final provider=mock n=\d+ template=\d+ ms=\d+ judged=\d+/)
+  })
+
+  it('mode=final 요청 검사: 모르는 이유·분위기·너무 긴 들은 답은 거절, 고른 카드는 비어도 받음', () => {
+    const review = finalBody.review
+    expect(parseQuestionsRequest({ ...finalBody, picks: [] }).ok).toBe(true)
+    expect(parseQuestionsRequest({ ...finalBody, review: { ...review, impression: { mood: 'angry' } } }).ok).toBe(false)
+    expect(parseQuestionsRequest({ ...finalBody, review: { ...review, not_asked: [{ question_id: 'q4', card_id: 'BE03', reason: 'lazy' }] } }).ok).toBe(false)
+    const long = { ...review, asked: [{ question_id: 'q2', card_id: 'BE07', heard: '가'.repeat(101), clarity: 'clear' }] }
+    expect(parseQuestionsRequest({ ...finalBody, review: long }).ok).toBe(false)
+    // 소감 같은 다른 글은 받지 않고 버린다
+    const parsed = parseQuestionsRequest({ ...finalBody, review: { ...review, impression: { mood: 'normal', note: '면접관 3명' } } })
+    expect(parsed.ok && parsed.value.mode === 'final' && parsed.value.review.impression).toEqual({ mood: 'normal' })
   })
 
   it('LLM_PROVIDER=ennoia 인데 형식 미확인 → 검수 문장으로 200', async () => {

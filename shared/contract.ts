@@ -138,6 +138,55 @@ export interface CardBook {
   cards: CardDef[]
 }
 
+// ── 최종 면접 규칙 (data/final.backend.json) ───────────────────
+/** none = 고르지 않은 카드(회사가 먼저 물은 카드) */
+export type FinalPref = Pref | 'none'
+
+export interface FinalRule {
+  state: Exclude<ReviewState, 'confirmed'>
+  preference: FinalPref[]
+  type: Exclude<FinalQType, 'offer'>
+  priority: number
+}
+
+export interface FinalBook {
+  meta: Record<string, unknown>
+  type_labels: Record<FinalQType, string>
+  state_labels: Record<ReviewState, string>
+  final_rules: FinalRule[]
+  offer_priority: number
+  offer_status_order: Array<OfferBlank['status']>
+  limits: { total: number; cards: number; offers: number }
+  basis: {
+    asked_clear: string
+    asked_vague: string
+    asked_unmarked: string
+    not_asked: Record<NotAskedReason | 'unmarked', string>
+    received: string
+    mismatch: string
+    good_sign: string
+  }
+  templates: {
+    recheck_vague_tail: string
+    scope: { avoid: string; want: string }
+    signal_lead: string
+  }
+  /** 완충 문장(분위기 "압박이 있었어요"·못 물은 이유 "분위기가 아니었어요") */
+  cushions: string[]
+  offer_topics: Record<BlankTopic, { watch_out: string; good_sign: string }>
+}
+
+/** data/review.example.json: 시연 도구 "1차 면접 다녀온 것으로 채우기" + 가짜 응답 모드 판정 고정값 */
+export interface ReviewExample {
+  label: string
+  asked: Array<{ card_id: string; heard: string; clarity: Clarity; state?: 'confirmed' | 'mismatch' | 'still_unknown' }>
+  not_asked: Array<{ card_id: string; reason: NotAskedReason }>
+  received: string[]
+  mood: Mood
+  /** 예시에 없는 카드 질문은 이 이유로 못 물은 것으로 채운다 */
+  other_reason: NotAskedReason
+}
+
 // ── 질문 요청·응답 (POST /api/questions) ───────────────────────
 export interface CardPick {
   card_id: string
@@ -148,11 +197,15 @@ export interface CardPick {
 
 export type NotAskedReason = 'no_time' | 'bad_mood' | 'forgot' | 'no_chance' | 'explained'
 export type Mood = 'relaxed' | 'normal' | 'pressured'
+export type Clarity = 'clear' | 'vague'
 
-/** 1차 면접 정리(최소판). 들은 답은 서버에서 저장·기록하지 않는다 */
+/**
+ * 1차 면접 정리(최소판). 들은 답은 서버에서 저장·기록하지 않는다.
+ * clarity·reason 을 고르지 않았으면 빼고 보낸다(→ 아직 모름). 정리하지 않은 질문은 not_asked(이유 없음)로 보낸다.
+ */
 export interface InterviewReview {
-  asked: Array<{ question_id: string; card_id: string; heard: string; clarity: 'clear' | 'vague' }>
-  not_asked: Array<{ question_id: string; card_id: string; reason: NotAskedReason }>
+  asked: Array<{ question_id: string; card_id: string; heard: string; clarity?: Clarity }>
+  not_asked: Array<{ question_id: string; card_id: string; reason?: NotAskedReason }>
   /** 회사가 물어본 업무(카드 체크) */
   received: Array<{ card_id: string }>
   impression: { mood: Mood }
@@ -197,8 +250,12 @@ export interface Question {
 export interface CardState {
   card_id: string
   state: ReviewState
-  /** 판정 근거. 비어 있으면 화면에 내보내지 않는다 */
+  /** 판정 근거. 비어 있으면 화면에 내보내지 않는다. 들은 답을 그대로 옮기지 않는다 */
   basis: string
+  /** ai = 공급자가 들은 답을 읽고 판정 · rule = 단순 규칙(구체적 → 확인됨, 모호·못 물음 → 아직 모름) */
+  source: 'ai' | 'rule'
+  /** 최종 질문으로 이어 갔는지(확인됨이거나 개수 한도로 빠지면 false) */
+  carry: boolean
 }
 
 export interface FinalQuestion {

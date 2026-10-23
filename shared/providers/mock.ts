@@ -2,8 +2,20 @@
  * 가짜 공급자(LLM_PROVIDER=mock, 화면의 가짜 응답 모드). 검수 틀에 유형별 앞말을 붙이고
  * 경험 한 줄을 문장으로 풀어 "AI가 쓴 듯한" 문장을 만든다. 같은 입력·같은 variant 면 늘 같은 문장.
  */
-import type { DraftItem, Draft, FirstDraftInput, LlmProvider } from './types'
-import type { QType } from '../contract'
+import type {
+  DraftItem,
+  Draft,
+  FinalDraft,
+  FinalDraftInput,
+  FinalDraftItem,
+  FirstDraftInput,
+  JudgeInput,
+  JudgeItem,
+  Judgement,
+  LlmProvider,
+} from './types'
+import type { FinalQType, QType } from '../contract'
+import { FINAL_BOOK, REVIEW_EXAMPLE } from '../catalog'
 
 export interface MockOptions {
   /** 응답 지연(ms). 화면은 1.5초 */
@@ -87,6 +99,40 @@ export function mockSentence(item: DraftItem, experience: string, variant = 0): 
   return `${lead(item)}${rest}`
 }
 
+// ── 최종 면접 ─────────────────────────────────────────────────
+/**
+ * 가짜 판정: 예시 세트(data/review.example.json)의 들은 답과 글자 그대로 같으면 그 고정값,
+ * 그 밖은 단순 규칙(구체적 → 확인됨, 그 밖 → 아직 모름). "기대와 다름"은 실제 LLM 몫이라 예시 세트에서만 나온다.
+ */
+export function mockJudgement(item: JudgeItem): Judgement {
+  const B = FINAL_BOOK.basis
+  const fixed = REVIEW_EXAMPLE.asked.find(
+    (e) => e.card_id === item.card_id && e.heard === item.heard.trim() && e.clarity === item.clarity && e.state,
+  )
+  if (fixed?.state === 'mismatch') return { card_id: item.card_id, state: 'mismatch', basis: `${B.mismatch} · 주의할 답: ${item.watch_out}` }
+  if (fixed?.state === 'confirmed') return { card_id: item.card_id, state: 'confirmed', basis: `${B.good_sign} · 좋은 신호: ${item.good_sign}` }
+  if (fixed?.state === 'still_unknown' || item.clarity !== 'clear') return { card_id: item.card_id, state: 'still_unknown', basis: B.asked_vague }
+  return { card_id: item.card_id, state: 'confirmed', basis: B.asked_clear }
+}
+
+/** 최종 질문 유형별 앞말. 1차 면접에서 들은 말을 가리키지 않는다 */
+const FINAL_LEADS: Record<FinalQType, (item: FinalDraftItem) => readonly string[]> = {
+  recheck: (item) =>
+    item.origin === 'asked'
+      ? ['조금 더 구체적으로 듣고 싶은 부분이 있어요. ', '한 번 더 정리해서 듣고 싶은 부분이 있어요. ']
+      : ['꼭 여쭤보고 싶었던 부분이 있어요. ', '미리 알아 두고 싶은 부분이 있어요. '],
+  signal: () => ['미리 준비해 두고 싶어 여쭤요. ', '맡게 될 일을 그려 보고 싶어요. '],
+  scope: () => ['맡게 될 업무 범위를 분명히 알고 싶어요. ', '제가 맡게 될 일을 미리 그려 보고 싶어요. '],
+  offer: () => ['근무 조건도 미리 알고 싶어요. ', '처우도 미리 확인하고 싶어요. '],
+  opportunity: () => ['꼭 해 보고 싶은 일이라 여쭤요. ', '제가 기대하는 일이라 궁금했어요. '],
+}
+
+/** 완충 문장 + 앞말 + 검수 문장. 표현 단계가 "직접"이면 앞말 없이 바로 묻는다 */
+export function mockFinalSentence(item: FinalDraftItem, variant = 0): string {
+  const lead = item.tone === 'direct' ? '' : pick(FINAL_LEADS[item.type](item), variant + item.rank)
+  return `${item.cushion}${lead}${item.template}`
+}
+
 function wait(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal.aborted) return reject(new Error('aborted'))
@@ -111,6 +157,21 @@ export function createMockProvider(options: MockOptions = {}): LlmProvider {
       if (fail) throw new Error('mock provider failure')
       return input.items.map((item) => {
         const draft: Draft = { card_id: item.card_id, text: mockSentence(item, input.experience, variant) }
+        if (item.evidence) draft.evidence = item.evidence
+        return draft
+      })
+    },
+    // 최종 면접은 판정·문장 두 번 부르므로 지연을 반씩 나눈다(합계는 1차와 같음)
+    async judgeReview(input: JudgeInput, signal: AbortSignal): Promise<Judgement[]> {
+      if (delayMs > 0) await wait(Math.round(delayMs / 2), signal)
+      if (fail) throw new Error('mock provider failure')
+      return input.items.map(mockJudgement)
+    },
+    async writeFinal(input: FinalDraftInput, signal: AbortSignal): Promise<FinalDraft[]> {
+      if (delayMs > 0) await wait(delayMs - Math.round(delayMs / 2), signal)
+      if (fail) throw new Error('mock provider failure')
+      return input.items.map((item) => {
+        const draft: FinalDraft = { key: item.key, text: mockFinalSentence(item, variant) }
         if (item.evidence) draft.evidence = item.evidence
         return draft
       })

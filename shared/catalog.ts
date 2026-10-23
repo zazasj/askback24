@@ -2,8 +2,10 @@
  * 정적 데이터(data/*.json)를 타입을 붙여 꺼내는 곳. 화면과 서버 함수가 같이 쓴다.
  * import 속성(with { type: 'json' })은 Vercel 함수가 번들 없이 Node ESM으로 돌 때도 JSON을 읽게 하려는 것.
  */
-import type { CardBook, CardDef, CardPick, CompanySignal, Posting, PostingAnalysis } from './contract'
+import type { CardBook, CardDef, CardPick, CompanySignal, FinalBook, Posting, PostingAnalysis, ReviewExample } from './contract'
 import cardBookJson from '../data/cards.backend.json' with { type: 'json' }
+import finalBookJson from '../data/final.backend.json' with { type: 'json' }
+import reviewExampleJson from '../data/review.example.json' with { type: 'json' }
 import postingsJson from '../data/postings.json' with { type: 'json' }
 import signalsJson from '../data/signals.json' with { type: 'json' }
 import presetsJson from '../data/presets.json' with { type: 'json' }
@@ -22,6 +24,12 @@ const cardById = new Map(CARDS.map((c) => [c.id, c]))
 export function getCard(id: string): CardDef | undefined {
   return cardById.get(id)
 }
+
+/** 최종 면접·처우 질문 규칙과 검수 문장 */
+export const FINAL_BOOK = finalBookJson as unknown as FinalBook
+
+/** 1차 면접 정리 예시 세트(R-04) */
+export const REVIEW_EXAMPLE = reviewExampleJson as unknown as ReviewExample
 
 export const POSTINGS: readonly Posting[] = postingsJson as Posting[]
 const postingById = new Map(POSTINGS.map((p) => [p.wantedAuthNo, p]))

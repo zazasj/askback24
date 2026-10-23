@@ -6,6 +6,7 @@
 import { defineStore } from 'pinia'
 import { PRESETS, type PresetKey } from '@shared/catalog'
 import type { CardPick, Pref } from '@shared/contract'
+import { seedSelection } from '@/demoData'
 import { usePersisted } from '@/lib/storage'
 import {
   EXPERIENCE_MAX,
@@ -31,9 +32,9 @@ export const usePrepStore = defineStore('prep', () => {
     selections.value = {}
   })
 
-  /** 아직 아무것도 고르지 않은 지원 건은 빈 선택(저장하지 않음) */
+  /** 아직 아무것도 고르지 않은 지원 건은 빈 선택, 시드 지원 건은 예시 구직자 선택(둘 다 저장하지 않음) */
   function selectionOf(applyId: string): PrepSelection {
-    return selections.value[applyId] ?? emptySelection()
+    return selections.value[applyId] ?? seedSelection(applyId) ?? emptySelection()
   }
 
   function update(applyId: string, change: (s: PrepSelection) => PrepSelection): void {

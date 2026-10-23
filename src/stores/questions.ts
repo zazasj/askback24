@@ -1,15 +1,19 @@
 /**
- * 질문 결과를 지원 건마다 브라우저에 저장한다(rq:v1:questions). ③에서 새로고침해도 같은 질문(S4-20).
- * 만드는 중 상태는 저장하지 않는다. 들은 답·면접 분위기(M5)는 여기에 넣지 않는다(R-09).
+ * 질문 결과를 지원 건마다 브라우저에 저장한다. 1차는 rq:v1:questions(③에서 새로고침해도 같은 질문, S4-20),
+ * 최종은 rq:v1:final-questions. 만드는 중 상태는 저장하지 않는다.
+ * 들은 답·면접 분위기는 저장하지 않는다(R-09): 최종 응답에는 들은 답이 없고, 정리 입력은 review 저장소(메모리)에만 있다.
  */
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import type { FirstQuestionsResponse } from '@shared/contract'
-import { fetchFirstQuestions } from '@/api/client'
+import { ref, type Ref } from 'vue'
+import type { FinalQuestion, FinalQuestionsResponse, FirstQuestionsResponse } from '@shared/contract'
+import { fetchFinalQuestions, fetchFirstQuestions } from '@/api/client'
+import { seedFirst } from '@/demoData'
 import { requestKey, toFirstRequest } from '@/features/interview-prep/picks'
+import { toFinalRequest } from '@/features/interview-prep/review'
 import { usePersisted } from '@/lib/storage'
 import { onDemoReset } from './demoTools'
 import { usePrepStore } from './prep'
+import { useReviewStore } from './review'
 
 /** 만드는 중 화면을 이보다 짧게 보이지 않는다(번쩍임 방지) */
 export const MIN_LOADING_MS = 1_200
@@ -21,11 +25,22 @@ export interface FirstResult {
   /** "면접에서 쓸 것 같아요"를 누른 카드 */
   kept: string[]
   made_at: string
+  /** 시연 시드(S1 2행)로 미리 만들어 둔 결과 */
+  seed?: boolean
+}
+
+export interface FinalResult {
+  response: FinalQuestionsResponse
+  /** "면접에서 쓸 것 같아요"를 누른 질문(finalKey) */
+  kept: string[]
+  made_at: string
 }
 
 type ResultBook = Record<string, FirstResult>
+type FinalBook = Record<string, FinalResult>
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
+const isKeptList = (v: unknown): v is string[] => Array.isArray(v) && v.every((k) => typeof k === 'string')
 
 function isFirstResult(v: unknown): v is FirstResult {
   return (
@@ -34,39 +49,99 @@ function isFirstResult(v: unknown): v is FirstResult {
     isObject(v.response) &&
     v.response.mode === 'first' &&
     Array.isArray(v.response.questions) &&
-    Array.isArray(v.kept) &&
-    v.kept.every((k) => typeof k === 'string')
+    isKeptList(v.kept)
+  )
+}
+
+function isFinalResult(v: unknown): v is FinalResult {
+  return (
+    isObject(v) &&
+    isObject(v.response) &&
+    v.response.mode === 'final' &&
+    Array.isArray(v.response.final_questions) &&
+    Array.isArray(v.response.card_states) &&
+    isObject(v.response.summary) &&
+    isKeptList(v.kept)
   )
 }
 
 const isResultBook = (v: unknown): v is ResultBook => isObject(v) && Object.values(v).every(isFirstResult)
+const isFinalBook = (v: unknown): v is FinalBook => isObject(v) && Object.values(v).every(isFinalResult)
+
+/** 최종 질문 하나를 가리키는 키(카드 질문은 카드 ID, 처우 질문은 offer:<topic>) */
+export const finalKey = (q: FinalQuestion): string => q.card_id ?? `offer:${q.topic ?? q.rank}`
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
-export const useQuestionsStore = defineStore('questions', () => {
-  const firsts = usePersisted<ResultBook>('questions', () => ({}), isResultBook)
-  /** 지원 건 → 진행 중인 요청 번호(늦게 끝난 옛 요청이 새 결과를 덮지 않게) */
+/** 지원 건마다 하나씩 도는 요청(늦게 끝난 옛 요청이 새 결과를 덮지 않게 번호로 가린다) */
+function useRuns() {
   const pending = ref<Record<string, number>>({})
   const failed = ref<Record<string, true>>({})
   let seq = 0
   const attempts: Record<string, number> = {}
 
-  onDemoReset(() => {
-    firsts.value = {}
+  const drop = (map: Ref<Record<string, unknown>>, key: string) => {
+    if (!(key in map.value)) return
+    const next = { ...map.value }
+    delete next[key]
+    map.value = next
+  }
+
+  /** 새 요청 번호와 "다시 만들기" 횟수(가짜 공급자가 문장을 바꾸는 데 씀) */
+  function start(applyId: string): { my: number; variant: number } {
+    const my = ++seq
+    const variant = (attempts[applyId] = (attempts[applyId] ?? -1) + 1)
+    pending.value = { ...pending.value, [applyId]: my }
+    drop(failed, applyId)
+    return { my, variant }
+  }
+
+  /** 이 요청이 아직 최신이면 끝내고 true */
+  function settle(applyId: string, my: number): boolean {
+    if (pending.value[applyId] !== my) return false
+    drop(pending, applyId)
+    return true
+  }
+
+  function fail(applyId: string, my: number): void {
+    if (settle(applyId, my)) failed.value = { ...failed.value, [applyId]: true }
+  }
+
+  function reset(): void {
     pending.value = {}
     failed.value = {}
+  }
+
+  return { pending, failed, start, settle, fail, reset }
+}
+
+export const useQuestionsStore = defineStore('questions', () => {
+  const firsts = usePersisted<ResultBook>('questions', () => ({}), isResultBook)
+  const finals = usePersisted<FinalBook>('final-questions', () => ({}), isFinalBook)
+  const firstRuns = useRuns()
+  const finalRuns = useRuns()
+
+  onDemoReset(() => {
+    firsts.value = {}
+    finals.value = {}
+    firstRuns.reset()
+    finalRuns.reset()
   })
 
+  /** 저장된 결과, 없으면 시드 지원 건의 미리 만든 결과 */
   function firstOf(applyId: string): FirstResult | undefined {
-    return firsts.value[applyId]
+    const saved = firsts.value[applyId]
+    if (saved) return saved
+    const seed = seedFirst(applyId)
+    return seed ? { ...seed, kept: [], made_at: '', seed: true } : undefined
   }
 
   function isGenerating(applyId: string): boolean {
-    return pending.value[applyId] !== undefined
+    return firstRuns.pending.value[applyId] !== undefined
   }
 
   function hasFailed(applyId: string): boolean {
-    return failed.value[applyId] === true
+    return firstRuns.failed.value[applyId] === true
   }
 
   /** 지금 ② 선택으로 만든 결과인지 */
@@ -76,28 +151,13 @@ export const useQuestionsStore = defineStore('questions', () => {
     return r.request_key === requestKey(toFirstRequest(wantedAuthNo, usePrepStore().selectionOf(applyId)))
   }
 
-  function settle(applyId: string, my: number): boolean {
-    if (pending.value[applyId] !== my) return false
-    const next = { ...pending.value }
-    delete next[applyId]
-    pending.value = next
-    return true
-  }
-
   /** ② 선택으로 1차 질문을 만든다(질문 만들기·AI로 다시 만들기). 끝날 때까지 isGenerating */
   async function makeFirst(applyId: string, wantedAuthNo: string, options: { apiFail?: boolean } = {}): Promise<void> {
     const req = toFirstRequest(wantedAuthNo, usePrepStore().selectionOf(applyId))
-    const my = ++seq
-    const variant = (attempts[applyId] = (attempts[applyId] ?? -1) + 1)
-    pending.value = { ...pending.value, [applyId]: my }
-    if (failed.value[applyId]) {
-      const next = { ...failed.value }
-      delete next[applyId]
-      failed.value = next
-    }
+    const { my, variant } = firstRuns.start(applyId)
     try {
       const [response] = await Promise.all([fetchFirstQuestions(req, { apiFail: options.apiFail === true, variant }), sleep(MIN_LOADING_MS)])
-      if (!settle(applyId, my)) return
+      if (!firstRuns.settle(applyId, my)) return
       const before = firstOf(applyId)?.kept ?? []
       firsts.value = {
         ...firsts.value,
@@ -109,7 +169,7 @@ export const useQuestionsStore = defineStore('questions', () => {
         },
       }
     } catch {
-      if (settle(applyId, my)) failed.value = { ...failed.value, [applyId]: true }
+      firstRuns.fail(applyId, my)
     }
   }
 
@@ -120,5 +180,62 @@ export const useQuestionsStore = defineStore('questions', () => {
     firsts.value = { ...firsts.value, [applyId]: { ...r, kept } }
   }
 
-  return { firsts, firstOf, isGenerating, hasFailed, isCurrent, makeFirst, toggleKept }
+  // ── 최종 면접·처우 질문 ───────────────────────────────
+  function finalOf(applyId: string): FinalResult | undefined {
+    return finals.value[applyId]
+  }
+
+  function isGeneratingFinal(applyId: string): boolean {
+    return finalRuns.pending.value[applyId] !== undefined
+  }
+
+  function hasFailedFinal(applyId: string): boolean {
+    return finalRuns.failed.value[applyId] === true
+  }
+
+  /** 1차 결과 + 1차 면접 정리(메모리)로 최종 질문을 만든다. 들은 답은 요청에만 실린다 */
+  async function makeFinal(applyId: string, wantedAuthNo: string, options: { apiFail?: boolean } = {}): Promise<void> {
+    const first = firstOf(applyId)
+    if (!first) return
+    const req = toFinalRequest(wantedAuthNo, usePrepStore().cardPicks(applyId), useReviewStore().draftOf(applyId), first.response.questions)
+    const { my, variant } = finalRuns.start(applyId)
+    try {
+      const [response] = await Promise.all([fetchFinalQuestions(req, { apiFail: options.apiFail === true, variant }), sleep(MIN_LOADING_MS)])
+      if (!finalRuns.settle(applyId, my)) return
+      const before = finalOf(applyId)?.kept ?? []
+      finals.value = {
+        ...finals.value,
+        [applyId]: {
+          response,
+          kept: before.filter((k) => response.final_questions.some((q) => finalKey(q) === k)),
+          made_at: new Date().toISOString(),
+        },
+      }
+    } catch {
+      finalRuns.fail(applyId, my)
+    }
+  }
+
+  function toggleFinalKept(applyId: string, key: string): void {
+    const r = finalOf(applyId)
+    if (!r) return
+    const kept = r.kept.includes(key) ? r.kept.filter((k) => k !== key) : [...r.kept, key]
+    finals.value = { ...finals.value, [applyId]: { ...r, kept } }
+  }
+
+  return {
+    firsts,
+    finals,
+    firstOf,
+    isGenerating,
+    hasFailed,
+    isCurrent,
+    makeFirst,
+    toggleKept,
+    finalOf,
+    isGeneratingFinal,
+    hasFailedFinal,
+    makeFinal,
+    toggleFinalKept,
+  }
 })
