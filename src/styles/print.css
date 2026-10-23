@@ -1,0 +1,41 @@
+/*
+ * "면접에 들고 갈 한 장 인쇄"(S4 ③): 질문과 들은 답 메모 칸만 A4 한 장에.
+ * 시연 띠는 남긴다(인쇄물도 모의 서비스임이 보이게). 색 값은 쓰지 않는다(NF-04).
+ */
+@media print {
+  @page {
+    size: A4;
+    margin: 1.2cm;
+  }
+
+  html {
+    font-size: 8px;
+  }
+
+  .skip-link,
+  .gov-header,
+  .main-menu,
+  .page-side,
+  .breadcrumb,
+  .side-select,
+  .gov-footer,
+  .demo-tools,
+  .toast-host,
+  .step-nav,
+  .prep-head .mode,
+  [data-print='hide'] {
+    display: none !important;
+  }
+
+  /* 컴포넌트 범위 스타일(2단 grid)보다 앞서야 해서 !important */
+  .page-body,
+  .page-body.with-side {
+    display: block !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  details:not([open]) > :not(summary) {
+    display: none;
+  }
+}

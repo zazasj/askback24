@@ -4,6 +4,7 @@ import 'krds-uiux/resources/css/token/krds_tokens.css'
 import './styles/tokens.css'
 import './styles/fonts.css'
 import './styles/base.css'
+import './styles/print.css'
 import App from './App.vue'
 import { router } from './router'
 

@@ -3,6 +3,7 @@
  * S4 면접 역질문 준비 — 단계형(D-012).
  * 머리(지원 건 요약·준비할 면접 라디오) + 단계 표시(주소 ?step=) + 단계 본문.
  * 1차: ① 공고 확인 → ② 내 기대·걱정 → ③ 질문 받기. 최종 ②③(1차 면접 정리·최종 질문)은 M5에서 채운다.
+ * ②의 "질문 만들기"는 질문 저장소에서 만들기를 시작하고 ③으로 간다(③이 만드는 중을 보여 준다).
  */
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
@@ -11,6 +12,7 @@ import NotFoundContent from '@/components/ui/NotFoundContent.vue'
 import { useDemoStore } from '@/stores/demo'
 import { useDemoToolActions, type DemoToolAction } from '@/stores/demoTools'
 import { usePrepStore } from '@/stores/prep'
+import { useQuestionsStore } from '@/stores/questions'
 import CardPickStep from '@/features/interview-prep/CardPickStep.vue'
 import FirstResultStep from '@/features/interview-prep/FirstResultStep.vue'
 import PostingStep from '@/features/interview-prep/PostingStep.vue'
@@ -22,6 +24,7 @@ import { usePrepRoute } from '@/features/interview-prep/usePrepRoute'
 const route = useRoute()
 const demo = useDemoStore()
 const prep = usePrepStore()
+const questions = useQuestionsStore()
 
 const application = computed(() => demo.findApplication(String(route.params.applyId ?? '')))
 const posting = computed(() => (application.value ? getPosting(application.value.wantedAuthNo) : undefined))
@@ -33,6 +36,21 @@ const labels = computed(() => STEP_LABELS[mode.value])
 const stepTitle = computed(() => labels.value[step.value - 1])
 /** ③ "근거 보기"가 ①로 보낼 때 켤 카드(?card=BE15) */
 const focusCard = computed(() => (typeof route.query.card === 'string' ? route.query.card : null))
+/** 시험 장치: 가짜 응답 모드에서 질문 생성이 실패한 것처럼 */
+const apiFail = computed(() => route.query.apiFail === '1')
+
+function makeQuestions(): void {
+  const app = application.value
+  const p = posting.value
+  if (!app || !p) return
+  void questions.makeFirst(app.apply_id, p.wantedAuthNo, { apiFail: apiFail.value })
+  void goStep(3)
+}
+
+/** "면접 다녀왔어요" → 최종 면접·처우 협의의 1차 면접 정리(D-020) */
+function toReview(): void {
+  void setMode('final', 2)
+}
 
 // 알림은 띄우지 않는다: 아래 고정 바의 "N개 골랐어요"가 바로 바뀌고, 알림이 그 바를 가린다
 function fillPreset(key: PresetKey): void {
@@ -77,13 +95,15 @@ useDemoToolActions(demoActions)
       v-else-if="mode === 'first' && step === 2"
       :apply-id="application.apply_id"
       :analysis="analysis"
-      @make="goStep(3)"
+      @make="makeQuestions"
     />
     <FirstResultStep
       v-else-if="mode === 'first'"
       :apply-id="application.apply_id"
-      :analysis="analysis"
+      :posting="posting"
+      :api-fail="apiFail"
       @change="goStep(2)"
+      @review="toReview"
     />
     <section v-else class="step-body" aria-labelledby="step-title">
       <h2 id="step-title" class="section-title">{{ stepTitle }}</h2>

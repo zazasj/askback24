@@ -1,59 +1,170 @@
 <script setup lang="ts">
 /**
- * S4 ③ 1차·기술 면접 질문.
- * M2 범위: 고른 카드로 shared/rules 의 pickTop5 검수 문장을 바로 보여 주고 "복사"·"선택 바꾸기"만 둔다.
- * 질문 생성(generate·가짜 공급자)·만드는 중·저장 복원·펼침·전체 복사·인쇄·다시 만들기는 M3에서 붙인다.
+ * S4 ③ 1차·기술 면접 질문. ②에서 "질문 만들기"를 누르면 만드는 중 → 질문 5개.
+ * 결과는 지원 건마다 저장되어 새로고침해도 그대로다. 결과가 없이 이 단계를 열면 지금 선택으로 바로 만든다.
+ * 처우 질문은 여기서 주지 않는다(D-012). 1차 면접을 다녀오면 최종 단계로 넘긴다.
  */
-import { computed } from 'vue'
-import { CARD_BOOK, getCard } from '@shared/catalog'
-import type { PostingAnalysis } from '@shared/contract'
-import { pickTop5, typeLabel } from '@shared/rules'
+import { computed, nextTick, onMounted, useTemplateRef, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { CARD_BOOK } from '@shared/catalog'
+import type { Posting, Question } from '@shared/contract'
+import { typeLabel } from '@shared/rules'
 import { useCopy } from '@/composables/useCopy'
 import { usePrepStore } from '@/stores/prep'
+import { useQuestionsStore } from '@/stores/questions'
+import GeneratingView from './GeneratingView.vue'
+import { PREFS, countByPref } from './picks'
+import QuestionCard from './QuestionCard.vue'
+import { FIRST_TONES, cardMeta, evidenceLabel } from './questionView'
 
-const props = defineProps<{ applyId: string; analysis?: PostingAnalysis }>()
-const emit = defineEmits<{ change: [] }>()
+const props = defineProps<{ applyId: string; posting: Posting; apiFail?: boolean }>()
+const emit = defineEmits<{ change: []; review: [] }>()
 
+const route = useRoute()
 const prep = usePrepStore()
+const store = useQuestionsStore()
 const { copy } = useCopy()
 
 const selection = computed(() => prep.selectionOf(props.applyId))
-const questions = computed(() =>
-  props.analysis
-    ? pickTop5({ picks: prep.cardPicks(props.applyId), experience: selection.value.experience }, props.analysis)
-    : [],
-)
+const generating = computed(() => store.isGenerating(props.applyId))
+const result = computed(() => store.firstOf(props.applyId))
+const questions = computed<Question[]>(() => result.value?.response.questions ?? [])
+const failed = computed(() => store.hasFailed(props.applyId))
+const stale = computed(() => !!result.value && !store.isCurrent(props.applyId, props.posting.wantedAuthNo))
+
+const templateCount = computed(() => questions.value.filter((q) => q.source === 'template').length)
+const allTemplate = computed(() => questions.value.length > 0 && templateCount.value === questions.value.length)
+
+function make(): void {
+  void store.makeFirst(props.applyId, props.posting.wantedAuthNo, { apiFail: props.apiFail === true })
+}
+
+onMounted(() => {
+  // 주소로 바로 열었거나 새로고침 때 결과가 없으면 지금 선택으로 만든다
+  if (!generating.value && !result.value && selection.value.picks.length > 0) make()
+})
+
+// 만드는 중 ↔ 결과가 바뀔 때 누른 버튼이 사라지므로 초점을 제목으로 옮긴다
+const title = useTemplateRef<HTMLElement>('title')
+watch(generating, async () => {
+  await nextTick()
+  title.value?.focus()
+})
+
+// ── 질문 카드 ─────────────────────────────────────────
+function evidenceTo(q: Question) {
+  return q.evidence ? { query: { ...route.query, step: '1', card: q.card_id } } : undefined
+}
+
+const kept = computed(() => new Set(result.value?.kept ?? []))
+
+// ── 오른쪽: 내가 고른 것 · 전체 동작 ──────────────────────
+const breakdown = computed(() => {
+  const n = countByPref(selection.value.picks)
+  return PREFS.map((p) => `${CARD_BOOK.preference_options[p]} ${n[p]}`)
+})
+
+function copyAll(): void {
+  const head = `${props.posting.corpNm} · ${props.posting.wantedTitle}\n1차·기술 면접 질문`
+  const body = questions.value.map((q, i) => `${i + 1}. [${typeLabel(q.type)}] ${q.text}`).join('\n')
+  void copy(`${head}\n\n${body}`)
+}
+
+function printSheet(): void {
+  window.print()
+}
 </script>
 
 <template>
   <section class="result-step" aria-labelledby="result-title">
     <div class="intro">
-      <h2 id="result-title" class="section-title">1차·기술 면접 질문</h2>
-      <p v-if="questions.length" class="lead">
+      <h2 id="result-title" ref="title" class="section-title" tabindex="-1">1차·기술 면접 질문</h2>
+      <p v-if="generating" class="lead">고른 카드와 공고를 맞춰 보고 있어요.</p>
+      <p v-else-if="questions.length" class="lead">
         고른 카드 {{ selection.picks.length }}개 중 공고와 차이가 큰 순서로 {{ questions.length }}개를 골랐어요.
       </p>
     </div>
 
-    <ol v-if="questions.length" class="questions">
-      <li v-for="(q, i) in questions" :key="q.card_id" class="question">
-        <div class="q-head">
-          <span class="num" aria-hidden="true">{{ i + 1 }}</span>
-          <span class="type-chip" :class="`is-${q.type}`">{{ typeLabel(q.type) }}</span>
-          <span class="q-card">{{ getCard(q.card_id)?.label }} · {{ CARD_BOOK.preference_options[q.pref] }}</span>
-          <span v-if="q.has_exp" class="exp-chip">경험 포함</span>
+    <GeneratingView v-if="generating" />
+
+    <template v-else-if="questions.length">
+      <p class="sr-only" aria-live="polite">질문 {{ questions.length }}개를 만들었어요.</p>
+      <p v-if="allTemplate" class="notice is-fallback">
+        AI 응답을 받지 못해 미리 검수한 문장으로 보여 드려요. 질문 순서와 근거는 같아요.
+      </p>
+      <p v-else-if="templateCount > 0" class="notice is-fallback">
+        질문 {{ templateCount }}개는 AI 문장이 검사를 통과하지 못해 미리 검수한 문장으로 바꿨어요.
+      </p>
+      <p v-if="stale" class="notice" data-print="hide">
+        고른 카드나 경험이 바뀌었어요. 바뀐 선택으로 보려면 "AI로 다시 만들기"를 눌러 주세요.
+      </p>
+
+      <div class="result-layout">
+        <ol class="questions" aria-label="1차·기술 면접 질문 목록">
+          <QuestionCard
+            v-for="q in questions"
+            :key="q.card_id"
+            :rank="q.rank"
+            :type-label="typeLabel(q.type)"
+            :tone="FIRST_TONES[q.type]"
+            :meta="cardMeta(q.card_id, q.type)"
+            :text="q.text"
+            :has-exp="q.has_exp"
+            :template="q.source === 'template'"
+            :kept="kept.has(q.card_id)"
+            :basis="q.basis"
+            :evidence-label="evidenceLabel(q.evidence)"
+            :evidence-to="evidenceTo(q)"
+            :watch-out="q.watch_out"
+            :good-sign="q.good_sign"
+            @copy="copy(q.text)"
+            @keep="store.toggleKept(applyId, q.card_id)"
+          />
+        </ol>
+
+        <aside class="result-side" aria-labelledby="side-title" data-print="hide">
+          <div class="side-box">
+            <h3 id="side-title" class="side-title">내가 고른 것</h3>
+            <p class="side-line">
+              <template v-for="(part, i) in breakdown" :key="part">
+                <span v-if="i > 0" aria-hidden="true"> · </span>
+                <span class="nowrap">{{ part }}</span>
+              </template>
+            </p>
+            <p v-if="selection.experience" class="side-line side-exp">경험: {{ selection.experience }}</p>
+            <button type="button" class="btn btn-tertiary side-btn" @click="emit('change')">선택 바꾸기</button>
+          </div>
+          <div class="side-box">
+            <button type="button" class="btn btn-accent-outline side-btn" @click="copyAll">전체 복사</button>
+            <button type="button" class="btn btn-tertiary side-btn" @click="printSheet">면접에 들고 갈 한 장 인쇄</button>
+            <button type="button" class="btn btn-tertiary side-btn" @click="make">AI로 다시 만들기</button>
+            <RouterLink class="about-link" to="/about-ai">이 질문은 어떻게 만들어지나요</RouterLink>
+          </div>
+        </aside>
+      </div>
+
+      <section class="next-box" aria-labelledby="next-title" data-print="hide">
+        <div class="next-text">
+          <h3 id="next-title" class="next-title">1차 면접을 다녀오면</h3>
+          <p>물어본 질문과 들은 답을 정리해 주세요. 확인된 것은 빼고, 남은 것과 처우를 최종 면접 질문으로 만들어 드려요.</p>
         </div>
-        <p class="q-text">{{ q.template_text }}</p>
-        <div class="q-actions">
-          <button type="button" class="btn btn-tertiary btn-sm" @click="copy(q.template_text)">복사</button>
-        </div>
-      </li>
-    </ol>
-    <div v-else class="empty">
-      <p>아직 고른 카드가 없어요. 기대되거나 걱정되는 업무를 골라 주세요.</p>
+        <button type="button" class="btn btn-accent" @click="emit('review')">면접 다녀왔어요</button>
+      </section>
+    </template>
+
+    <div v-else-if="failed" class="empty">
+      <p>질문을 만들지 못했어요. 잠시 뒤 다시 시도해 주세요.</p>
+      <div class="empty-actions">
+        <button type="button" class="btn btn-accent" @click="make">AI로 다시 만들기</button>
+        <button type="button" class="btn btn-tertiary" @click="emit('change')">선택 바꾸기</button>
+      </div>
     </div>
 
-    <div class="result-actions">
-      <button type="button" class="btn btn-tertiary" @click="emit('change')">선택 바꾸기</button>
+    <div v-else class="empty">
+      <p>아직 고른 카드가 없어요. 기대되거나 걱정되는 업무를 골라 주세요.</p>
+      <div class="empty-actions">
+        <button type="button" class="btn btn-accent" @click="emit('change')">선택 바꾸기</button>
+      </div>
     </div>
   </section>
 </template>
@@ -69,8 +180,38 @@ const questions = computed(() =>
   gap: 0.6rem;
 }
 
+.section-title:focus {
+  outline: none;
+}
+
+.section-title:focus-visible {
+  outline: 0.3rem solid var(--krds-light-color-border-primary);
+  outline-offset: 0.2rem;
+}
+
 .lead {
   color: var(--krds-light-color-text-subtle);
+}
+
+.notice {
+  padding: 1.2rem 1.6rem;
+  border-left: 0.4rem solid var(--krds-light-color-border-gray-dark);
+  border-radius: var(--krds-radius-medium1);
+  background: var(--krds-light-color-surface-gray-subtler);
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-basic);
+}
+
+.notice.is-fallback {
+  border-left-color: var(--krds-light-color-text-warning);
+  background: var(--krds-light-color-surface-warning-subtler);
+}
+
+.result-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 26rem;
+  align-items: start;
+  gap: 2.4rem;
 }
 
 .questions {
@@ -78,89 +219,89 @@ const questions = computed(() =>
   gap: 1.2rem;
 }
 
-.question {
+.result-side {
+  position: sticky;
+  top: 1.6rem;
   display: grid;
-  gap: 1rem;
-  padding: 1.8rem 2rem;
+  gap: 1.2rem;
+}
+
+.side-box {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1.6rem;
   border: 1px solid var(--krds-light-color-border-gray-light);
   border-radius: var(--krds-radius-large1);
   background: var(--krds-light-color-surface-white);
 }
 
-.q-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.6rem 0.8rem;
-}
-
-.num {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.8rem;
-  height: 2.8rem;
-  border-radius: var(--krds-radius-medium2);
-  background: var(--rq-accent);
-  color: var(--rq-on-accent);
-  font-size: var(--krds-pc-font-size-label-xsmall);
+.side-title {
+  font-size: var(--krds-pc-font-size-label-medium);
   font-weight: 700;
-}
-
-.type-chip,
-.exp-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.4rem;
-  padding: 0 0.9rem;
-  border-radius: var(--krds-radius-max);
-  font-size: var(--krds-pc-font-size-label-xsmall);
-  font-weight: 700;
-  white-space: nowrap;
-  background: var(--krds-light-color-surface-gray-subtle);
-  color: var(--krds-light-color-text-basic);
-}
-
-.type-chip.is-conflict {
-  background: var(--krds-light-color-surface-danger-subtler);
-  color: var(--krds-light-color-text-danger);
-}
-
-.type-chip.is-opportunity {
-  background: var(--krds-light-color-surface-success-subtler);
-  color: var(--krds-light-color-text-success);
-}
-
-.type-chip.is-depth {
-  background: var(--krds-light-color-surface-information-subtler);
-  color: var(--krds-light-color-text-information);
-}
-
-.exp-chip {
-  background: var(--rq-accent-subtle);
-  color: var(--rq-accent-strong);
-}
-
-.q-card {
-  font-size: var(--krds-pc-font-size-body-small);
-  color: var(--krds-light-color-text-subtle);
-}
-
-.q-text {
-  font-size: var(--krds-pc-font-size-body-large);
-  font-weight: 700;
-  line-height: 1.55;
   color: var(--krds-light-color-text-bolder);
 }
 
-.q-actions,
-.result-actions {
+.side-line {
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-basic);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.side-exp {
+  color: var(--krds-light-color-text-subtle);
+  overflow-wrap: anywhere;
+}
+
+.side-btn {
+  width: 100%;
+}
+
+.about-link {
+  justify-self: start;
+  margin-top: 0.4rem;
+  font-size: var(--krds-pc-font-size-body-small);
+  font-weight: 700;
+  color: var(--krds-light-color-text-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.3rem;
+}
+
+.next-box {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.8rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem 2.4rem;
+  padding: 2rem 2.4rem;
+  border: 1px solid var(--rq-accent-border);
+  border-radius: var(--krds-radius-large1);
+  background: var(--rq-accent-subtler);
+}
+
+.next-text {
+  display: grid;
+  gap: 0.4rem;
+  flex: 1 1 32rem;
+}
+
+.next-title {
+  font-size: var(--krds-pc-font-size-heading-xxsmall);
+  font-weight: 700;
+  color: var(--krds-light-color-text-bolder);
+}
+
+.next-text p {
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-basic);
 }
 
 .empty {
+  display: grid;
+  justify-items: center;
+  gap: 1.6rem;
   padding: 3.2rem 2rem;
   border-radius: var(--krds-radius-large1);
   background: var(--krds-light-color-surface-gray-subtler);
@@ -168,13 +309,54 @@ const questions = computed(() =>
   text-align: center;
 }
 
-@media (max-width: 767px) {
-  .question {
-    padding: 1.4rem 1.6rem;
+.empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.8rem;
+}
+
+@media (max-width: 1100px) {
+  .result-layout {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .q-text {
-    font-size: var(--krds-pc-font-size-body-medium);
+  .result-side {
+    position: static;
+    grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .result-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .side-btn,
+  .next-box .btn {
+    min-height: var(--rq-touch);
+  }
+
+  .next-box {
+    padding: 1.6rem;
+  }
+
+  .next-box .btn {
+    width: 100%;
+  }
+}
+
+@media print {
+  .result-step {
+    gap: 0.8rem;
+  }
+
+  .result-layout {
+    display: block;
+  }
+
+  .questions {
+    gap: 0.6rem;
   }
 }
 </style>

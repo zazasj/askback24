@@ -182,6 +182,8 @@ export interface Question {
   text: string
   /** 없으면 "공고에 근거 없음 · 직접 확인" */
   evidence?: Evidence
+  /** 왜 이 질문인지(분석 reason). 최종 질문의 basis 와 같은 자리 */
+  basis: string
   /** 주의할 답 */
   watch_out: string
   /** 좋은 신호 */

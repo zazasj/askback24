@@ -2,7 +2,18 @@ import { describe, expect, it } from 'vitest'
 import { PRESETS, getAnalysis } from '@shared/catalog'
 import type { PostingAnalysis } from '@shared/contract'
 import { pickTop5 } from '@shared/rules'
-import { choose, countByPref, emptySelection, experienceTarget, fromPreset, isSelection, toCardPicks, toggle } from './picks'
+import {
+  choose,
+  countByPref,
+  emptySelection,
+  experienceTarget,
+  fromPreset,
+  isSelection,
+  requestKey,
+  toCardPicks,
+  toFirstRequest,
+  toggle,
+} from './picks'
 
 describe('카드 선택', () => {
   it('S4-10 고른 것을 다시 누르면 풀리고, 다른 것을 누르면 자리를 지킨 채 바뀐다', () => {
@@ -59,5 +70,26 @@ describe('저장값 검사', () => {
     expect(isSelection({ picks: [{ card_id: 'BE01', pref: 'like' }], experience: '', exp_card: null })).toBe(false)
     expect(isSelection({ picks: [], experience: 3, exp_card: null })).toBe(false)
     expect(isSelection(null)).toBe(false)
+  })
+})
+
+describe('1차 질문 요청', () => {
+  it('예시 A → mode first · 고른 순서 그대로 · 경험 한 줄 포함', () => {
+    const req = toFirstRequest('K-MOCK-0001', fromPreset(PRESETS.A))
+    expect(req).toEqual({ mode: 'first', wantedAuthNo: 'K-MOCK-0001', picks: PRESETS.A.picks, experience: PRESETS.A.experience })
+  })
+
+  it('경험을 붙일 "기대돼요" 카드가 없으면 경험은 보내지 않는다', () => {
+    const sel = { picks: [{ card_id: 'BE07', pref: 'avoid' as const }], experience: '인턴 때 API를 만들어 봤는데', exp_card: null }
+    expect(toFirstRequest('K-MOCK-0001', sel).experience).toBeUndefined()
+  })
+
+  it('요청 표식은 선택·경험이 같으면 같고, 하나라도 바뀌면 다르다', () => {
+    const a = toFirstRequest('K-MOCK-0001', fromPreset(PRESETS.A))
+    expect(requestKey(a)).toBe(requestKey({ ...a }))
+    expect(requestKey(a)).not.toBe(requestKey({ ...a, experience: '다른 경험이 있는데' }))
+    expect(requestKey(a)).not.toBe(requestKey({ ...a, picks: a.picks.slice(1) }))
+    expect(requestKey(a)).not.toBe(requestKey({ ...a, wantedAuthNo: 'K-MOCK-0002' }))
+    expect(requestKey(a)).not.toContain('FastAPI')
   })
 })

@@ -2,7 +2,7 @@
  * ② 카드 선택 모양과 요청용 CardPick 으로 바꾸기.
  * 질문 순서는 shared/rules.ts 가 정하고, 여기서는 "무엇을 골랐는지"와 "경험을 어느 카드에 붙일지"만 다룬다.
  */
-import type { CardPick, Pref } from '@shared/contract'
+import type { CardPick, FirstQuestionsRequest, Pref } from '@shared/contract'
 import type { Preset } from '@shared/catalog'
 
 export const EXPERIENCE_MAX = 100
@@ -61,6 +61,22 @@ export function experienceTarget(sel: PrepSelection): string | null {
 export function toCardPicks(sel: PrepSelection): CardPick[] {
   const target = experienceTarget(sel)
   return sel.picks.map((p) => ({ card_id: p.card_id, pref: p.pref, has_exp: p.card_id === target }))
+}
+
+/** 1차 질문 요청. 경험 한 줄은 붙일 카드가 있을 때만 보낸다 */
+export function toFirstRequest(wantedAuthNo: string, sel: PrepSelection): FirstQuestionsRequest {
+  const req: FirstQuestionsRequest = { mode: 'first', wantedAuthNo, picks: toCardPicks(sel) }
+  const experience = sel.experience.trim()
+  if (experience && experienceTarget(sel)) req.experience = experience.slice(0, EXPERIENCE_MAX)
+  return req
+}
+
+/** 결과가 지금 선택으로 만든 것인지 비교할 짧은 표식(저장소에 선택을 두 번 담지 않게 해시로) */
+export function requestKey(req: FirstQuestionsRequest): string {
+  const src = `${req.wantedAuthNo}|${req.picks.map((p) => `${p.card_id}:${p.pref}:${p.has_exp ? 1 : 0}`).join(',')}|${req.experience ?? ''}`
+  let h = 5381
+  for (let i = 0; i < src.length; i++) h = ((h << 5) + h + src.charCodeAt(i)) | 0
+  return (h >>> 0).toString(36)
 }
 
 export function fromPreset(preset: Preset): PrepSelection {
