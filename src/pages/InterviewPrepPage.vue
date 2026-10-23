@@ -150,4 +150,10 @@ useDemoToolActions(demoActions)
 .steps {
   margin: 3.2rem 0 2.4rem;
 }
+
+@media (max-width: 767px) {
+  .steps {
+    margin: 1.6rem 0 2rem;
+  }
+}
 </style>

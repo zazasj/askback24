@@ -3,7 +3,7 @@
  * 회사를 평가하는 말 대신 "공고에 어떻게 적혀 있는지"만 짧게 붙인다.
  */
 import { getCard } from '@shared/catalog'
-import type { PostingAnalysis, PostingState } from '@shared/contract'
+import type { OfferBlank, PostingAnalysis, PostingState } from '@shared/contract'
 
 /** 카드·확인할 점에 다는 공고 상태 표시. 공고에 없는 카드는 표시하지 않는다 */
 export const POSTING_TAGS: Record<PostingState, string | null> = {
@@ -13,7 +13,8 @@ export const POSTING_TAGS: Record<PostingState, string | null> = {
   absent: null,
 }
 
-const BLANK_TAGS = { missing: '공고에 없음', vague: '모호한 표현' } as const
+/** 근로조건이 공고에 어떻게 적혔는지. ① 확인할 점과 최종 ③ 처우 질문이 같은 말을 쓰게 여기서만 정한다(DR-r1-12) */
+export const BLANK_TAGS: Record<OfferBlank['status'], string> = { missing: '공고에 없음', vague: '모호한 표현', check: '확인 필요' }
 
 export interface CheckPoint {
   key: string
@@ -51,7 +52,7 @@ export function checkPoints(analysis: PostingAnalysis | undefined): CheckPoint[]
     ranked.push({
       w: b.status === 'missing' ? 2 : 3,
       i,
-      p: { key: `blank:${b.topic}`, tag: BLANK_TAGS[b.status], title: b.label.split(' · ')[0] ?? b.label, detail: b.basis, hasMark: false },
+      p: { key: `blank:${b.topic}`, tag: BLANK_TAGS[b.status], title: b.label, detail: b.basis, hasMark: false },
     })
   })
 

@@ -34,7 +34,10 @@ export function anchorText(experience?: string): string {
   return t ? `${t}, ` : ''
 }
 
-/** 유형에 맞는 질문 틀. 충돌 예방 틀이 없는 카드는 충돌 확인 틀(공고 전제 없는 비중 질문)을 쓴다 */
+/**
+ * 유형에 맞는 질문 틀. 충돌 예방 틀이 없는 카드는 충돌 확인 틀(비중 질문)을 쓴다.
+ * 틀은 어느 공고에나 쓰이므로 공고 내용을 말하지 않는다. 공고 인용은 근거(evidence)를 아는 앞말 몫(data.test.ts가 지킴)
+ */
 export function questionTemplate(card: CardDef, type: QType): string {
   return card.questions[type] ?? card.questions.conflict
 }

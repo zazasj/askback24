@@ -36,7 +36,7 @@
     {
       "topic": "sal",
       "status": "vague",
-      "label": "임금 · 공고 모호",
+      "label": "임금",
       "basis": "급여가 '회사내규에 따름'으로만 적혀 있어요",
       "evidence": { "field": "sal", "quote": "회사내규에 따름" },
       "question": "신입 연봉은 어느 범위이고, 기본급과 수당은 어떻게 구성되나요?"
@@ -44,7 +44,7 @@
     {
       "topic": "workHours",
       "status": "missing",
-      "label": "근로시간 · 공고 누락",
+      "label": "근로시간",
       "basis": "공고에 근무 시간이 없어요",
       "question": "프로젝트 마감 전에는 근무 시간이 어떻게 되고, 연장근로는 월 평균 어느 정도인가요?"
     },
@@ -59,7 +59,7 @@
     {
       "topic": "probation",
       "status": "missing",
-      "label": "수습 · 공고 누락",
+      "label": "수습",
       "basis": "공고에 수습 정보가 없어요",
       "question": "수습 기간이 있나요? 있다면 기간과 급여 조건은 어떻게 되나요?"
     }

@@ -3,22 +3,19 @@
  * S4 ② 내 기대·걱정 — 업무 카드 17개(처음 12개 + "5개 더 보기") + 경험 한 줄 + 아래 고정 바(카운터·질문 만들기).
  * 선택은 지원 건마다 prep 저장소에 둔다.
  */
-import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
-import { useElementSize } from '@vueuse/core'
+import { computed, nextTick, ref, watch } from 'vue'
 import { CARDS, CARD_BOOK, getCard } from '@shared/catalog'
 import type { PostingAnalysis, PostingState, Pref } from '@shared/contract'
 import { PERSONA } from '@/demoData'
 import { usePrepStore } from '@/stores/prep'
-import { useDemoToolsStore } from '@/stores/demoTools'
 import { POSTING_TAGS } from './checkpoints'
-import { EXPERIENCE_MAX, PREFS, countByPref, experienceTarget, prefOf } from './picks'
+import { EXPERIENCE_MAX, PREFS, countByPref, experienceTarget, oneLine, prefOf } from './picks'
 import TaskCard from './TaskCard.vue'
 
 const props = defineProps<{ applyId: string; analysis?: PostingAnalysis }>()
 const emit = defineEmits<{ make: [] }>()
 
 const prep = usePrepStore()
-const tools = useDemoToolsStore()
 
 const selection = computed(() => prep.selectionOf(props.applyId))
 const picks = computed(() => selection.value.picks)
@@ -57,8 +54,9 @@ function toggle(cardId: string, pref: Pref): void {
 const CHIPS = PERSONA.experience_chips
 const experience = computed(() => selection.value.experience)
 
+// 한 줄 입력이라 붙여 넣은 줄바꿈은 띄어쓰기로 바꾼다(칸은 휴대폰에서 글이 잘리지 않게 textarea)
 function onExperienceInput(e: Event): void {
-  prep.setExperience(props.applyId, (e.target as HTMLInputElement).value)
+  prep.setExperience(props.applyId, oneLine((e.target as HTMLTextAreaElement).value))
 }
 
 function useChip(chip: (typeof CHIPS)[number]): void {
@@ -70,16 +68,6 @@ const experienceHint = computed(() => {
   const target = experienceTarget(selection.value)
   if (!target) return '"기대돼요"를 고른 카드가 있으면 그 질문 앞에 붙여요.'
   return `"${getCard(target)?.label ?? target}" 질문 앞에 붙여요.`
-})
-
-// ── 아래 고정 바: 시연 도구 버튼이 가리지 않게 높이를 알린다 ─────────
-const bar = useTemplateRef<HTMLElement>('bar')
-const { height: barHeight } = useElementSize(bar, undefined, { box: 'border-box' })
-watch(barHeight, (h) => {
-  tools.bottomInset = Math.round(h)
-})
-onBeforeUnmount(() => {
-  tools.bottomInset = 0
 })
 </script>
 
@@ -109,17 +97,18 @@ onBeforeUnmount(() => {
       <h3 id="experience-title" class="sub-title">내 경험을 질문에 붙이기 <span class="optional">(선택)</span></h3>
       <div class="field">
         <label for="experience-input" class="field-label">경험 한 줄</label>
-        <input
+        <textarea
           id="experience-input"
-          class="input experience-input"
-          type="text"
+          class="input input-multiline experience-input"
+          rows="2"
           :maxlength="EXPERIENCE_MAX"
           autocomplete="off"
-          placeholder="예: 인턴 때 FastAPI로 API를 설계부터 배포까지 맡아 봤는데"
+          placeholder="예: 인턴 때 FastAPI로 API를 만들어 봤는데"
           aria-describedby="experience-hint experience-count"
           :value="experience"
+          @keydown.enter.prevent
           @input="onExperienceInput"
-        />
+        ></textarea>
         <p class="field-foot">
           <span id="experience-hint" class="field-hint">{{ experienceHint }}</span>
           <span id="experience-count" class="field-count">{{ experience.length }}/{{ EXPERIENCE_MAX }}자</span>
@@ -140,7 +129,7 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <div ref="bar" class="pick-bar">
+    <div class="pick-bar">
       <p class="counter" aria-live="polite">
         <strong class="count">{{ total }}개 골랐어요</strong>
         <span class="count-detail">({{ breakdown }})</span>

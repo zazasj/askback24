@@ -36,7 +36,7 @@
     {
       "topic": "sal",
       "status": "vague",
-      "label": "임금 · 공고 모호",
+      "label": "임금",
       "basis": "급여가 '면접 후 결정'으로만 적혀 있어요",
       "evidence": { "field": "sal", "quote": "면접 후 결정" },
       "question": "신입 연봉은 어느 범위이고, 기본급과 수당은 어떻게 구성되나요?"
@@ -44,7 +44,7 @@
     {
       "topic": "workHours",
       "status": "check",
-      "label": "근로시간 · 확인 필요",
+      "label": "근로시간",
       "basis": "당직이 있고 당직 뒤 대체휴무가 있다고 적혀 있어요",
       "evidence": { "field": "workdayWorkhrCont", "quote": "당직 시 대체휴무" },
       "question": "당직은 한 달에 몇 번쯤이고, 당직 다음 날 대체휴무는 어떻게 쓰나요?"
@@ -52,7 +52,7 @@
     {
       "topic": "probation",
       "status": "check",
-      "label": "수습 · 확인 필요",
+      "label": "수습",
       "basis": "공고에 수습 3개월이 적혀 있어요",
       "evidence": { "field": "empTpNm", "quote": "수습 3개월" },
       "question": "수습 3개월 동안 급여는 연봉 기준과 같게 지급되나요?"

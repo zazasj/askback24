@@ -1,6 +1,7 @@
 /** 질문 카드에 보일 글·색(1차·최종 공용). 판단은 하지 않고 형식만 바꾼다 */
 import { CARD_BOOK, FINAL_BOOK, getCard } from '@shared/catalog'
-import type { Evidence, EvidenceField, FinalQType, FinalQuestion, Pref, QType } from '@shared/contract'
+import type { Evidence, EvidenceField, FinalQType, FinalQuestion, OfferBlank, Pref, QType } from '@shared/contract'
+import { BLANK_TAGS } from './checkpoints'
 
 /**
  * 유형 칩 색: 충돌 주황 · 기회 초록 · 깊이 파랑 · 예방/탐색 회색(DESIGN-REVIEW D7).
@@ -53,7 +54,12 @@ export const FINAL_TONES: Record<FinalQType, ChipTone> = {
   opportunity: 'opportunity',
 }
 
-/** 최종 질문 칩 옆 설명: "고객사 상주 개발 · 걱정돼요 · 아직 모름". 처우 질문은 근로조건 이름("근로시간 · 공고 누락") */
+/** 처우 질문 칩 옆 설명: "근로시간 · 공고에 없음". 상태 글자는 ① 확인할 점과 같은 BLANK_TAGS(DR-r1-12) */
+export function offerMeta(blank: OfferBlank): string {
+  return `${blank.label} · ${BLANK_TAGS[blank.status]}`
+}
+
+/** 최종 질문 칩 옆 설명: "고객사 상주 개발 · 걱정돼요 · 아직 모름". 처우 질문은 offerMeta */
 export function finalMeta(q: FinalQuestion, pref: Pref | null, stateLabel: string | undefined, offerLabel: string | undefined): string {
   if (!q.card_id) return offerLabel ?? ''
   const parts = [getCard(q.card_id)?.label ?? q.card_id]

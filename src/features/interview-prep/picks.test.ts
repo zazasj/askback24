@@ -9,6 +9,7 @@ import {
   experienceTarget,
   fromPreset,
   isSelection,
+  oneLine,
   requestKey,
   toCardPicks,
   toFirstRequest,
@@ -44,6 +45,13 @@ describe('경험 한 줄을 붙일 카드', () => {
     expect(experienceTarget({ ...base, picks, exp_card: null })).toBe('BE02')
     expect(experienceTarget({ ...base, picks: picks.slice(0, 1), exp_card: null })).toBeNull()
     expect(experienceTarget({ ...base, experience: '  ', picks, exp_card: 'BE03' })).toBeNull()
+  })
+})
+
+describe('한 줄 입력(textarea, DR-r1-08)', () => {
+  it('붙여 넣은 줄바꿈은 띄어쓰기 하나로 바꾸고 나머지는 그대로', () => {
+    expect(oneLine('인턴 때\r\n  FastAPI로 만들어 봤는데')).toBe('인턴 때 FastAPI로 만들어 봤는데')
+    expect(oneLine('프로젝트마다 달라서요')).toBe('프로젝트마다 달라서요')
   })
 })
 

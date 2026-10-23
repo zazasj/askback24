@@ -80,6 +80,7 @@ export type BlankTopic = 'sal' | 'workHours' | 'probation' | 'onsite'
 export interface OfferBlank {
   topic: BlankTopic
   status: 'missing' | 'vague' | 'check'
+  /** 근로조건 이름("근로시간"). 공고 상태 글자("공고에 없음" 등)는 화면이 status로 붙인다(한 곳에서 정함) */
   label: string
   basis: string
   evidence?: Evidence

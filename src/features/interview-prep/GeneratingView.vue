@@ -3,6 +3,7 @@
  * 만드는 중: 세 줄이 차례로 켜지고 아래에 질문 카드 모양 빈 틀. 세 줄은 처음부터 다 보이고 상태만 바뀐다.
  */
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import MockModeTag from '@/components/ui/MockModeTag.vue'
 
 const props = withDefaults(defineProps<{ count?: number; stages?: readonly string[] }>(), {
   count: 5,
@@ -29,7 +30,10 @@ const stateOf = (i: number) => (i < active.value ? 'done' : i === active.value ?
 <template>
   <div class="generating" aria-busy="true">
     <div class="stages" role="status" aria-live="polite">
-      <p class="stages-title">질문을 만들고 있어요</p>
+      <div class="stages-head">
+        <p class="stages-title">질문을 만들고 있어요</p>
+        <MockModeTag />
+      </div>
       <ol class="stage-list">
         <li v-for="(s, i) in props.stages" :key="s" class="stage" :data-state="stateOf(i)">
           <span class="dot" aria-hidden="true"></span>
@@ -61,6 +65,13 @@ const stateOf = (i: number) => (i < active.value ? 'done' : i === active.value ?
   border: 1px solid var(--rq-accent-border);
   border-radius: var(--krds-radius-large1);
   background: var(--rq-accent-subtler);
+}
+
+.stages-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.2rem;
 }
 
 .stages-title {

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 // 단계 표시(KRDS step_indicator 모양). 현재 단계에 aria-current="step".
+// id="prep-steps": 휴대폰에서 단계가 바뀌면 여기로 스크롤한다(router.ts scrollBehavior)
 import type { StepNo } from './steps'
 
 defineProps<{ labels: readonly string[]; current: StepNo }>()
 </script>
 
 <template>
-  <ol class="step-nav" aria-label="준비 단계">
+  <ol id="prep-steps" class="step-nav" aria-label="준비 단계">
     <li
       v-for="(label, i) in labels"
       :key="label"

@@ -9,6 +9,8 @@ import { useRoute } from 'vue-router'
 import { CARD_BOOK } from '@shared/catalog'
 import type { Posting, Question } from '@shared/contract'
 import { typeLabel } from '@shared/rules'
+import { API_MODE } from '@/api/client'
+import MockModeTag from '@/components/ui/MockModeTag.vue'
 import { useCopy } from '@/composables/useCopy'
 import { usePrepStore } from '@/stores/prep'
 import { useQuestionsStore } from '@/stores/questions'
@@ -79,7 +81,10 @@ function printSheet(): void {
 <template>
   <section class="result-step" aria-labelledby="result-title">
     <div class="intro">
-      <h2 id="result-title" ref="title" class="section-title" tabindex="-1">1차·기술 면접 질문</h2>
+      <div class="title-row">
+        <h2 id="result-title" ref="title" class="section-title" tabindex="-1">1차·기술 면접 질문</h2>
+        <MockModeTag />
+      </div>
       <p v-if="generating" class="lead">고른 카드와 공고를 맞춰 보고 있어요.</p>
       <p v-else-if="questions.length" class="lead">
         고른 카드 {{ selection.picks.length }}개 중 공고와 차이가 큰 순서로 {{ questions.length }}개를 골랐어요.
@@ -91,7 +96,8 @@ function printSheet(): void {
     <template v-else-if="questions.length">
       <p class="sr-only" aria-live="polite">질문 {{ questions.length }}개를 만들었어요.</p>
       <p v-if="seeded" class="notice">
-        시연용 예시 지원 건이라 예시 구직자 A의 1차 질문을 미리 검수한 문장으로 만들어 두었어요. "AI로 다시 만들기"를 누르면 AI 문장으로 바꿔요.
+        시연용 예시 지원 건이라 예시 구직자 A의 1차 질문을 미리 검수한 문장으로 만들어 두었어요. "AI로 다시 만들기"를 누르면
+        {{ API_MODE === 'mock' ? '새 문장으로' : 'AI 문장으로' }} 바꿔요.
       </p>
       <p v-else-if="allTemplate" class="notice is-fallback">
         AI 응답을 받지 못해 미리 검수한 문장으로 보여 드려요. 질문 순서와 근거는 같아요.
@@ -182,6 +188,13 @@ function printSheet(): void {
 .intro {
   display: grid;
   gap: 0.6rem;
+}
+
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.2rem;
 }
 
 .section-title:focus {

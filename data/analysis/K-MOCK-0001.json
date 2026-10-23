@@ -35,14 +35,14 @@
     {
       "topic": "workHours",
       "status": "missing",
-      "label": "근로시간 · 공고 누락",
+      "label": "근로시간",
       "basis": "공고에 근무 시간이 없어요",
       "question": "바쁜 시기에는 업무량이 어떻게 조정되고, 연장근로는 월 평균 어느 정도인가요?"
     },
     {
       "topic": "sal",
       "status": "vague",
-      "label": "임금 구성 · 공고 모호",
+      "label": "임금 구성",
       "basis": "연봉 범위만 있고 구성이 없어요",
       "evidence": { "field": "sal", "quote": "3,200만 원 ~ 3,800만 원" },
       "question": "제시된 연봉은 기본급 기준인가요, 연장근로 수당 등이 포함된 금액인가요?"
@@ -50,7 +50,7 @@
     {
       "topic": "probation",
       "status": "check",
-      "label": "수습 · 확인 필요",
+      "label": "수습",
       "basis": "공고에 수습 3개월이 적혀 있어요",
       "evidence": { "field": "empTpNm", "quote": "수습 3개월" },
       "question": "수습 3개월 동안 급여는 연봉 기준과 같게 지급되나요?"

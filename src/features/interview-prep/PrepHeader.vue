@@ -19,7 +19,7 @@ const MODES: readonly Mode[] = ['first', 'final']
         <span class="sep" aria-hidden="true">·</span>
         <span class="title">{{ wantedTitle }}</span>
         <span class="sep" aria-hidden="true">·</span>
-        <span class="result">지원결과 <b>{{ result }}</b></span>
+        <span class="result"><span class="result-label">지원결과 </span><b>{{ result }}</b></span>
       </p>
       <fieldset class="mode">
         <legend class="mode-legend">준비할 면접</legend>
@@ -132,13 +132,91 @@ const MODES: readonly Mode[] = ['first', 'final']
   outline-offset: 0.2rem;
 }
 
+/* 휴대폰: 머리가 첫 화면을 덜 차지하게 요약은 한 줄(넘치면 채용제목 말줄임), 라디오는 2열 세그먼트(DR-r1-02) */
 @media (max-width: 767px) {
+  .page-title {
+    margin-bottom: 1.2rem;
+  }
+
   .summary {
-    padding: 1.4rem 1.6rem;
+    display: grid;
+    gap: 1rem;
+    padding: 1.2rem 1.4rem;
+  }
+
+  .target {
+    flex-wrap: nowrap;
+    min-width: 0;
+    gap: 0 0.6rem;
+    font-size: var(--krds-pc-font-size-body-small);
+    white-space: nowrap;
+  }
+
+  .corp,
+  .result {
+    flex: none;
+  }
+
+  .title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 글자는 화면낭독기에 남긴다 */
+  .result-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .mode {
+    display: block;
+  }
+
+  .mode-legend {
+    float: none;
+    margin: 0 0 0.4rem;
+    font-size: var(--krds-pc-font-size-label-xsmall);
+    line-height: 1.4;
+  }
+
+  .mode-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+  }
+
+  .mode-option {
+    display: flex;
   }
 
   .chip {
+    width: 100%;
+    justify-content: center;
     min-height: var(--rq-touch);
+    padding: 0 0.6rem;
+    border-radius: 0;
+    font-size: var(--krds-pc-font-size-label-xsmall);
+    text-align: center;
+  }
+
+  .mode-option:first-child .chip {
+    border-radius: var(--krds-radius-medium2) 0 0 var(--krds-radius-medium2);
+  }
+
+  .mode-option:last-child .chip {
+    margin-left: -1px;
+    border-radius: 0 var(--krds-radius-medium2) var(--krds-radius-medium2) 0;
+  }
+
+  /* 맞닿은 테두리에서 고른 쪽 테두리가 위에 오게 */
+  .mode-option input:checked + .chip {
+    position: relative;
+    z-index: 1;
   }
 }
 </style>

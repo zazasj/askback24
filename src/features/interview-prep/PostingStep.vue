@@ -96,6 +96,11 @@ const bubbleCards = computed(() =>
 )
 
 const points = computed(() => checkPoints(props.analysis))
+// 오른쪽 열이 공고보다 길어지지 않게 앞의 것(모호한 업무·근무 방식부터)만 먼저 보인다(DR-r1-03)
+const CHECKS_FIRST = 3
+const checksOpen = ref(false)
+const shownPoints = computed(() => (checksOpen.value ? points.value : points.value.slice(0, CHECKS_FIRST)))
+const hiddenChecks = computed(() => Math.max(0, points.value.length - CHECKS_FIRST))
 
 const root = useTemplateRef<HTMLElement>('root')
 
@@ -234,8 +239,8 @@ const isMarked = (s: Segment) => s.cardIds.length > 0
         <section class="side-box checks" aria-labelledby="checks-title">
           <h3 id="checks-title" class="side-title">AI가 찾은 확인할 점</h3>
           <p class="side-sub">면접에서 물어보면 좋을 곳을 골랐어요. 누르면 공고의 그 문구로 가요.</p>
-          <ul v-if="points.length" class="check-list">
-            <li v-for="p in points" :key="p.key">
+          <ul v-if="points.length" id="check-list" class="check-list">
+            <li v-for="p in shownPoints" :key="p.key">
               <button
                 v-if="p.hasMark && p.cardId"
                 type="button"
@@ -255,6 +260,16 @@ const isMarked = (s: Segment) => s.cardIds.length > 0
             </li>
           </ul>
           <p v-else class="side-sub">아직 이 공고는 분석하지 못했어요.</p>
+          <button
+            v-if="hiddenChecks > 0"
+            type="button"
+            class="btn btn-tertiary btn-sm more-checks"
+            aria-controls="check-list"
+            :aria-expanded="checksOpen"
+            @click="checksOpen = !checksOpen"
+          >
+            {{ checksOpen ? '확인할 점 접기' : `확인할 점 ${hiddenChecks}개 더 보기` }}
+          </button>
         </section>
 
         <section v-if="signals.length" class="side-box signals" aria-labelledby="signals-title">
@@ -265,17 +280,21 @@ const isMarked = (s: Segment) => s.cardIds.length > 0
               <span class="source" :class="s.source === '실제' ? 'is-real' : 'is-mock'">{{ s.source }}</span>
               <span class="signal-body">
                 <span class="signal-text">{{ s.text }}</span>
-                <span class="signal-from">{{ s.source_name }}</span>
+                <span class="signal-from">{{ s.source_name }} · 값은 예시</span>
               </span>
             </li>
           </ul>
-          <p class="signal-help">"실제"는 공공데이터에서 가져온 사실, "모의"는 시연용으로 만든 값이에요.</p>
+          <p class="signal-help">
+            "실제"는 실제 서비스에서 공공데이터로 채울 항목이에요. 시연 회사는 가상이라 값은 예시예요. "모의"는 시연용으로 만든 항목이에요.
+          </p>
         </section>
       </div>
     </div>
 
-    <div class="step-actions">
-      <button type="button" class="btn btn-accent btn-lg" @click="emit('next')">{{ nextLabel }}</button>
+    <!-- 다음 버튼이 긴 공고·확인할 점 아래로 묻히지 않게 아래 고정 바(② .pick-bar와 같은 모양, DR-r1-03) -->
+    <div class="step-bar">
+      <p v-if="points.length" class="step-bar-note">AI가 확인할 점 <strong>{{ points.length }}개</strong>를 찾았어요</p>
+      <button type="button" class="btn btn-accent btn-lg next" @click="emit('next')">{{ nextLabel }}</button>
     </div>
   </section>
 </template>
@@ -616,9 +635,38 @@ mark[data-active='true'] {
   color: var(--krds-light-color-text-subtle);
 }
 
-.step-actions {
+.more-checks {
+  justify-self: start;
+}
+
+/* ── 아래 고정 바 ───────────────────────────────────── */
+.step-bar {
+  position: sticky;
+  bottom: 0.8rem;
+  z-index: 10;
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  padding: 1.2rem 1.6rem 1.2rem 2rem;
+  border: 1px solid var(--rq-accent-border);
+  border-radius: var(--krds-radius-large1);
+  background: var(--krds-light-color-surface-white);
+  box-shadow: var(--rq-shadow-pop);
+}
+
+.step-bar-note {
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.step-bar-note strong {
+  color: var(--rq-accent-strong);
+}
+
+.step-bar .next {
+  margin-left: auto;
 }
 
 @media (max-width: 1023px) {
@@ -641,8 +689,23 @@ mark[data-active='true'] {
     padding: 1.4rem;
   }
 
-  .step-actions .btn {
+  .more-checks {
+    min-height: var(--rq-touch);
+  }
+
+  /* 휴대폰: 바가 화면을 덜 가리게 버튼만 */
+  .step-bar {
+    padding: 1rem;
+  }
+
+  .step-bar-note {
+    display: none;
+  }
+
+  .step-bar .next {
     width: 100%;
+    min-height: var(--rq-touch);
+    font-size: var(--krds-pc-font-size-label-small);
   }
 }
 </style>

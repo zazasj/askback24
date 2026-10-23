@@ -12,11 +12,12 @@ import GovHeader from '@/components/gov/GovHeader.vue'
 import MainMenu from '@/components/gov/MainMenu.vue'
 import SideNav from '@/components/gov/SideNav.vue'
 import SideSelect from '@/components/gov/SideSelect.vue'
-import DemoTools from '@/components/ui/DemoTools.vue'
 import ToastHost from '@/components/ui/ToastHost.vue'
 
 const route = useRoute()
 const withSide = computed(() => route.meta.side !== undefined)
+// 휴대폰 S4는 머리가 첫 화면을 거의 다 차지해 메뉴 선택 상자를 뺀다(경로 표시의 "알선/입사지원 내역"으로 돌아감, DR-r1-02)
+const isPrep = computed(() => route.name === 'prep')
 </script>
 
 <template>
@@ -32,12 +33,11 @@ const withSide = computed(() => route.meta.side !== undefined)
     </aside>
     <main id="main-content" class="page-main" tabindex="-1">
       <GovBreadcrumb />
-      <SideSelect v-if="withSide" />
+      <SideSelect v-if="withSide && !isPrep" />
       <slot />
     </main>
   </div>
   <GovFooter />
-  <DemoTools />
   <ToastHost />
 </template>
 

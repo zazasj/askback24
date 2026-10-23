@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ANALYSES, CARDS, getPosting } from './catalog'
+import { ANALYSES, CARDS, FINAL_BOOK, getPosting } from './catalog'
 import type { Posting, PostingState, QType } from './contract'
 import { classify, questionTemplate } from './rules'
 import { TEXT_MAX, checkFinalQuestion, checkFirstQuestion, hasForbiddenWord, quoteInPosting } from './validate'
@@ -114,6 +114,29 @@ describe('검수 틀은 검사를 모두 통과한다(대체 문장이 다시 �
           expect(checkFirstQuestion({ text, state }, OO), `${card.id} ${pref} × ${state} = ${type}`).toEqual([])
         }
       }
+    }
+  })
+})
+
+/** 화면의 다른 글은 모두 해요체라 질문·주의할 답·좋은 신호에 합쇼체·한다체가 섞이면 내부 메모처럼 읽힌다 */
+describe('문체: 질문 틀·주의할 답·좋은 신호는 해요체(DR-r1-10·11)', () => {
+  const FORMAL = /니다|니까/
+  const ENDS_HAEYO = /요[.!?]?$/
+
+  it('DR-r1-10 질문 틀(카드·최종·처우 재료)에 "…습니다/합니다"가 없다', () => {
+    for (const c of CARDS) for (const [t, text] of Object.entries(c.questions)) expect(text, `${c.id}.${t}`).not.toMatch(FORMAL)
+    const T = FINAL_BOOK.templates
+    for (const text of [T.recheck_vague_tail, T.scope.avoid, T.scope.want, T.signal_lead, ...FINAL_BOOK.cushions]) expect(text).not.toMatch(FORMAL)
+    for (const a of ANALYSES) for (const b of a.blanks) expect(b.question, `${a.wantedAuthNo} ${b.topic}`).not.toMatch(FORMAL)
+  })
+
+  it('DR-r1-11 주의할 답·좋은 신호는 모두 "…요"로 끝난다(한다체·명사형 끝 없음)', () => {
+    for (const c of CARDS) {
+      for (const [k, text] of Object.entries(c.interpretation)) expect(text.trim(), `${c.id}.${k}`).toMatch(ENDS_HAEYO)
+    }
+    for (const [topic, t] of Object.entries(FINAL_BOOK.offer_topics)) {
+      expect(t.watch_out.trim(), `${topic}.watch_out`).toMatch(ENDS_HAEYO)
+      expect(t.good_sign.trim(), `${topic}.good_sign`).toMatch(ENDS_HAEYO)
     }
   })
 })

@@ -8,6 +8,11 @@ import type { Preset } from '@shared/catalog'
 export const EXPERIENCE_MAX = 100
 export const PREFS: readonly Pref[] = ['want', 'avoid', 'unsure']
 
+/** 한 줄 입력(경험 한 줄·들은 답)에 붙여 넣은 줄바꿈을 띄어쓰기로 */
+export function oneLine(text: string): string {
+  return text.replace(/\s*[\r\n]+\s*/g, ' ')
+}
+
 export interface Choice {
   card_id: string
   pref: Pref

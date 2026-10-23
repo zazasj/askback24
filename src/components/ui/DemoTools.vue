@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /**
- * 오른쪽 아래 "시연 도구". 시연용 버튼을 본 화면에서 빼 두어 실제 서비스처럼 보이게 한다.
+ * 시연 띠 오른쪽 끝의 "시연 도구". 시연용 버튼을 본 화면에서 빼 두어 실제 서비스처럼 보이게 하고,
+ * 띠 안에 두어 본문을 가리지 않으면서 "시연용"이라는 뜻을 함께 보인다(DR-r1-01).
  * 화면별 버튼(useDemoToolActions)이 위, 공통 버튼(안내 다시 보기·시연 초기화)이 아래.
  */
 import { nextTick, ref, useTemplateRef } from 'vue'
@@ -22,7 +23,7 @@ const busy = ref(false)
 function close(returnFocus = false): void {
   if (!tools.open) return
   tools.open = false
-  if (returnFocus) void nextTick(() => toggle.value?.focus())
+  if (returnFocus) void nextTick(() => toggle.value?.focus({ preventScroll: true }))
 }
 
 onClickOutside(root, () => close())
@@ -53,7 +54,27 @@ async function resetDemo(): Promise<void> {
 </script>
 
 <template>
-  <div ref="root" class="demo-tools" :style="tools.bottomInset > 0 ? { bottom: `calc(${tools.bottomInset}px + 1.6rem)` } : undefined">
+  <div ref="root" class="demo-tools">
+    <button
+      ref="toggle"
+      type="button"
+      class="toggle tap-target"
+      aria-controls="demo-tools-panel"
+      :aria-expanded="tools.open"
+      @click="tools.open = !tools.open"
+    >
+      <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" focusable="false">
+        <circle cx="10" cy="10" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
+        <path
+          d="M10 1.5v3M10 15.5v3M1.5 10h3M15.5 10h3M4 4l2.1 2.1M13.9 13.9L16 16M4 16l2.1-2.1M13.9 6.1L16 4"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+        />
+      </svg>
+      <span>시연 도구</span>
+    </button>
     <div v-show="tools.open" id="demo-tools-panel" class="panel" role="group" aria-labelledby="demo-tools-title">
       <p id="demo-tools-title" class="panel-title">시연용 버튼</p>
       <ul v-if="tools.pageActions.length" class="actions">
@@ -66,66 +87,57 @@ async function resetDemo(): Promise<void> {
         <li><button type="button" class="action" :disabled="busy" @click="resetDemo">시연 초기화</button></li>
       </ul>
     </div>
-    <button
-      ref="toggle"
-      type="button"
-      class="toggle"
-      aria-controls="demo-tools-panel"
-      :aria-expanded="tools.open"
-      @click="tools.open = !tools.open"
-    >
-      <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" focusable="false">
-        <circle cx="10" cy="10" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
-        <path
-          d="M10 1.5v3M10 15.5v3M1.5 10h3M15.5 10h3M4 4l2.1 2.1M13.9 13.9L16 16M4 16l2.1-2.1M13.9 6.1L16 4"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          stroke-linecap="round"
-        />
-      </svg>
-      <span>시연 도구</span>
-    </button>
   </div>
 </template>
 
 <style scoped>
 .demo-tools {
-  position: fixed;
-  right: 2.4rem;
-  bottom: 2.4rem;
-  z-index: 50;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.8rem;
+  position: relative;
+  flex: none;
 }
 
+/* 어두운 시연 띠 위의 버튼: 띠와 같은 회색 계열, 테두리로만 구분 */
 .toggle {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
-  min-height: var(--rq-touch);
-  padding: 0 1.6rem;
-  border: 1px solid var(--krds-light-color-border-gray-dark);
+  gap: 0.5rem;
+  min-height: 3.2rem;
+  padding: 0 1.2rem;
+  border: 1px solid var(--krds-color-light-gray-30);
   border-radius: var(--krds-radius-max);
-  background: var(--krds-light-color-surface-white);
-  box-shadow: var(--rq-shadow-pop);
-  font-size: var(--krds-pc-font-size-label-small);
+  background: transparent;
+  font-size: var(--krds-pc-font-size-label-xsmall);
   font-weight: 700;
-  color: var(--krds-light-color-text-bolder);
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--krds-color-light-gray-0);
+}
+
+.toggle:hover {
+  background: var(--krds-color-light-gray-70);
 }
 
 .toggle[aria-expanded='true'] {
-  border-color: var(--krds-light-color-border-gray-darker);
+  border-color: var(--krds-color-light-gray-0);
+  background: var(--krds-color-light-gray-0);
+  color: var(--krds-color-light-gray-90);
+}
+
+.toggle:focus-visible {
+  outline-color: var(--krds-color-light-gray-0);
 }
 
 .toggle svg {
-  width: 2rem;
-  height: 2rem;
+  width: 1.6rem;
+  height: 1.6rem;
 }
 
+/* 패널은 띠 바로 아래로 펼친다(본문 위에 겹치지만 열었을 때만) */
 .panel {
+  position: absolute;
+  top: calc(100% + 1rem);
+  right: 0;
+  z-index: 60;
   width: 26rem;
   max-width: calc(100vw - 3.2rem);
   padding: 1.2rem;
@@ -133,6 +145,7 @@ async function resetDemo(): Promise<void> {
   border-radius: var(--krds-radius-large1);
   background: var(--krds-light-color-surface-white);
   box-shadow: var(--rq-shadow-pop);
+  color: var(--krds-light-color-text-basic);
 }
 
 .panel-title {
@@ -163,12 +176,5 @@ async function resetDemo(): Promise<void> {
 
 .action:hover {
   background: var(--krds-light-color-surface-gray-subtler);
-}
-
-@media (max-width: 767px) {
-  .demo-tools {
-    right: 1.6rem;
-    bottom: 1.6rem;
-  }
 }
 </style>

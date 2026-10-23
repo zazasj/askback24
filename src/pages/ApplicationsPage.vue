@@ -92,6 +92,24 @@ const hasResult = (result: string) => result !== '-'
 
 // 닫기 단추가 사라지면 초점이 문서 처음으로 튀므로 화면 제목으로 옮긴다
 const titleEl = useTemplateRef<HTMLHeadingElement>('title')
+
+// 휴대폰은 검색 상자 아래에 지원 건이 있어 첫 화면에 안 보인다. 안내 띠에서 첫 버튼으로 바로 보내고
+// 깜빡임을 그때 다시 한 번 보인다(애니메이션 이름을 바꿔야 다시 돈다, DR-r1-07)
+const root = useTemplateRef<HTMLElement>('root')
+const pulseRun = ref(0)
+async function jumpToFirst(): Promise<void> {
+  const first = Array.from(root.value?.querySelectorAll<HTMLButtonElement>('.prep-btn') ?? []).find((b) => b.offsetParent !== null)
+  if (!first) return
+  pulseRun.value++
+  await nextTick()
+  first.scrollIntoView({ block: 'center' })
+  first.focus({ preventScroll: true })
+}
+
+function pulseClass(i: number): Record<string, boolean> {
+  const on = i === 0 && !demo.guideClosed
+  return { 'is-pulse': on && pulseRun.value % 2 === 0, 'is-pulse-again': on && pulseRun.value % 2 === 1 }
+}
 async function closeGuide(): Promise<void> {
   demo.closeGuide()
   await nextTick()
@@ -100,7 +118,7 @@ async function closeGuide(): Promise<void> {
 </script>
 
 <template>
-  <div class="s1">
+  <div ref="root" class="s1">
     <h1 ref="title" class="page-title" tabindex="-1">알선/입사지원 내역</h1>
 
     <section v-if="!demo.guideClosed" class="guide" aria-labelledby="guide-title">
@@ -110,6 +128,7 @@ async function closeGuide(): Promise<void> {
           <span><strong>새 기능</strong> 지원한 공고로 면접에서 물어볼 질문을 준비해 보세요</span>
         </p>
         <p class="guide-text">맨 위 지원 건의 <strong>면접 역질문 준비</strong>를 누르면 1분 안에 질문까지 받아 볼 수 있어요.</p>
+        <button type="button" class="btn btn-accent-outline btn-sm guide-jump" @click="jumpToFirst">맨 위 지원 건으로 가기</button>
       </div>
       <button type="button" class="guide-close" aria-label="안내 닫기" @click="closeGuide">
         <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
@@ -188,7 +207,7 @@ async function closeGuide(): Promise<void> {
               <button
                 type="button"
                 class="btn btn-accent btn-sm prep-btn"
-                :class="{ 'is-pulse': i === 0 && !demo.guideClosed }"
+                :class="pulseClass(i)"
                 @click="openPrep(r)"
               >
                 {{ r.prepLabel }}
@@ -228,7 +247,7 @@ async function closeGuide(): Promise<void> {
           <button
             type="button"
             class="btn btn-accent prep-btn"
-            :class="{ 'is-pulse': i === 0 && !demo.guideClosed }"
+            :class="pulseClass(i)"
             @click="openPrep(r)"
           >
             {{ r.prepLabel }}
@@ -439,6 +458,10 @@ fieldset.search-row > legend {
   animation: prep-pulse 2.4s ease-in-out 2;
 }
 
+.prep-btn.is-pulse-again {
+  animation: prep-pulse-again 2.4s ease-in-out 2;
+}
+
 @keyframes prep-pulse {
   0%,
   100% {
@@ -450,6 +473,22 @@ fieldset.search-row > legend {
   }
 }
 
+@keyframes prep-pulse-again {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--rq-accent-border);
+  }
+
+  50% {
+    box-shadow: 0 0 0 0.6rem var(--rq-accent-border);
+  }
+}
+
+/* 데스크톱은 표가 첫 화면에 보여 필요 없다 */
+.guide-jump {
+  display: none;
+}
+
 /* ── 휴대폰 카드 ────────────────────────────────────── */
 .app-cards {
   display: none;
@@ -458,6 +497,11 @@ fieldset.search-row > legend {
 @media (max-width: 767px) {
   .guide {
     padding: 1.4rem 1.6rem;
+  }
+
+  .guide-jump {
+    display: inline-flex;
+    margin-top: 1rem;
   }
 
   .search-box {

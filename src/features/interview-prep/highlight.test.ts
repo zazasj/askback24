@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { POSTINGS, getAnalysis, getPosting } from '@shared/catalog'
 import type { EvidenceField, Posting } from '@shared/contract'
-import { checkPoints } from './checkpoints'
+import { BLANK_TAGS, checkPoints } from './checkpoints'
+import { offerMeta } from './questionView'
 import { marksOf, segmentsFor, splitByQuotes } from './highlight'
 
 const join = (segs: Array<{ text: string }>) => segs.map((s) => s.text).join('')
@@ -81,5 +82,22 @@ describe('AI가 찾은 확인할 점', () => {
       expect(points.length, posting.wantedAuthNo).toBeGreaterThanOrEqual(3)
       expect(points.some((p) => p.title === '수습' && p.tag !== '공고에 없음'), posting.wantedAuthNo).toBe(false)
     }
+  })
+})
+
+describe('근로조건 상태 글자(DR-r1-12)', () => {
+  it('분석 JSON의 근로조건 이름에는 상태 글자가 없고("· 공고 누락" 등), ① 확인할 점과 최종 ③ 처우 질문이 같은 글자를 쓴다', () => {
+    for (const posting of POSTINGS) {
+      const analysis = getAnalysis(posting.wantedAuthNo)
+      for (const b of analysis?.blanks ?? []) {
+        expect(b.label, `${posting.wantedAuthNo} ${b.topic}`).not.toMatch(/·|누락|모호|확인 필요/)
+        expect(offerMeta(b)).toBe(`${b.label} · ${BLANK_TAGS[b.status]}`)
+      }
+      for (const p of checkPoints(analysis).filter((x) => x.key.startsWith('blank:'))) {
+        expect(Object.values(BLANK_TAGS)).toContain(p.tag)
+      }
+    }
+    const hours = getAnalysis('K-MOCK-0001')?.blanks.find((b) => b.topic === 'workHours')
+    expect(hours && offerMeta(hours)).toBe('근로시간 · 공고에 없음')
   })
 })

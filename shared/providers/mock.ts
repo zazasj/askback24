@@ -67,7 +67,7 @@ const LEADS: Record<QType, (item: DraftItem) => readonly Lead[]> = {
         () => `공고의 '${q}'${iraneun(q)} 표현이 어떤 업무까지 포함하는지 궁금했어요. `,
         () => `'${q}'${iraneun(q)} 문구의 범위를 미리 알고 싶어요. `,
       ]
-    if (q && !item.template.startsWith('공고'))
+    if (q)
       return [() => `공고에 '${q}'라고 적혀 있어 여쭤요. `, () => `'${q}' 부분을 보고 미리 확인하고 싶었어요. `]
     return [() => '입사 전에 꼭 확인하고 싶은 부분이 있어요. ', () => '미리 알아 두고 싶은 부분이 있어요. ']
   },

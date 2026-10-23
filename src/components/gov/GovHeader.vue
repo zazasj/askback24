@@ -1,20 +1,16 @@
 <script setup lang="ts">
-// 로고는 직접 만든 단순 원형 마크. 태극·공식 로고 이미지는 쓰지 않는다(CLAUDE.md 사칭 금지).
+// 로고는 직접 만든 단순한 마크(둥근 사각형 안 말풍선 = 역질문). 태극·공식 로고 이미지는 쓰지 않는다(CLAUDE.md 사칭 금지).
+// 고용24의 파란 띠·개인/기업 탭 장식은 따라 하지 않고, "시연" 배지를 로고와 같은 무게로 둔다(DR-r1-04).
 </script>
 
 <template>
-  <div class="notice-bar">
-    <div class="inner">
-      <span class="member-type" aria-hidden="true"><span class="on">개인</span><span>기업</span></span>
-      <p class="notice">모의 데이터 · 회사명과 공고는 예시</p>
-    </div>
-  </div>
   <div class="gov-header">
     <div class="inner">
       <RouterLink to="/" class="logo">
         <svg class="logo-mark" viewBox="0 0 32 32" width="32" height="32" aria-hidden="true" focusable="false">
-          <circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="4" />
-          <path d="M16 3a13 13 0 0 1 0 26z" fill="currentColor" />
+          <rect class="mark-bg" x="1" y="1" width="30" height="30" rx="8" />
+          <path class="mark-bubble" d="M11 9h10a3 3 0 0 1 3 3v5a3 3 0 0 1-3 3h-5.5L11 24v-4a3 3 0 0 1-3-3v-5a3 3 0 0 1 3-3z" />
+          <path class="mark-lines" d="M12 13h8M12 16.2h5" />
         </svg>
         <span class="logo-text">고용24</span>
         <span class="logo-badge">시연</span>
@@ -36,38 +32,6 @@
   max-width: var(--rq-container);
   margin: 0 auto;
   padding: 0 var(--rq-gutter);
-}
-
-.notice-bar {
-  background: var(--krds-color-light-primary-60);
-  color: var(--krds-color-light-gray-0);
-  font-size: var(--krds-pc-font-size-body-xsmall);
-}
-
-.notice-bar .inner {
-  justify-content: flex-start;
-  min-height: 3.6rem;
-}
-
-.member-type {
-  display: inline-flex;
-  gap: 0.2rem;
-}
-
-.member-type span {
-  padding: 0.2rem 1rem;
-  border-radius: var(--krds-radius-small2);
-  opacity: 0.85;
-}
-
-.member-type .on {
-  background: var(--krds-color-light-primary-80);
-  font-weight: 700;
-  opacity: 1;
-}
-
-.notice {
-  font-weight: 500;
 }
 
 .gov-header {
@@ -95,7 +59,21 @@
 .logo-mark {
   width: 3.2rem;
   height: 3.2rem;
-  color: var(--krds-color-light-primary-50);
+}
+
+.mark-bg {
+  fill: var(--krds-color-light-primary-50);
+}
+
+.mark-bubble {
+  fill: var(--krds-color-light-gray-0);
+}
+
+.mark-lines {
+  fill: none;
+  stroke: var(--krds-color-light-primary-50);
+  stroke-width: 1.8;
+  stroke-linecap: round;
 }
 
 .logo-text {
@@ -104,13 +82,15 @@
   letter-spacing: -0.02em;
 }
 
+/* 시연 띠와 같은 진한 회색: 띠 아래만 잘라 봐도 실제 고용24 헤더로 읽히지 않게 */
 .logo-badge {
-  padding: 0.2rem 0.7rem;
-  border: 1px solid var(--krds-light-color-border-gray-dark);
+  padding: 0.3rem 0.8rem;
   border-radius: var(--krds-radius-small2);
-  font-size: 1.2rem;
+  background: var(--krds-color-light-gray-80);
+  font-size: 1.3rem;
   font-weight: 700;
-  color: var(--krds-light-color-text-subtle);
+  line-height: 1.4;
+  color: var(--krds-color-light-gray-0);
 }
 
 .utility {
@@ -131,14 +111,6 @@
 }
 
 @media (max-width: 767px) {
-  .notice-bar .inner {
-    min-height: 3.2rem;
-  }
-
-  .member-type {
-    display: none;
-  }
-
   .gov-header .inner {
     min-height: 5.6rem;
   }

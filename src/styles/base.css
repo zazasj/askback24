@@ -260,6 +260,15 @@ input[type='date']:focus-within {
   }
 }
 
+/* 한 줄 입력이지만 쓴 글이 잘리지 않게 줄바꿈되는 칸(textarea). Enter 줄바꿈은 화면에서 막는다(DR-r1-08) */
+.input.input-multiline {
+  display: block;
+  padding: 0.9rem 1.2rem;
+  line-height: 1.5;
+  resize: none;
+  field-sizing: content;
+}
+
 /* ── 배지·라벨 ───────────────────────────────────────── */
 .badge {
   display: inline-flex;

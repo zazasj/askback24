@@ -8,6 +8,7 @@ import { computed, nextTick, useTemplateRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getAnalysis, getCard } from '@shared/catalog'
 import type { FinalQuestion, Posting, ReviewState } from '@shared/contract'
+import MockModeTag from '@/components/ui/MockModeTag.vue'
 import { useCopy } from '@/composables/useCopy'
 import { usePrepStore } from '@/stores/prep'
 import { finalKey, useQuestionsStore } from '@/stores/questions'
@@ -15,7 +16,7 @@ import { useReviewStore } from '@/stores/review'
 import GeneratingView from './GeneratingView.vue'
 import { prefOf } from './picks'
 import QuestionCard from './QuestionCard.vue'
-import { FINAL_TONES, evidenceLabel, finalMeta, finalTypeLabel } from './questionView'
+import { FINAL_TONES, evidenceLabel, finalMeta, finalTypeLabel, offerMeta } from './questionView'
 import { MOOD_LABELS, STATE_LABELS, isTouched } from './review'
 
 const props = defineProps<{ applyId: string; posting: Posting }>()
@@ -80,7 +81,10 @@ const stateLabelOf = (cardId: string) => {
   const s = result.value?.response.card_states.find((c) => c.card_id === cardId)?.state
   return s ? STATE_LABELS[s] : undefined
 }
-const offerLabelOf = (q: FinalQuestion) => analysis.value?.blanks.find((b) => b.topic === q.topic)?.label
+const offerLabelOf = (q: FinalQuestion) => {
+  const blank = analysis.value?.blanks.find((b) => b.topic === q.topic)
+  return blank ? offerMeta(blank) : undefined
+}
 
 function metaOf(q: FinalQuestion): string {
   return finalMeta(q, q.card_id ? prefOf(picks.value, q.card_id) : null, q.card_id ? stateLabelOf(q.card_id) : undefined, offerLabelOf(q))
@@ -118,7 +122,10 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
 <template>
   <section class="final-step" aria-labelledby="final-title">
     <div class="intro">
-      <h2 id="final-title" ref="title" class="section-title" tabindex="-1">최종 면접·처우 질문</h2>
+      <div class="title-row">
+        <h2 id="final-title" ref="title" class="section-title" tabindex="-1">최종 면접·처우 질문</h2>
+        <MockModeTag />
+      </div>
       <p v-if="generating" class="lead">1차 면접에서 정리한 것을 내 기대와 맞대 보고 있어요.</p>
       <p v-else-if="questions.length" class="lead">
         확인된 것은 빼고, 남은 것과 처우 질문을 묻기 좋은 순서로 {{ questions.length }}개 골랐어요.
@@ -130,17 +137,27 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
     <template v-else-if="result">
       <p class="sr-only" aria-live="polite">최종 질문 {{ questions.length }}개를 만들었어요.</p>
 
+      <!-- ③은 질문이 주인공: 요약은 한 줄 개수 띠, 카드별 내용·뜻은 펼침 안(DR-r1-09) -->
       <section class="summary" aria-labelledby="summary-title" data-print="hide">
-        <h3 id="summary-title" class="sub-title">1차 면접 정리 결과</h3>
-        <dl class="summary-grid">
-          <div v-for="row in summaryRows" :key="row.state" class="stat" :class="`is-${row.state}`">
-            <dt class="stat-label">{{ row.label }}</dt>
-            <dd class="stat-count">{{ row.count }}개</dd>
-            <dd class="stat-cards">{{ row.cards.length ? row.cards.join(', ') : '없음' }}</dd>
-            <dd v-if="row.count > 0" class="stat-note">{{ row.note }}</dd>
-          </div>
-        </dl>
+        <div class="summary-head">
+          <h3 id="summary-title" class="summary-title">1차 면접 정리 결과</h3>
+          <ul class="summary-strip">
+            <li v-for="row in summaryRows" :key="row.state" class="stat" :class="`is-${row.state}`">
+              <span class="stat-label">{{ row.label }}</span> <strong class="stat-count">{{ row.count }}</strong>
+            </li>
+          </ul>
+        </div>
         <p class="summary-foot">"기대와 다름"은 회사의 흠이 아니라 내 기대와 다르다는 뜻이에요. 점수는 매기지 않아요.</p>
+        <details class="summary-more">
+          <summary class="summary-toggle">카드별로 보기</summary>
+          <dl class="summary-grid">
+            <div v-for="row in summaryRows" :key="row.state" class="stat-box" :class="`is-${row.state}`">
+              <dt class="stat-box-label">{{ row.label }} {{ row.count }}개</dt>
+              <dd class="stat-cards">{{ row.cards.length ? row.cards.join(', ') : '없음' }}</dd>
+              <dd v-if="row.count > 0" class="stat-note">{{ row.note }}</dd>
+            </div>
+          </dl>
+        </details>
       </section>
 
       <p v-if="allTemplate" class="notice is-fallback">
@@ -152,7 +169,6 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
       <p v-if="ruleJudged" class="notice is-fallback">
         들은 답 판정도 단순 규칙(구체적 → 확인됨, 모호하거나 못 물음 → 아직 모름)으로 했어요. "기대와 다름"은 AI가 답을 읽어야 나와요.
       </p>
-      <p v-if="moodNote" class="notice" data-print="hide">{{ moodNote }}</p>
 
       <div class="result-layout">
         <ol class="questions" aria-label="최종 면접·처우 질문 목록">
@@ -180,6 +196,7 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
         <aside class="result-side" aria-labelledby="final-side-title" data-print="hide">
           <div class="side-box">
             <h3 id="final-side-title" class="side-title">1차 면접 정리</h3>
+            <p v-if="moodNote" class="side-line side-mood">{{ moodNote }}</p>
             <p class="side-line">정리를 고치면 최종 질문을 다시 만들 수 있어요.</p>
             <button type="button" class="btn btn-tertiary side-btn" @click="emit('edit')">1차 면접 정리 고치기</button>
             <button v-if="canRemake" type="button" class="btn btn-tertiary side-btn" @click="emit('remake')">AI로 다시 만들기</button>
@@ -249,59 +266,114 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
 }
 
 /* ── 요약 ─────────────────────────────────────────── */
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.2rem;
+}
+
 .summary {
   display: grid;
-  gap: 1.2rem;
-  padding: 2rem 2.4rem;
+  gap: 0.6rem;
+  padding: 1.2rem 1.6rem;
   border: 1px solid var(--rq-accent-border);
   border-radius: var(--krds-radius-large1);
   background: var(--rq-accent-subtler);
 }
 
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1.2rem;
+.summary-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.6rem;
 }
 
-.stat {
-  display: grid;
-  align-content: start;
-  gap: 0.2rem;
-  padding: 1.4rem 1.6rem;
-  border: 1px solid var(--krds-light-color-border-gray-light);
-  border-top: 0.4rem solid var(--krds-light-color-border-gray);
-  border-radius: var(--krds-radius-medium2);
-  background: var(--krds-light-color-surface-white);
-}
-
-.stat.is-confirmed {
-  border-top-color: var(--krds-light-color-border-success);
-}
-
-.stat.is-mismatch {
-  border-top-color: var(--krds-light-color-border-danger);
-}
-
-.stat.is-still_unknown {
-  border-top-color: var(--krds-light-color-border-warning);
-}
-
-.stat.is-company_signal {
-  border-top-color: var(--krds-light-color-border-information);
-}
-
-.stat-label {
-  font-size: var(--krds-pc-font-size-label-small);
+.summary-title {
+  font-size: var(--krds-pc-font-size-label-medium);
   font-weight: 700;
   color: var(--krds-light-color-text-bolder);
 }
 
+.summary-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.6rem;
+}
+
+/* 색은 점으로만 덧붙이고 뜻은 글자가 말한다. 확인됨 초록 · 기대와 다름 우리 기능 보라(위험의 빨강이 아님, DR-r1-13) · 아직 모름 노랑 · 회사가 먼저 물은 것 파랑 */
+.stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-basic);
+}
+
+.stat::before {
+  content: '';
+  flex: none;
+  align-self: center;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  background: var(--stat-color, var(--krds-light-color-border-gray));
+}
+
 .stat-count {
-  font-size: var(--krds-pc-font-size-heading-small);
+  font-size: var(--krds-pc-font-size-label-large);
   font-weight: 700;
-  line-height: 1.3;
   color: var(--rq-accent-strong);
+}
+
+.is-confirmed {
+  --stat-color: var(--krds-light-color-border-success);
+}
+
+.is-mismatch {
+  --stat-color: var(--rq-accent);
+}
+
+.is-still_unknown {
+  --stat-color: var(--krds-light-color-border-warning);
+}
+
+.is-company_signal {
+  --stat-color: var(--krds-light-color-border-information);
+}
+
+.summary-toggle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 3.2rem;
+  font-size: var(--krds-pc-font-size-label-small);
+  font-weight: 700;
+  color: var(--rq-accent-strong);
+  cursor: pointer;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 0.6rem;
+}
+
+.stat-box {
+  display: grid;
+  align-content: start;
+  gap: 0.2rem;
+  padding: 1.2rem 1.4rem;
+  border: 1px solid var(--krds-light-color-border-gray-light);
+  border-top: 0.4rem solid var(--stat-color, var(--krds-light-color-border-gray));
+  border-radius: var(--krds-radius-medium2);
+  background: var(--krds-light-color-surface-white);
+}
+
+.stat-box-label {
+  font-size: var(--krds-pc-font-size-label-small);
+  font-weight: 700;
+  color: var(--krds-light-color-text-bolder);
 }
 
 .stat-cards {
@@ -370,6 +442,12 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
   color: var(--krds-light-color-text-subtle);
 }
 
+.side-mood {
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--krds-light-color-divider-gray-light);
+  color: var(--krds-light-color-text-basic);
+}
+
 .side-btn {
   width: 100%;
 }
@@ -425,11 +503,15 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
 
 @media (max-width: 767px) {
   .summary {
-    padding: 1.6rem;
+    padding: 1.2rem 1.4rem;
   }
 
-  .stat {
-    padding: 1.2rem;
+  .summary-toggle {
+    min-height: var(--rq-touch);
+  }
+
+  .summary-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .result-side {

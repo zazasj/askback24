@@ -22,6 +22,10 @@ describe('업무 카드', () => {
     expect(getCard('BE15')?.questions.prevent).toBeTruthy()
   })
 
+  it('QA-R1-01 질문 틀은 공고 내용을 말하지 않는다(어느 공고에나 쓰여서, 공고 인용은 앞말 몫)', () => {
+    for (const c of CARDS) for (const [t, text] of Object.entries(c.questions)) expect(text, `${c.id}.${t}`).not.toMatch(/공고/)
+  })
+
   it('유형 라벨 5종', () => {
     expect(Object.values(CARD_BOOK.type_labels)).toEqual(['충돌 확인', '기회 확인', '깊이 확인', '충돌 예방', '탐색'])
   })

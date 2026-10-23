@@ -11,6 +11,7 @@ import { typeLabel } from '@shared/rules'
 import { usePrepStore } from '@/stores/prep'
 import { useQuestionsStore } from '@/stores/questions'
 import { useReviewStore } from '@/stores/review'
+import { oneLine } from './picks'
 import { cardMeta } from './questionView'
 import {
   ASKED_LABELS,
@@ -43,8 +44,9 @@ const hasPicks = computed(() => prep.selectionOf(props.applyId).picks.length > 0
 const ASKED: readonly AskedChoice[] = ['asked', 'not_asked']
 const CLARITIES: readonly Clarity[] = ['clear', 'vague']
 
+// 한 줄 입력이라 붙여 넣은 줄바꿈은 띄어쓰기로 바꾼다(칸은 휴대폰에서 글이 잘리지 않게 textarea)
 function onHeard(cardId: string, e: Event): void {
-  review.setHeard(props.applyId, cardId, (e.target as HTMLInputElement).value)
+  review.setHeard(props.applyId, cardId, oneLine((e.target as HTMLTextAreaElement).value))
 }
 
 function onReason(cardId: string, e: Event): void {
@@ -111,17 +113,18 @@ function setMood(m: Mood): void {
             <div v-if="item(q.card_id).asked === 'asked'" class="detail">
               <div class="field">
                 <label :for="`heard-${q.card_id}`" class="field-label">들은 답</label>
-                <input
+                <textarea
                   :id="`heard-${q.card_id}`"
-                  class="input heard-input"
-                  type="text"
+                  class="input input-multiline heard-input"
+                  rows="2"
                   :maxlength="HEARD_MAX"
                   autocomplete="off"
                   placeholder="예: 신규 개발은 프로젝트 들어갈 때만 해요"
                   :aria-describedby="`heard-${q.card_id}-count`"
                   :value="item(q.card_id).heard"
+                  @keydown.enter.prevent
                   @input="onHeard(q.card_id, $event)"
-                />
+                ></textarea>
                 <span :id="`heard-${q.card_id}-count`" class="field-count">{{ item(q.card_id).heard.length }}/{{ HEARD_MAX }}자</span>
               </div>
               <fieldset class="choice-row">
@@ -508,6 +511,15 @@ function setMood(m: Mood): void {
 
   .task-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 입력칸을 한 줄 전체로 쓰고 글자 수는 칸 아래 오른쪽에(DR-r1-08) */
+  .field {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .field-count {
+    justify-self: end;
   }
 
   .review-bar {

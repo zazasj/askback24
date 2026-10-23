@@ -67,10 +67,21 @@ const routes: RouteRecordRaw[] = [
   { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundPage, meta: { title: NOT_FOUND_TITLE, crumbs: [{ label: NOT_FOUND_TITLE }] } },
 ]
 
+/** S4 단계 표시(StepNav.vue) */
+const PREP_STEPS = '#prep-steps'
+
 export const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior: (_to, _from, saved) => saved ?? { top: 0 },
+  scrollBehavior: (to, from, saved) => {
+    if (saved) return saved
+    // 휴대폰에서 S4 단계·면접 종류(쿼리)만 바뀌면 머리 대신 단계 표시부터 보이게 한다.
+    // 맨 위로 가면 머리가 첫 화면을 거의 다 차지해 만드는 중·결과가 보이지 않는다(DR-r1-02)
+    const sameScreen = to.name === 'prep' && to.path === from.path
+    if (sameScreen && window.matchMedia('(max-width: 767px)').matches && document.querySelector(PREP_STEPS))
+      return { el: PREP_STEPS, top: 8 }
+    return { top: 0 }
+  },
 })
 
 router.afterEach((to) => {

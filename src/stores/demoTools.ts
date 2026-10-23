@@ -1,5 +1,5 @@
 /**
- * 시연 도구 상자. 공통 버튼(시연 초기화·안내 다시 보기)은 DemoTools.vue 가 갖고,
+ * 시연 도구 상자(시연 띠 오른쪽 끝). 공통 버튼(시연 초기화·안내 다시 보기)은 DemoTools.vue 가 갖고,
  * 화면별 버튼(S4 ② "예시 구직자 A로 채우기" 등)은 그 화면이 useDemoToolActions 로 올린다.
  */
 import { defineStore } from 'pinia'
@@ -24,8 +24,6 @@ export function onDemoReset(handler: () => void): () => void {
 export const useDemoToolsStore = defineStore('demoTools', () => {
   const pageActions = shallowRef<DemoToolAction[]>([])
   const open = ref(false)
-  /** 화면 아래 고정 바 높이(px). 시연 도구 버튼이 그 바를 가리지 않게 위로 올린다 */
-  const bottomInset = ref(0)
 
   function setPageActions(actions: DemoToolAction[]): void {
     pageActions.value = actions
@@ -42,7 +40,7 @@ export const useDemoToolsStore = defineStore('demoTools', () => {
     for (const h of resetHandlers) h()
   }
 
-  return { pageActions, open, bottomInset, setPageActions, clearPageActions, resetAll }
+  return { pageActions, open, setPageActions, clearPageActions, resetAll }
 })
 
 /** 화면이 떠 있는 동안만 시연 도구에 버튼을 더한다. */
