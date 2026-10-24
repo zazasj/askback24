@@ -211,6 +211,25 @@ describe('가짜 공급자의 경험 문장', () => {
     expect(experienceSentence('FastAPI 경험')).toBeNull()
   })
 
+  it('A2-06 "…다"·"…요"·"…봄"으로 끝난 경험도 문법에 맞는 문장, 검사 통과(source ai), "경험 포함" 그대로', async () => {
+    const cases: Array<[string, string]> = [
+      ['카페 아르바이트를 2년 했습니다', '카페 아르바이트를 2년 했습니다. 이 팀에서는'],
+      ['학교에서 팀 프로젝트를 했어요', '학교에서 팀 프로젝트를 했어요. 이 팀에서는'],
+      ['Spring으로 게시판 만들어 봄', '제 경험과 이어지는 일이라 여쭤요. 이 팀에서는'],
+    ]
+    for (const [exp, start] of cases) {
+      for (const variant of [0, 1]) {
+        const res = await generateFirst({ ...reqA(), experience: exp }, { provider: createMockProvider({ variant }) })
+        const q = res.questions[4]
+        expect(q?.has_exp, exp).toBe(true)
+        expect(q?.source, `${exp}: 검사 통과`).toBe('ai')
+        expect(q?.text.startsWith(start), `${exp} → ${q?.text}`).toBe(true)
+        expect(q?.text, exp).not.toMatch(/(?:다|요|봄), /)
+        expect(res.questions.map((x) => x.card_id)).toEqual(ORDER_A_OO)
+      }
+    }
+  })
+
   it('바꿀 수 없는 경험이면 경험 질문은 검수 문장과 같은 글로 쓴다', async () => {
     const res = await generateFirst({ ...reqA(), experience: '전공이 컴퓨터공학인데' }, { provider: createMockProvider() })
     expect(res.questions[4]?.text.startsWith('전공이 컴퓨터공학인데, ')).toBe(true)

@@ -5,7 +5,7 @@
  */
 import { defineStore } from 'pinia'
 import { ref, type Ref } from 'vue'
-import type { FinalQuestion, FinalQuestionsResponse, FirstQuestionsResponse } from '@shared/contract'
+import type { FinalQuestion, FinalQuestionsResponse, FirstQuestionsResponse, Mode } from '@shared/contract'
 import { fetchFinalQuestions, fetchFirstQuestions } from '@/api/client'
 import { seedFirst } from '@/demoData'
 import { requestKey, toFirstRequest } from '@/features/interview-prep/picks'
@@ -151,7 +151,22 @@ export const useQuestionsStore = defineStore('questions', () => {
     return r.request_key === requestKey(toFirstRequest(wantedAuthNo, usePrepStore().selectionOf(applyId)))
   }
 
-  /** ② 선택으로 1차 질문을 만든다(질문 만들기·AI로 다시 만들기). 끝날 때까지 isGenerating */
+  /** 그 면접 종류의 결과가 있는지(1차는 시드 포함). S1에서 들어올 때 ③으로 열지 정한다 */
+  function hasResult(applyId: string, mode: Mode): boolean {
+    return mode === 'first' ? !!firstOf(applyId) : !!finalOf(applyId)
+  }
+
+  /**
+   * ② "질문 만들기". 지금 선택으로 만든 결과가 이미 있으면 다시 만들지 않는다: 문장이 바뀌면 인쇄해 둔 것과 어긋나고
+   * 실제 모드에서는 AI를 한 번 더 부른다. 다시 만들기는 "AI로 다시 만들기"(makeFirst)만 한다. 새로 만들기 시작했으면 true
+   */
+  function ensureFirst(applyId: string, wantedAuthNo: string, options: { apiFail?: boolean } = {}): boolean {
+    if (isCurrent(applyId, wantedAuthNo)) return false
+    void makeFirst(applyId, wantedAuthNo, options)
+    return true
+  }
+
+  /** ② 선택으로 1차 질문을 만든다(AI로 다시 만들기, 결과가 없을 때의 질문 만들기). 끝날 때까지 isGenerating */
   async function makeFirst(applyId: string, wantedAuthNo: string, options: { apiFail?: boolean } = {}): Promise<void> {
     const req = toFirstRequest(wantedAuthNo, usePrepStore().selectionOf(applyId))
     const { my, variant } = firstRuns.start(applyId)
@@ -230,6 +245,8 @@ export const useQuestionsStore = defineStore('questions', () => {
     isGenerating,
     hasFailed,
     isCurrent,
+    hasResult,
+    ensureFirst,
     makeFirst,
     toggleKept,
     finalOf,

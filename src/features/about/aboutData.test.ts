@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CARDS, POSTINGS } from '@shared/catalog'
-import { SMALL_GIANTS } from '@/realData'
+import { NCS_CARDS, SMALL_GIANTS } from '@/realData'
 import { auditNumbers, sourceRows } from './aboutData'
 
 describe('/about-ai 점검 숫자', () => {
@@ -64,5 +64,23 @@ describe('DATA-06 출처 표의 고용24 오픈API 줄', () => {
   it('국민연금은 "실제", 임금체불은 "모의" 그대로', () => {
     expect(rows.filter((r) => text(r).includes('국민연금')).every((r) => r.source === '실제')).toBe(true)
     expect(rows.filter((r) => text(r).includes('임금체불')).every((r) => r.source === '모의')).toBe(true)
+  })
+
+  it('임금체불 줄은 명단이 일부 사업주만 공개한다는 것과 "명단에 없음 ≠ 체불 없음"을 밝힌다(A2-04)', () => {
+    const unpaid = rows.find((r) => r.origin === '임금체불 사업주 명단')
+    expect(unpaid?.source).toBe('모의')
+    expect(unpaid?.note).toContain('일부 사업주만 공개해요')
+    expect(unpaid?.note).toContain('명단에 없다고 체불이 없다는 뜻은 아니에요')
+  })
+
+  it('NCS 줄은 파일 경로 없이 방법(팀이 고른 능력단위명으로 찾음)과 파일에서 센 개수를 쓴다(A2-12)', () => {
+    const ncs = rows.find((r) => r.data === '업무 카드 NCS 표시')
+    const total = NCS_CARDS.cards.length
+    const matched = NCS_CARDS.cards.filter((c) => c.matched).length
+    expect(ncs?.note).not.toMatch(/data\/|\.json/)
+    expect(ncs?.note).toContain('팀이 고른 능력단위명')
+    expect(ncs?.note).toContain(`NCS 카드 ${total}개`)
+    expect(ncs?.note).toContain(`${matched}개는 응답 값을 그대로`)
+    expect(ncs?.note).toContain(`나머지 ${total - matched}개`)
   })
 })

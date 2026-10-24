@@ -258,9 +258,13 @@ export interface FinalRankInput {
   analysis: PostingAnalysis
 }
 
+/** 한 결과에 붙이는 완충 문장 수 한도. 같은 완충 문장을 두 번 쓰지 않는다(A2-08, D-061의 되풀이 방지) */
+export const CUSHION_LIMIT = 2
+
 /**
  * 최종 질문 목록(순서·유형·검수 문장·표현 단계). 카드 질문 5개 이하 + 처우 질문 3개 이하 = 8개 이하.
  * 완충 문장: 분위기 "압박이 있었어요"면 첫 질문과 첫 처우 질문, 그리고 "분위기가 아니었어요"로 못 물은 질문.
+ * 위에서부터 CUSHION_LIMIT 개(완충 문장 종류 수까지)만 붙이고, 그 뒤 질문은 기본(보통 앞말) 단계다.
  * 분위기 "편했어요"면 직접(앞말 없이 바로 묻기).
  */
 export function rankFinal(input: FinalRankInput): FinalRanked[] {
@@ -268,15 +272,18 @@ export function rankFinal(input: FinalRankInput): FinalRanked[] {
   const cards = cardCandidates(input.picks, input.judged, input.analysis).slice(0, limits.cards)
   const offers = offerCandidates(input.analysis).slice(0, limits.offers)
   const all = [...cards, ...offers].sort(byPriority).slice(0, limits.total)
+  const cushionLimit = Math.min(CUSHION_LIMIT, cushions.length)
 
   let used = 0
   let offerSeen = false
   return all.map((c, i) => {
-    let cushioned = c.reason === 'bad_mood'
-    if (input.mood === 'pressured' && (i === 0 || (c.origin === 'offer' && !offerSeen))) cushioned = true
+    let wants = c.reason === 'bad_mood'
+    if (input.mood === 'pressured' && (i === 0 || (c.origin === 'offer' && !offerSeen))) wants = true
     if (c.origin === 'offer') offerSeen = true
-    const cushion = cushioned ? (cushions[Math.min(used++, cushions.length - 1)] ?? '') : ''
-    const tone: Tone = cushioned ? 'cushion' : input.mood === 'relaxed' ? 'direct' : 'basic'
+    const cushioned = wants && used < cushionLimit
+    const cushion = cushioned ? (cushions[used++] ?? '') : ''
+    // 완충을 바랐지만 한도를 넘은 질문은 "편했어요"여도 직접이 아니라 기본 앞말로 묻는다
+    const tone: Tone = cushioned ? 'cushion' : wants || input.mood !== 'relaxed' ? 'basic' : 'direct'
     const ranked: FinalRanked = {
       rank: i + 1,
       key: c.key,

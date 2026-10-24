@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { PRESETS, getAnalysis } from './catalog'
 import type { PostingAnalysis } from './contract'
-import { anchorText, classify, pickTop5, rankPicks, typeLabel } from './rules'
+import { EXPERIENCE_LEAD, anchorText, classify, experienceAnchor, pickTop5, rankPicks, typeLabel } from './rules'
 
 function analysisOf(id: string): PostingAnalysis {
   const a = getAnalysis(id)
@@ -103,6 +103,39 @@ describe('규칙 표(gap_rules)', () => {
   it('경험 끝의 쉼표·마침표는 떼고 ", "를 붙인다', () => {
     expect(anchorText('인턴 때 API를 만들어 봤는데.')).toBe('인턴 때 API를 만들어 봤는데, ')
     expect(anchorText('')).toBe('')
+  })
+
+  it('A2-06 "…는데"·"…ㄴ데"는 쉼표로 잇고, "…다"·"…요"는 맺은 뒤 질문을 다음 문장으로', () => {
+    expect(experienceAnchor('전공이 컴퓨터공학인데')).toEqual({ text: '전공이 컴퓨터공학인데, ', quoted: true })
+    expect(experienceAnchor('카페 아르바이트를 2년 했습니다')).toEqual({ text: '카페 아르바이트를 2년 했습니다. ', quoted: true })
+    expect(experienceAnchor('졸업 작품으로 쇼핑몰 프로젝트를 했어요.')).toEqual({ text: '졸업 작품으로 쇼핑몰 프로젝트를 했어요. ', quoted: true })
+    expect(experienceAnchor('API를 직접 만들어 봤어요!')).toEqual({ text: 'API를 직접 만들어 봤어요! ', quoted: true })
+  })
+
+  it('A2-06 이을 수 없는 끝말("…봄"·명사)은 경험 글을 옮기지 않는 앞말', () => {
+    for (const exp of ['Spring으로 게시판 만들어 봄', 'FastAPI 프로젝트 경험', '팀장 역할 함']) {
+      expect(experienceAnchor(exp), exp).toEqual({ text: EXPERIENCE_LEAD, quoted: false })
+    }
+    expect(experienceAnchor('  ')).toBeNull()
+  })
+
+  it('A2-06 세 입력의 검수 문장이 문법에 맞고 "경험 포함"(has_exp)은 그 카드에만 남는다', () => {
+    const cases: Array<[string, string]> = [
+      ['카페 아르바이트를 2년 했습니다', '카페 아르바이트를 2년 했습니다. 이 팀에서는'],
+      ['학교에서 팀 프로젝트를 했어요', '학교에서 팀 프로젝트를 했어요. 이 팀에서는'],
+      ['Spring으로 게시판 만들어 봄', `${EXPERIENCE_LEAD}이 팀에서는`],
+    ]
+    for (const [exp, start] of cases) {
+      const top = pickTop5({ picks: PRESETS.A.picks, experience: exp }, OO)
+      const be01 = top.find((q) => q.card_id === 'BE01')
+      expect(be01?.has_exp, exp).toBe(true)
+      expect(be01?.template_text.startsWith(start), `${exp} → ${be01?.template_text}`).toBe(true)
+      expect(be01?.template_text, exp).not.toMatch(/(?:다|요|봄), /)
+      expect(top.filter((q) => q.has_exp).map((q) => q.card_id)).toEqual(['BE01'])
+    }
+    // S4-13 예시 A("…맡아 봤는데")는 그대로
+    const a = pickTop5(PRESETS.A, OO).find((q) => q.card_id === 'BE01')
+    expect(a?.template_text.startsWith(`${PRESETS.A.experience}, 이 팀에서는`)).toBe(true)
   })
 
   it('없는 카드 ID는 건너뛰고, 같은 우선순위면 먼저 고른 것이 위', () => {

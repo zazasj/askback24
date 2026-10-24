@@ -47,6 +47,8 @@ const MOCK_SIGNAL_NOTE = '시연용으로 만든 값이에요.'
 // 강소기업은 실제 명단을 받았지만 시연 회사가 가상이라 회사별 여부는 지어낼 수밖에 없어 "모의"다(DATA-04)
 const SIGNAL_NOTES: Record<string, string> = {
   '고용24 강소기업 정보': '시연 회사는 가상이라 명단에 올라 있는지도 예시예요. 실제 명단으로 센 숫자는 "강소기업 통계" 줄에 있어요.',
+  // 근로기준법 제43조의2 명단은 일부 사업주만 공개해 "명단에 없음"이 "체불 없음"으로 읽히면 안 된다(A2-04)
+  '임금체불 사업주 명단': `${MOCK_SIGNAL_NOTE} 명단은 체불로 유죄가 두 번 이상 확정된 일부 사업주만 공개해요. 명단에 없다고 체불이 없다는 뜻은 아니에요.`,
 }
 
 const num = (n: number): string => n.toLocaleString('ko-KR')
@@ -74,7 +76,8 @@ function realApiRows(): SourceRow[] {
       data: '업무 카드 NCS 표시',
       origin: openApi('duty', '직무정보'),
       source: '실제',
-      note: `NCS 카드 ${ncsCards}개 중 ${matched}개는 응답의 능력단위명을 그대로 보여요(정의·분류 코드는 data/real/ncs-cards.json에 저장). 나머지 ${ncsCards - matched}개는 응답에서 같은 이름을 찾지 못해 팀이 정리한 값이라 카드에 "${TEAM_NCS_MARK.trim()}"를 붙였어요.`,
+      // 파일 경로는 화면에서 열 수 없어 README에만 둔다. API가 카드를 이어 준 것이 아니라 팀이 고른 이름으로 찾은 것이다(A2-12)
+      note: `NCS 카드 ${ncsCards}개마다 팀이 고른 능력단위명으로 직무정보 API를 찾아, 같은 이름이 나온 ${matched}개는 응답 값을 그대로 보여요. 나머지 ${ncsCards - matched}개는 같은 이름이 나오지 않아 팀이 정리한 값이라 카드에 "${TEAM_NCS_MARK.trim()}"를 붙였어요.`,
       fetched: fetchedOn('duty'),
     },
     {

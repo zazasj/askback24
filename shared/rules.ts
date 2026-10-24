@@ -28,10 +28,43 @@ export function classify(
   return null
 }
 
+/** 경험 글을 그대로 이으면 틀린 문장이 될 때 쓰는 앞말(경험 글은 옮기지 않는다) */
+export const EXPERIENCE_LEAD = '제 경험과 이어지는 일이라 여쭤요. '
+
+export interface ExperienceAnchor {
+  /** 질문 틀의 {anchor} 자리에 넣을 말 */
+  text: string
+  /** 경험 글을 그대로 옮겼는지(false 면 EXPERIENCE_LEAD) */
+  quoted: boolean
+}
+
+/** 한글 음절의 받침 번호(0 = 받침 없음, 4 = ㄴ). 한글이 아니면 null */
+function jongOf(ch: string): number | null {
+  const code = ch.charCodeAt(0)
+  if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return null
+  return (code - 0xac00) % 28
+}
+
+/**
+ * 경험 한 줄을 질문 앞에 붙이는 방법(A2-06). 가짜 공급자 문장과 검수 문장이 모두 이 결과를 쓴다.
+ * - "…는데"·"…ㄴ데"(…봤는데·…인데): 쉼표로 잇는다 → "…봤는데, 이 팀에서는 …"
+ * - "…요"·"…다"(물음표·느낌표 포함): 한 문장으로 맺고 질문은 다음 문장 → "…했습니다. 이 팀에서는 …"
+ * - 그 밖("…봄"·"…함"·명사): 이으면 틀린 문장이라 경험 글을 옮기지 않는 앞말을 쓴다
+ * 비어 있으면 null.
+ */
+export function experienceAnchor(experience?: string): ExperienceAnchor | null {
+  const t = (experience ?? '').trim().replace(/[,.\s]+$/, '')
+  if (!t) return null
+  if (/[?!]$/.test(t)) return { text: `${t} `, quoted: true }
+  const last = t.slice(-1)
+  if (last === '데' && jongOf(t.slice(-2, -1)) === 4) return { text: `${t}, `, quoted: true }
+  if (last === '요' || last === '다') return { text: `${t}. `, quoted: true }
+  return { text: EXPERIENCE_LEAD, quoted: false }
+}
+
 /** 경험 한 줄 → 질문 앞에 붙일 말("…봤는데, "). 비어 있으면 빈 문자열 */
 export function anchorText(experience?: string): string {
-  const t = (experience ?? '').trim().replace(/[,.\s]+$/, '')
-  return t ? `${t}, ` : ''
+  return experienceAnchor(experience)?.text ?? ''
 }
 
 /**
@@ -56,7 +89,10 @@ export interface RankedPick {
   order: number
   evidence?: Evidence
   reason: string
-  /** 경험 한 줄이 실제로 문장에 붙었는지("경험 포함" 칩) */
+  /**
+   * 경험 한 줄을 이 질문에 붙였는지("경험 포함" 칩). 경험 글을 그대로 잇지 못하는 끝말이면 검수 문장은
+   * 중립 앞말(EXPERIENCE_LEAD)로 경험과 이어진 질문임만 밝히고, 칩과 AI에 보내는 경험은 그대로 둔다(A2-06)
+   */
   has_exp: boolean
   /** 검수 문장(질문 틀 + 경험) */
   template_text: string

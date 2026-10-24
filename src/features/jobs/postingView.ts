@@ -1,10 +1,11 @@
 /**
  * S3 채용정보 목록·상세가 공고 JSON(채용정보 API 상세 필드명)을 어떻게 보여 줄지.
- * 빈 문자열 = 공고에 적혀 있지 않음. 화면은 그 사실을 감추지 않고 그대로 적는다.
+ * 빈 문자열 = 그 칸이 비어 있음. S3는 고용24 기존 영역이라 빈 칸은 고용24처럼 "-"(A2-03).
+ * 칸이 비어도 직무내용 글에 적혀 있을 수 있어 "공고에 적혀 있지 않아요" 같은 말은 쓰지 않는다.
  */
 import type { Posting } from '@shared/contract'
 
-export const EMPTY_TEXT = '공고에 적혀 있지 않아요'
+export const EMPTY_TEXT = '-'
 
 type PostingKey = keyof Posting & string
 

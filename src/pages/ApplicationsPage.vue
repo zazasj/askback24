@@ -9,8 +9,10 @@ import { useMediaQuery } from '@vueuse/core'
 import { getPosting } from '@shared/catalog'
 import AiLabel from '@/components/ui/AiLabel.vue'
 import { daysBefore, formatDate, parseIsoDate, toIsoDate } from '@/lib/dates'
+import { entryStep } from '@/features/interview-prep/steps'
 import { vDemoOff } from '@/lib/demoOff'
 import { useDemoStore } from '@/stores/demo'
+import { useQuestionsStore } from '@/stores/questions'
 import type { Application } from '@/types'
 
 type ViewedFilter = 'all' | 'viewed' | 'unviewed'
@@ -33,6 +35,7 @@ interface Filter {
 }
 
 const demo = useDemoStore()
+const questions = useQuestionsStore()
 const router = useRouter()
 
 const OTHER_TABS = ['관심기업 관리', '채용담당자와 한마디'] as const
@@ -88,8 +91,10 @@ const VIEWED_OPTIONS: ReadonlyArray<{ value: ViewedFilter; label: string }> = [
   { value: 'unviewed', label: '미열람' },
 ]
 
+// 이미 만든 질문이 있으면 ③으로 바로 연다(A2-01). 1행·3행 처음 상태와 2행(시드는 1차 결과뿐, 최종으로 엶)은 ①
 function openPrep(r: Row): void {
-  void router.push({ name: 'prep', params: { applyId: r.app.apply_id }, query: { step: '1' } })
+  const step = entryStep(r.app.result, (mode) => questions.hasResult(r.app.apply_id, mode))
+  void router.push({ name: 'prep', params: { applyId: r.app.apply_id }, query: { step: String(step) } })
 }
 
 const hasResult = (result: string) => result !== '-'

@@ -35,3 +35,11 @@ export function parseMode(v: unknown): Mode | null {
 export function defaultModeFor(result: string): Mode {
   return result === '1차 합격' ? 'final' : 'first'
 }
+
+/**
+ * S1에서 들어올 때 열 단계. 지원결과로 정한 면접 종류의 결과가 이미 있으면 ③(만든 질문 그대로), 없으면 ①.
+ * ①부터 다시 지나가게 하면 ②의 "질문 만들기"가 질문을 다시 만드는 것처럼 보였다(A2-01)
+ */
+export function entryStep(result: string, hasResult: (mode: Mode) => boolean): StepNo {
+  return hasResult(defaultModeFor(result)) ? 3 : 1
+}

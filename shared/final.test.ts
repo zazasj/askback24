@@ -149,6 +149,36 @@ describe('R 판정·표현 단계', () => {
     expect(res.final_questions.filter((q) => q.text.includes('여쭤도 될까요'))).toHaveLength(1)
   })
 
+  it('A2-08 1차에 하나도 못 물었어도(전부 "분위기가 아니었어요") 완충 문장은 2개 이하이고 같은 문장이 두 번 나오지 않는다', async () => {
+    const allBadMood = (mood: InterviewReview['impression']['mood']): InterviewReview => ({
+      asked: [],
+      not_asked: FIRST_A_OO.map((card_id, i) => ({ question_id: `q${i + 1}`, card_id, reason: 'bad_mood' as const })),
+      received: [],
+      impression: { mood },
+    })
+    for (const mood of ['pressured', 'normal', 'relaxed'] as const) {
+      const ranked = rankFinal({ picks: PRESETS.A.picks, judged: ruleJudgements(allBadMood(mood)), mood, analysis: ANALYSES[0]! })
+      const cushions = ranked.map((r) => r.cushion).filter(Boolean)
+      expect(cushions.length, mood).toBeLessThanOrEqual(2)
+      expect(new Set(cushions).size, `${mood}: 같은 완충 문장`).toBe(cushions.length)
+      // 한도를 넘은 "분위기가 아니었어요" 질문은 기본 앞말 단계(편했어요여도 직접 아님)
+      expect(ranked.filter((r) => !r.cushion && r.review_state).every((r) => r.tone === 'basic'), mood).toBe(true)
+      for (const options of [{ provider: createMockProvider() }, {}]) {
+        const res = await generateFinal(reqR04(allBadMood(mood)), options)
+        for (const c of FINAL_BOOK.cushions) {
+          const n = res.final_questions.filter((q) => q.text.includes(c.trim())).length
+          expect(n, `${mood}: "${c.trim()}" ${n}번`).toBeLessThanOrEqual(1)
+        }
+        expect(res.final_questions.filter((q) => q.text.includes('여쭤도 될까요')).length, mood).toBeLessThanOrEqual(2)
+      }
+    }
+  })
+
+  it('A2-08 첫 완충 문장은 "하나"라고 하지 않는다(뒤에 질문이 더 이어짐)', () => {
+    for (const c of FINAL_BOOK.cushions) expect(c).not.toMatch(/하나/)
+    expect(FINAL_BOOK.cushions[0]).toBe('괜찮으시다면 여쭤도 될까요? ')
+  })
+
   it('"회사가 먼저 설명해 줬어요"는 확인됨으로 빠지고, 회사가 물어본 업무가 내 질문 카드와 겹치면 내 판정을 따른다', async () => {
     const review = r04Review()
     review.not_asked = [{ question_id: 'q4', card_id: 'BE03', reason: 'explained' }]

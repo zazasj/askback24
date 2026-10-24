@@ -5,9 +5,10 @@
  * 1차: ① 공고 확인 → ② 내 기대·걱정 → ③ 질문 받기. 최종: ① 공고 확인 → ② 1차 면접 정리 → ③ 최종 질문 받기.
  * ②의 "질문 만들기"·"최종 질문 만들기"는 질문 저장소에서 만들기를 시작하고 ③으로 간다(③이 만드는 중을 보여 준다).
  */
-import { computed } from 'vue'
+import { computed, nextTick, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getAnalysis, getPosting, getSignals, type PresetKey } from '@shared/catalog'
+import type { Mode } from '@shared/contract'
 import NotFoundContent from '@/components/ui/NotFoundContent.vue'
 import { useDemoStore } from '@/stores/demo'
 import { useDemoToolActions, type DemoToolAction } from '@/stores/demoTools'
@@ -21,7 +22,7 @@ import PostingStep from '@/features/interview-prep/PostingStep.vue'
 import PrepHeader from '@/features/interview-prep/PrepHeader.vue'
 import ReviewStep from '@/features/interview-prep/ReviewStep.vue'
 import StepNav from '@/features/interview-prep/StepNav.vue'
-import { NEXT_FROM_POSTING, STEP_LABELS, defaultModeFor } from '@/features/interview-prep/steps'
+import { NEXT_FROM_POSTING, STEP_LABELS, defaultModeFor, type StepNo } from '@/features/interview-prep/steps'
 import { usePrepRoute } from '@/features/interview-prep/usePrepRoute'
 
 const route = useRoute()
@@ -46,11 +47,12 @@ const hasFirst = computed(() => !!(application.value && questions.firstOf(applic
 /** 1차 질문을 만드는 중이면 곧 결과가 생기므로 "먼저 1차 면접 질문을 만들어 주세요"로 막지 않는다 */
 const firstGenerating = computed(() => !!(application.value && questions.isGenerating(application.value.apply_id)))
 
+/** "질문 만들기": 같은 선택으로 만든 질문이 있으면 다시 만들지 않고 ③만 연다(A2-01, 다시 만들기는 "AI로 다시 만들기") */
 function makeQuestions(): void {
   const app = application.value
   const p = posting.value
   if (!app || !p) return
-  void questions.makeFirst(app.apply_id, p.wantedAuthNo, { apiFail: apiFail.value })
+  questions.ensureFirst(app.apply_id, p.wantedAuthNo, { apiFail: apiFail.value })
   void goStep(3)
 }
 
@@ -100,6 +102,34 @@ const demoActions = computed<DemoToolAction[]>(() => {
   return questions.firstOf(app.apply_id) ? [{ id: 'review-example', label: '1차 면접 다녀온 것으로 채우기', run: fillReviewExample }] : []
 })
 useDemoToolActions(demoActions)
+
+// ── 단계가 바뀔 때 초점(A2-02) ─────────────────────────
+// 누른 버튼(S1 면접 준비·내 기대·걱정 고르기·면접 다녀왔어요 등)이 사라지면 초점이 문서 처음으로 떨어져
+// 화면낭독기 사용자는 단계가 바뀐 줄 모른다. 그때만 새 단계 제목으로 옮긴다. 라디오로 면접 종류를 바꾼 것처럼
+// 누른 것이 남아 있으면 그대로 둔다. 스크롤은 라우터(D-078)가 정하므로 건드리지 않는다
+const STEP_HEADINGS: Record<Mode, Record<StepNo, string>> = {
+  first: { 1: 'posting-step-title', 2: 'pick-step-title', 3: 'result-title' },
+  final: { 1: 'posting-step-title', 2: 'review-title', 3: 'final-title' },
+}
+
+function focusLost(): boolean {
+  const el = document.activeElement
+  return !el || el === document.body || !el.isConnected
+}
+
+async function focusStepHeading(): Promise<void> {
+  await nextTick()
+  // ① "근거 보기"·확인할 점(?card=)은 PostingStep 이 그 형광펜에 초점을 준다
+  if (step.value === 1 && focusCard.value) return
+  if (!focusLost()) return
+  document.getElementById(STEP_HEADINGS[mode.value][step.value])?.focus({ preventScroll: true })
+}
+
+watch([step, mode], () => void focusStepHeading())
+onMounted(() => {
+  // 앱 안에서 들어왔을 때만(S1 버튼이 사라짐). 주소로 처음 열면 초점은 문서 처음 그대로
+  if (typeof (window.history.state as { back?: unknown } | null)?.back === 'string') void focusStepHeading()
+})
 </script>
 
 <template>

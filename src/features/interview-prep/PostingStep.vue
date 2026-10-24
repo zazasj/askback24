@@ -8,7 +8,7 @@
 import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue'
 import { createReusableTemplate, onKeyStroke, useEventListener } from '@vueuse/core'
 import { getCard } from '@shared/catalog'
-import type { CompanySignal, Posting, PostingAnalysis } from '@shared/contract'
+import type { BlankTopic, CompanySignal, Posting, PostingAnalysis } from '@shared/contract'
 import PostingText from '@/features/jobs/PostingText.vue'
 import { lastLineOf, postingLines, type PostingLine } from '@/features/jobs/postingText'
 import { checkPoints, firstLooks, postingTag } from './checkpoints'
@@ -35,6 +35,8 @@ interface RowDef {
   hideEmpty?: boolean
   /** 긴 글 칸: 원문 줄·소제목·목록 기호 그대로 글 블록으로(S3 상세와 같은 부품) */
   block?: boolean
+  /** 이 칸에 해당하는 근로조건(분석 JSON blanks). 칸이 비어도 직무내용에 적혀 있으면 빈 칸 글에 밝힌다 */
+  topic?: BlankTopic
 }
 
 const ROWS: readonly RowDef[] = [
@@ -43,8 +45,8 @@ const ROWS: readonly RowDef[] = [
   { key: 'emp', label: '고용형태', fields: ['empTpNm'] },
   { key: 'career', label: '경력', fields: ['enterTpNm'] },
   { key: 'edu', label: '학력', fields: ['eduNm'], hideEmpty: true },
-  { key: 'sal', label: '임금', fields: ['salTpNm', 'sal'] },
-  { key: 'hours', label: '근무시간', fields: ['workdayWorkhrCont'] },
+  { key: 'sal', label: '임금', fields: ['salTpNm', 'sal'], topic: 'sal' },
+  { key: 'hours', label: '근무시간', fields: ['workdayWorkhrCont'], topic: 'workHours' },
   { key: 'region', label: '근무지역', fields: ['workRegion'], hideEmpty: true },
   { key: 'welfare', label: '복리후생', fields: ['etcWelfare'], hideEmpty: true },
   { key: 'sel', label: '전형방법', fields: ['selMthd'], hideEmpty: true },
@@ -58,6 +60,15 @@ interface MarkSpot {
 }
 
 const marks = computed(() => marksOf(props.analysis))
+
+/**
+ * 빈 칸 글. 칸이 비었다는 사실만 말한다(A2-03): 근무시간 칸이 비어도 직무내용에 적힌 공고가 있어
+ * "공고에 적혀 있지 않아요"는 틀린 말이 된다. 분석 근거가 직무내용에 있으면 그곳을 덧붙인다
+ */
+function emptyText(def: RowDef): string {
+  const inJob = !!def.topic && !!props.analysis?.blanks.some((b) => b.topic === def.topic && b.evidence?.field === 'jobCont')
+  return inJob ? '이 칸은 비어 있어요 · 직무내용에 적혀 있어요' : '이 칸은 비어 있어요'
+}
 
 const rows = computed(() =>
   ROWS.flatMap((def) => {
@@ -240,7 +251,7 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
     </DefineBubble>
 
     <!-- "공고 확인"은 바로 위 단계 표시의 현재 단계와 같은 말이라 화면낭독기에만 남긴다(N4, D-089를 데스크톱까지) -->
-    <h2 id="posting-step-title" class="sr-only">공고 확인</h2>
+    <h2 id="posting-step-title" class="sr-only" tabindex="-1">공고 확인</h2>
 
     <!-- 고용24식 안내 상자(채팅 말풍선 아님). 인용을 누르면 그 형광펜을 켜고 그리로 간다(F-04).
          제목·개수 줄·목록이 이 상자의 바로 아래 자식이어야 한 묶음으로 읽힌다(둘만 감싸는 칸을 두지 않음) -->
@@ -316,7 +327,7 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
                     ></span
                   >
                 </template>
-                <span v-else class="empty">공고에 적혀 있지 않아요</span>
+                <span v-else class="empty">{{ emptyText(row) }}</span>
 
                 <ReuseBubble v-if="openSpot && openSpot.row === row.key && !row.block" />
               </td>

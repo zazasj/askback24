@@ -7,9 +7,9 @@
  */
 import { computed, nextTick, onMounted, useTemplateRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { CARD_BOOK } from '@shared/catalog'
+import { CARD_BOOK, getCard } from '@shared/catalog'
 import type { Posting, Question } from '@shared/contract'
-import { typeLabel } from '@shared/rules'
+import { QUESTION_LIMIT, typeLabel } from '@shared/rules'
 import { API_MODE } from '@/api/client'
 import MockModeTag from '@/components/ui/MockModeTag.vue'
 import { useCopy } from '@/composables/useCopy'
@@ -68,6 +68,16 @@ const breakdown = computed(() => {
   return PREFS.map((p) => `${CARD_BOOK.preference_options[p]} ${n[p]}`)
 })
 
+/**
+ * 고른 카드 중 질문이 되지 않은 것(5개 한도에서 밀림, A2-13). 선택이 바뀐 뒤(stale)에는 결과와 비교할 수 없어 숨긴다.
+ * 어떤 선호·공고 상태든 규칙이 있어(cards.backend.json gap_rules) 빠지는 까닭은 개수 한도뿐이다
+ */
+const dropped = computed(() => {
+  if (stale.value || !questions.value.length) return []
+  const made = new Set(questions.value.map((q) => q.card_id))
+  return selection.value.picks.filter((p) => !made.has(p.card_id)).map((p) => getCard(p.card_id)?.label ?? p.card_id)
+})
+
 function copyAll(): void {
   const head = `${props.posting.corpNm} · ${props.posting.wantedTitle}\n1차·기술 면접 질문`
   const body = questions.value.map((q, i) => `${i + 1}. [${typeLabel(q.type)}] ${q.text}`).join('\n')
@@ -111,28 +121,35 @@ function printSheet(): void {
       </p>
 
       <div class="result-layout">
-        <ol class="questions" aria-label="1차·기술 면접 질문 목록">
-          <QuestionCard
-            v-for="q in questions"
-            :key="q.card_id"
-            :rank="q.rank"
-            :type-label="typeLabel(q.type)"
-            :tone="FIRST_TONES[q.type]"
-            :meta="cardMeta(q.card_id, q.type)"
-            :text="q.text"
-            :has-exp="q.has_exp"
-            :template="q.source === 'template'"
-            :kept="kept.has(q.card_id)"
-            :basis="q.basis"
-            :evidence-label="evidenceLabel(q.evidence)"
-            :evidence-to="evidenceTo(q)"
-            :watch-out="q.watch_out"
-            :good-sign="q.good_sign"
-            :type-note="firstTypeNote(q.type)"
-            @copy="copy(q.text)"
-            @keep="store.toggleKept(applyId, q.card_id)"
-          />
-        </ol>
+        <div class="questions-col">
+          <ol class="questions" aria-label="1차·기술 면접 질문 목록">
+            <QuestionCard
+              v-for="q in questions"
+              :key="q.card_id"
+              :rank="q.rank"
+              :type-label="typeLabel(q.type)"
+              :tone="FIRST_TONES[q.type]"
+              :meta="cardMeta(q.card_id, q.type)"
+              :text="q.text"
+              :has-exp="q.has_exp"
+              :template="q.source === 'template'"
+              :kept="kept.has(q.card_id)"
+              :basis="q.basis"
+              :evidence-label="evidenceLabel(q.evidence)"
+              :evidence-to="evidenceTo(q)"
+              :watch-out="q.watch_out"
+              :good-sign="q.good_sign"
+              :type-note="firstTypeNote(q.type)"
+              @copy="copy(q.text)"
+              @keep="store.toggleKept(applyId, q.card_id)"
+            />
+          </ol>
+          <!-- 5개 한도로 빠진 카드(A2-13). 오른쪽 상자(sticky)에 넣으면 1440×900에서 상자가 화면 아래끝까지 늘어나
+               F-02 시험이 아래 고정 바로 읽어 질문 목록 바로 아래에 둔다(휴대폰은 오른쪽 상자 바로 위라 같은 자리) -->
+          <p v-if="dropped.length" class="dropped" data-print="hide">
+            질문에서 빠진 것: {{ dropped.join(', ') }} ({{ QUESTION_LIMIT }}개까지만 만들어요)
+          </p>
+        </div>
 
         <aside class="result-side" aria-labelledby="side-title" data-print="hide">
           <div class="side-box">
@@ -283,6 +300,17 @@ function printSheet(): void {
 .side-exp {
   color: var(--krds-light-color-text-subtle);
   overflow-wrap: anywhere;
+}
+
+.questions-col {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.dropped {
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-subtle);
 }
 
 .side-btn {

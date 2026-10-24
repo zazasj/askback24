@@ -6,6 +6,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { CARDS, CARD_BOOK, getCard } from '@shared/catalog'
 import type { PostingAnalysis, Pref } from '@shared/contract'
+import { EXPERIENCE_LEAD, experienceAnchor } from '@shared/rules'
 import { API_MODE } from '@/api/client'
 import { PERSONA } from '@/demoData'
 import { JOB_INFO } from '@/realData'
@@ -79,18 +80,23 @@ function useChip(chip: (typeof CHIPS)[number]): void {
 
 // 경험 한 줄은 AI에 보내므로 사람·학교·회사를 알아볼 말을 빼 달라고 늘 같이 적는다(개인정보, A1-07)
 const EXPERIENCE_PRIVACY = '이름·학교·회사 이름은 빼고 적어 주세요.'
+// 붙이는 규칙을 그대로 적는다(picks.ts experienceTarget). 관련 있는 질문을 고르는 장치는 없다(A2-07)
 const experienceHint = computed(() => {
-  if (!experience.value.trim()) return `AI가 관련 있는 질문에만 붙여요. 비워 둬도 돼요. ${EXPERIENCE_PRIVACY}`
+  if (!experience.value.trim()) return `"기대돼요"를 고른 질문 하나 앞에 붙여요(이력서 칩은 그 업무 질문). 비워 둬도 돼요. ${EXPERIENCE_PRIVACY}`
   const target = experienceTarget(selection.value)
   if (!target) return `"기대돼요"를 고른 카드가 있으면 그 질문 앞에 붙여요. ${EXPERIENCE_PRIVACY}`
-  return `"${getCard(target)?.label ?? target}" 질문 앞에 붙여요. ${EXPERIENCE_PRIVACY}`
+  const label = getCard(target)?.label ?? target
+  // 끝말을 이을 수 없으면 경험 글 대신 중립 앞말이 붙는다(A2-06). 그렇다고 미리 알린다
+  if (!experienceAnchor(experience.value)?.quoted)
+    return `"${label}" 질문 앞에 "${EXPERIENCE_LEAD.trim()}"로 이어요. 경험을 그대로 넣으려면 "…했는데"처럼 끝내 주세요. ${EXPERIENCE_PRIVACY}`
+  return `"${label}" 질문 앞에 붙여요. ${EXPERIENCE_PRIVACY}`
 })
 </script>
 
 <template>
   <section class="pick-step" aria-labelledby="pick-step-title">
     <!-- "내 기대·걱정"은 바로 위 단계 표시의 현재 단계와 같은 말이라 화면낭독기에만 남긴다(N4) -->
-    <h2 id="pick-step-title" class="sr-only">내 기대·걱정</h2>
+    <h2 id="pick-step-title" class="sr-only" tabindex="-1">내 기대·걱정</h2>
     <div class="intro">
       <!-- 안내는 한 줄(N4): 고르는 법 + 시연 단서를 한 줄에, 그 아래 직업정보 한 줄 -->
       <div class="intro-row">

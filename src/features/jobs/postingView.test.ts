@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { POSTINGS, getPosting } from '@shared/catalog'
-import { DETAIL_SECTIONS, listOrder, matchesQuery, rowText, salaryChunks, salaryText } from './postingView'
+import { DETAIL_SECTIONS, EMPTY_TEXT, listOrder, matchesQuery, rowText, salaryChunks, salaryText } from './postingView'
 
 const OO = getPosting('K-MOCK-0001')!
 const COMMERCE = getPosting('K-MOCK-0002')!
@@ -22,9 +22,18 @@ describe('S3 공고 상세 칸', () => {
     expect(rowText(OO, row('기업정보', '근로자 수'))).toBe('46명')
   })
 
-  it('공고에 없는 칸은 빈 문자열(화면이 "공고에 적혀 있지 않아요"로 보임)', () => {
+  it('빈 칸은 빈 문자열이고 화면은 고용24처럼 "-"로 보인다(A2-03)', () => {
     expect(rowText(OO, row('근무조건', '근무시간'))).toBe('')
     expect(rowText(COMMERCE, row('근무조건', '임금'))).toBe('')
+    expect(EMPTY_TEXT).toBe('-')
+  })
+
+  it('근무시간 칸이 비어도 직무내용에 근무 시간이 적힌 공고가 있다(그래서 빈 칸을 "공고에 적혀 있지 않아요"로 쓰지 않음)', () => {
+    for (const id of ['K-MOCK-0004', 'K-MOCK-0006']) {
+      const p = getPosting(id)!
+      expect(rowText(p, row('근무조건', '근무시간')), id).toBe('')
+      expect(p.jobCont, id).toMatch(/당직|출퇴근|코어타임/)
+    }
   })
 
   it('목록 임금: 금액이 없으면 빈 문자열', () => {

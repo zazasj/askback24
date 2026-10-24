@@ -66,13 +66,16 @@ function setMood(m: Mood): void {
 <template>
   <section class="review-step" aria-labelledby="review-title">
     <div class="intro">
-      <h2 id="review-title" class="section-title">1차 면접 정리</h2>
+      <h2 id="review-title" class="section-title" tabindex="-1">1차 면접 정리</h2>
       <!-- 정리할 질문이 없으면 아래 빈 상태 안내와 어긋나므로 숨긴다(DR-r2-05) -->
       <template v-if="questions.length">
         <p class="lead">
           1차 면접에서 물어본 것과 들은 답을 짧게 정리해 주세요. 확인된 것은 빼고, 남은 것과 처우를 최종 면접 질문으로 만들어 드려요.
         </p>
-        <p class="privacy">들은 답과 면접 분위기는 저장하지 않아요. 새로고침하면 지워지고, 만든 최종 질문만 이 브라우저에 남아요.</p>
+        <p class="privacy">
+          들은 답과 면접 분위기는 저장하지 않아요. 새로고침하면 지워지고, 만든 최종 질문만 이 브라우저에 남아요. 실제 서비스에서는 들은
+          답을 AI에 보내 최종 질문을 만들어요. 면접관 이름이나 회사 내부 이야기는 빼고 적어 주세요.
+        </p>
       </template>
     </div>
 
@@ -211,6 +214,16 @@ function setMood(m: Mood): void {
 .intro {
   display: grid;
   gap: 0.6rem;
+}
+
+/* 단계가 바뀌면 이 제목으로 초점을 옮긴다(A2-02). 키보드로 왔을 때만 테두리 */
+.section-title:focus {
+  outline: none;
+}
+
+.section-title:focus-visible {
+  outline: 0.3rem solid var(--krds-light-color-border-primary);
+  outline-offset: 0.2rem;
 }
 
 .lead {

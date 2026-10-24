@@ -97,7 +97,7 @@ export function mockSentence(item: DraftItem, experience: string, variant = 0): 
   const rest = item.template.replace('{anchor}', '').trim()
   if (item.has_exp) {
     const said = experienceSentence(experience)
-    // 문장으로 못 바꾸는 경험은 검수 틀 그대로("…, 이 팀에서는")가 가장 자연스럽다
+    // 문장으로 못 바꾸는 경험은 검수 문장 그대로: 끝말에 맞춰 잇거나 맺거나 중립 앞말을 쓴다(rules.ts experienceAnchor)
     return said ? `${said} ${pick(EXP_BRIDGES, n)}${rest}` : item.template_text
   }
   const lead = pick(LEADS[item.type](item), n)

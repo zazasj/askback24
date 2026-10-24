@@ -56,6 +56,28 @@ describe('공고·분석·신호', () => {
     }
   })
 
+  it('업종에서 유추한 신호는 업종 일반 이야기로만 말하고, 공고에 없는 "24시간"을 그 회사 사실처럼 말하지 않는다(A2-05)', () => {
+    let seen = 0
+    for (const p of POSTINGS) {
+      const postingText = Object.values(p).filter((v) => typeof v === 'string').join('\n')
+      for (const s of getSignals(p.wantedAuthNo).filter((x) => x.source_name === '업종 정보에서 유추')) {
+        seen++
+        expect(s.text, p.wantedAuthNo).toMatch(/업종은/)
+        if (!postingText.includes('24시간')) expect(s.text, p.wantedAuthNo).not.toContain('24시간')
+      }
+    }
+    expect(seen).toBeGreaterThan(0)
+  })
+
+  it('임금체불 신호는 "명단공개 대상"에 없다는 말로만 쓰고 체불이 없다고 읽히는 "명단에 없어요"는 쓰지 않는다(A2-04)', () => {
+    const unpaid = POSTINGS.flatMap((p) => getSignals(p.wantedAuthNo)).filter((s) => s.source_name === '임금체불 사업주 명단')
+    expect(unpaid.length).toBeGreaterThan(0)
+    for (const s of unpaid) {
+      expect(s.text).toBe('임금체불 명단공개 대상에는 올라 있지 않아요')
+      expect(s.source).toBe('모의')
+    }
+  })
+
   it('근거 인용은 그 공고 필드 원문의 글자 그대로 일부다', () => {
     for (const a of ANALYSES) {
       const posting = getPosting(a.wantedAuthNo)
