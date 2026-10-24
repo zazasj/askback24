@@ -85,8 +85,8 @@ const emit = defineEmits<{ copy: []; keep: [] }>()
 <style scoped>
 .question {
   display: grid;
-  gap: 1.2rem;
-  padding: 1.8rem 2rem;
+  gap: 1rem;
+  padding: 1.6rem 2rem;
   border: 1px solid var(--krds-light-color-border-gray-light);
   border-radius: var(--krds-radius-large1);
   background: var(--krds-light-color-surface-white);
@@ -217,7 +217,7 @@ const emit = defineEmits<{ copy: []; keep: [] }>()
 /* ── 왜 이 질문인가요 ─────────────────────────────── */
 .why {
   border-top: 1px solid var(--krds-light-color-border-gray-light);
-  padding-top: 1rem;
+  padding-top: 0.6rem;
 }
 
 .why summary {

@@ -68,3 +68,49 @@ export function checkPoints(analysis: PostingAnalysis | undefined): CheckPoint[]
 
   return ranked.sort((a, b) => a.w - b.w || a.i - b.i).map((r) => r.p)
 }
+
+/** ① "AI 분석 요약"의 먼저 볼 곳 한 개 */
+export interface FirstLook {
+  /** 형광펜 열쇠(같은 형광펜을 가리키는 카드는 한 번만 보인다) */
+  key: string
+  cardId: string
+  /** 화면에 칠한 형광펜 글(공고 원문 그대로) */
+  quote: string
+  reason: string
+}
+
+const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * 한 줄 이유: 인용은 따로 보이므로 설명에서 '인용' 부분을 뺀다("'기타 업무 지원'은 범위가 …" → "범위가 …",
+ * "우대조건에 '…'가 적혀 있어요" → "우대조건에 적혀 있어요"). 설명에 카드 이름이 없으면 앞에 붙인다.
+ */
+export function shortReason(title: string, detail: string, quote: string): string {
+  const q = `['‘]${escapeRe(quote)}['’]`
+  const stripped = detail
+    .replace(new RegExp(`${q}(?:은|는|이|가)\\s+`), '')
+    .replace(new RegExp(`\\s*${q}`), '')
+    .trim()
+  const reason = stripped || detail
+  return reason.includes(title) ? reason : `${title} · ${reason}`
+}
+
+/**
+ * 먼저 볼 곳: 확인할 점 순서(모호한 업무 → 근무 방식·환경 → …)에서 공고 형광펜으로 갈 수 있는 앞의 n개.
+ * spotOf 는 카드 → 화면에 칠한 형광펜(겹친 인용은 앞의 것만 칠해지므로 화면 기준으로 찾는다).
+ */
+export function firstLooks(
+  points: readonly CheckPoint[],
+  spotOf: (cardId: string) => { key: string; quote: string } | undefined,
+  n = 2,
+): FirstLook[] {
+  const out: FirstLook[] = []
+  for (const p of points) {
+    if (out.length >= n) break
+    if (!p.hasMark || !p.cardId) continue
+    const spot = spotOf(p.cardId)
+    if (!spot || out.some((o) => o.key === spot.key)) continue
+    out.push({ key: spot.key, cardId: p.cardId, quote: spot.quote, reason: shortReason(p.title, p.detail, spot.quote) })
+  }
+  return out
+}

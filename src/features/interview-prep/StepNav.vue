@@ -26,6 +26,7 @@ defineProps<{ labels: readonly string[]; current: StepNo }>()
 </template>
 
 <style scoped>
+/* 낮은 단계 표시(N4): 모양(번호 원 + 이름 + 아래 줄)은 그대로 두고 높이만 줄인다 */
 .step-nav {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -37,9 +38,9 @@ defineProps<{ labels: readonly string[]; current: StepNo }>()
   position: relative;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  min-height: 5.6rem;
-  padding: 0.8rem 1.6rem;
+  gap: 0.8rem;
+  min-height: 4rem;
+  padding: 0.4rem 1.2rem;
   border-bottom: 3px solid var(--krds-light-color-border-gray-light);
   color: var(--krds-light-color-text-subtle);
 }
@@ -49,12 +50,12 @@ defineProps<{ labels: readonly string[]; current: StepNo }>()
   align-items: center;
   justify-content: center;
   flex: none;
-  width: 3.2rem;
-  height: 3.2rem;
+  width: 2.6rem;
+  height: 2.6rem;
   border: 1px solid var(--krds-light-color-border-gray);
   border-radius: var(--krds-radius-max);
   background: var(--krds-light-color-surface-white);
-  font-size: var(--krds-pc-font-size-label-small);
+  font-size: var(--krds-pc-font-size-label-xsmall);
   font-weight: 700;
 }
 
@@ -92,15 +93,14 @@ defineProps<{ labels: readonly string[]; current: StepNo }>()
   .step {
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.4rem;
+    gap: 0.2rem;
     min-height: 0;
-    padding: 0.8rem 0.4rem;
+    padding: 0.4rem 0.4rem 0.6rem;
   }
 
   .no {
-    width: 2.6rem;
-    height: 2.6rem;
-    font-size: var(--krds-pc-font-size-label-xsmall);
+    width: 2.4rem;
+    height: 2.4rem;
   }
 
   .label {

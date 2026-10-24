@@ -335,17 +335,19 @@ input[type='date']:focus-within {
 
 /* ── 기타 ────────────────────────────────────────────── */
 /*
- * S4 아래 고정 바(① .step-bar · ② .pick-bar)가 있는 화면: Tab 초점 이동·scrollIntoView·앵커 이동이
+ * S4 아래 고정 바(① .step-bar · ② .pick-bar · ③ .result-bar)가 있는 화면: Tab 초점 이동·scrollIntoView·앵커 이동이
  * 바 밑이 아니라 바 위에서 멈추게 한다(WCAG 2.4.11 초점 가려짐, DR-r3-02). 값 = 바 높이 + bottom 0.8rem + 여유
  */
 html:has(.pick-bar),
-html:has(.step-bar) {
+html:has(.step-bar),
+html:has(.result-bar) {
   scroll-padding-bottom: 10rem;
 }
 
 @media (max-width: 767px) {
   html:has(.pick-bar),
-  html:has(.step-bar) {
+  html:has(.step-bar),
+  html:has(.result-bar) {
     scroll-padding-bottom: 8.4rem;
   }
 

@@ -42,8 +42,9 @@ const MODES: readonly Mode[] = ['first', 'final']
 </template>
 
 <style scoped>
+/* 머리는 한 줄짜리 낮은 상자(N4): 첫 화면에 단계 본문(질문·카드)이 더 보이게 위아래 여백과 라디오 높이를 줄인다 */
 .page-title {
-  margin-bottom: 1.6rem;
+  margin-bottom: 1.2rem;
 }
 
 .summary {
@@ -51,8 +52,8 @@ const MODES: readonly Mode[] = ['first', 'final']
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 1.2rem 2.4rem;
-  padding: 1.6rem 2rem;
+  gap: 0.8rem 2.4rem;
+  padding: 0.7rem 1.2rem 0.7rem 2rem;
   border: 1px solid var(--rq-accent-border);
   border-radius: var(--krds-radius-large1);
   background: var(--rq-accent-subtler);
@@ -92,7 +93,7 @@ const MODES: readonly Mode[] = ['first', 'final']
   font-size: var(--krds-pc-font-size-label-small);
   font-weight: 700;
   color: var(--krds-light-color-text-bolder);
-  line-height: 4rem;
+  line-height: 3.4rem;
 }
 
 .mode-options {
@@ -109,8 +110,8 @@ const MODES: readonly Mode[] = ['first', 'final']
 .chip {
   display: inline-flex;
   align-items: center;
-  min-height: 4rem;
-  padding: 0 1.6rem;
+  min-height: 3.4rem;
+  padding: 0 1.4rem;
   border: 1px solid var(--krds-light-color-border-gray);
   border-radius: var(--krds-radius-max);
   background: var(--krds-light-color-surface-white);
@@ -136,13 +137,13 @@ const MODES: readonly Mode[] = ['first', 'final']
    요약은 두 줄: 회사명·지원결과 / 채용제목(지원 조건이 잘리지 않게 두 줄까지, DR-r2-06) */
 @media (max-width: 767px) {
   .page-title {
-    margin-bottom: 1.2rem;
+    margin-bottom: 1rem;
   }
 
   .summary {
     display: grid;
-    gap: 1rem;
-    padding: 1.2rem 1.4rem;
+    gap: 0.8rem;
+    padding: 1rem 1.2rem;
   }
 
   .target {

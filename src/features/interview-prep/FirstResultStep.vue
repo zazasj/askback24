@@ -3,6 +3,7 @@
  * S4 ③ 1차·기술 면접 질문. ②에서 "질문 만들기"를 누르면 만드는 중 → 질문 5개.
  * 결과는 지원 건마다 저장되어 새로고침해도 그대로다. 결과가 없이 이 단계를 열면 지금 선택으로 바로 만든다.
  * 처우 질문은 여기서 주지 않는다(D-012). 1차 면접을 다녀오면 최종 단계로 넘긴다.
+ * "전체 복사"·"면접 다녀왔어요"는 ①②처럼 아래 고정 바에 둔다(F-05).
  */
 import { computed, nextTick, onMounted, useTemplateRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -145,7 +146,6 @@ function printSheet(): void {
             <button type="button" class="btn btn-tertiary side-btn" @click="emit('change')">선택 바꾸기</button>
           </div>
           <div class="side-box">
-            <button type="button" class="btn btn-accent-outline side-btn" @click="copyAll">전체 복사</button>
             <button type="button" class="btn btn-tertiary side-btn" @click="printSheet">면접에 들고 갈 한 장 인쇄</button>
             <button type="button" class="btn btn-tertiary side-btn" @click="make">AI로 다시 만들기</button>
             <RouterLink class="about-link tap-target" to="/about-ai">이 질문은 어떻게 만들어지나요</RouterLink>
@@ -154,12 +154,21 @@ function printSheet(): void {
       </div>
 
       <section class="next-box" aria-labelledby="next-title" data-print="hide">
-        <div class="next-text">
-          <h3 id="next-title" class="next-title">1차 면접을 다녀오면</h3>
-          <p>물어본 질문과 들은 답을 정리해 주세요. 확인된 것은 빼고, 남은 것과 처우를 최종 면접 질문으로 만들어 드려요.</p>
-        </div>
-        <button type="button" class="btn btn-accent" @click="emit('review')">면접 다녀왔어요</button>
+        <h3 id="next-title" class="next-title">1차 면접을 다녀오면</h3>
+        <p>
+          아래 "면접 다녀왔어요"를 눌러 물어본 질문과 들은 답을 정리해 주세요. 확인된 것은 빼고, 남은 것과 처우를 최종 면접
+          질문으로 만들어 드려요.
+        </p>
       </section>
+
+      <!-- 아래 고정 바(①②와 같은 모양, F-05): 지금 할 일(전체 복사)과 다음 단계(면접 다녀왔어요). 채운 버튼은 다음 단계 하나 -->
+      <div class="result-bar" data-print="hide">
+        <p class="result-bar-note">질문 <strong>{{ questions.length }}개</strong>를 만들었어요</p>
+        <div class="result-bar-actions">
+          <button type="button" class="btn btn-tertiary btn-lg" @click="copyAll">전체 복사</button>
+          <button type="button" class="btn btn-accent btn-lg" @click="emit('review')">면접 다녀왔어요</button>
+        </div>
+      </div>
     </template>
 
     <div v-else-if="failed" class="empty">
@@ -182,12 +191,15 @@ function printSheet(): void {
 <style scoped>
 .result-step {
   display: grid;
-  gap: 2rem;
+  gap: 1.6rem;
 }
 
+/* 제목과 안내 한 줄을 같은 줄에(넓은 화면), 좁으면 아래로(N4) */
 .intro {
-  display: grid;
-  gap: 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1.6rem;
 }
 
 .title-row {
@@ -240,13 +252,13 @@ function printSheet(): void {
   position: sticky;
   top: 1.6rem;
   display: grid;
-  gap: 1.2rem;
+  gap: 1rem;
 }
 
 .side-box {
   display: grid;
-  gap: 0.8rem;
-  padding: 1.6rem;
+  gap: 0.6rem;
+  padding: 1.4rem 1.6rem;
   border: 1px solid var(--krds-light-color-border-gray-light);
   border-radius: var(--krds-radius-large1);
   background: var(--krds-light-color-surface-white);
@@ -287,21 +299,12 @@ function printSheet(): void {
 }
 
 .next-box {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.2rem 2.4rem;
-  padding: 2rem 2.4rem;
+  display: grid;
+  gap: 0.4rem;
+  padding: 1.6rem 2rem;
   border: 1px solid var(--rq-accent-border);
   border-radius: var(--krds-radius-large1);
   background: var(--rq-accent-subtler);
-}
-
-.next-text {
-  display: grid;
-  gap: 0.4rem;
-  flex: 1 1 32rem;
 }
 
 .next-title {
@@ -310,9 +313,42 @@ function printSheet(): void {
   color: var(--krds-light-color-text-bolder);
 }
 
-.next-text p {
+.next-box p {
   font-size: var(--krds-pc-font-size-body-small);
   color: var(--krds-light-color-text-basic);
+}
+
+/* ── 아래 고정 바(① .step-bar · ② .pick-bar와 같은 모양) ───────── */
+.result-bar {
+  position: sticky;
+  bottom: 0.8rem;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  padding: 1.2rem 1.6rem 1.2rem 2rem;
+  border: 1px solid var(--rq-accent-border);
+  border-radius: var(--krds-radius-large1);
+  background: var(--krds-light-color-surface-white);
+  box-shadow: var(--rq-shadow-pop);
+}
+
+.result-bar-note {
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.result-bar-note strong {
+  color: var(--rq-accent-strong);
+}
+
+.result-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-left: auto;
 }
 
 .empty {
@@ -349,17 +385,34 @@ function printSheet(): void {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .side-btn,
-  .next-box .btn {
+  .side-btn {
     min-height: var(--rq-touch);
   }
 
   .next-box {
-    padding: 1.6rem;
+    padding: 1.4rem 1.6rem;
   }
 
-  .next-box .btn {
+  /* 휴대폰: 바가 화면을 덜 가리게 버튼 두 개만 한 줄로 */
+  .result-bar {
+    padding: 1rem;
+  }
+
+  .result-bar-note {
+    display: none;
+  }
+
+  .result-bar-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
     width: 100%;
+    margin-left: 0;
+  }
+
+  .result-bar-actions .btn {
+    min-height: var(--rq-touch);
+    padding: 0 0.8rem;
+    font-size: var(--krds-pc-font-size-label-small);
   }
 }
 

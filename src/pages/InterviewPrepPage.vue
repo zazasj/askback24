@@ -151,13 +151,14 @@ useDemoToolActions(demoActions)
 </template>
 
 <style scoped>
+/* 머리·단계 표시·본문 사이를 좁혀 첫 화면에 단계 본문이 더 보이게(N4) */
 .steps {
-  margin: 3.2rem 0 2.4rem;
+  margin: 1.6rem 0 1.6rem;
 }
 
 @media (max-width: 767px) {
   .steps {
-    margin: 1.6rem 0 2rem;
+    margin: 1.2rem 0 1.6rem;
   }
 }
 </style>

@@ -52,12 +52,13 @@ const basis = computed(() => ncsLine(props.card))
 </template>
 
 <style scoped>
+/* 데스크톱 첫 화면에 카드 2줄(4개)이 보이게 안쪽 여백·칩 높이를 줄였다(N4, F-03). 휴대폰 칩은 44px 그대로 */
 .task-card {
   display: grid;
   grid-template-rows: auto 1fr auto auto;
-  gap: 0.6rem;
+  gap: 0.4rem;
   height: 100%;
-  padding: 1.6rem 1.8rem;
+  padding: 1.2rem 1.6rem;
   border: 1px solid var(--krds-light-color-border-gray-light);
   border-radius: var(--krds-radius-large1);
   background: var(--krds-light-color-surface-white);
@@ -123,6 +124,7 @@ const basis = computed(() => ncsLine(props.card))
 
 .basis {
   font-size: var(--krds-pc-font-size-body-xsmall);
+  line-height: 1.4;
   color: var(--krds-light-color-text-subtle);
 }
 
@@ -130,7 +132,7 @@ const basis = computed(() => ncsLine(props.card))
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
-  margin-top: 0.6rem;
+  margin-top: 0.4rem;
 }
 
 .choice {
@@ -155,7 +157,7 @@ const basis = computed(() => ncsLine(props.card))
 .chip {
   display: inline-flex;
   align-items: center;
-  min-height: 3.6rem;
+  min-height: 3.2rem;
   padding: 0 1.4rem;
   border: 1px solid var(--krds-light-color-border-gray);
   border-radius: var(--krds-radius-max);

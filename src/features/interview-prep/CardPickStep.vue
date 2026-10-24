@@ -87,18 +87,21 @@ const experienceHint = computed(() => {
 
 <template>
   <section class="pick-step" aria-labelledby="pick-step-title">
+    <!-- "내 기대·걱정"은 바로 위 단계 표시의 현재 단계와 같은 말이라 화면낭독기에만 남긴다(N4) -->
+    <h2 id="pick-step-title" class="sr-only">내 기대·걱정</h2>
     <div class="intro">
-      <h2 id="pick-step-title" class="section-title">내 기대·걱정</h2>
-      <p class="lead">백엔드 개발자가 실제로 하는 일 17가지예요. 아는 만큼만 골라도 돼요.</p>
+      <!-- 안내는 한 줄(N4): 고르는 법 + 시연 단서를 한 줄에, 그 아래 직업정보 한 줄 -->
+      <div class="intro-row">
+        <p class="lead">백엔드 업무 17가지 중 아는 만큼만 골라요. 고른 것을 다시 누르면 풀려요.</p>
+        <p v-if="showDemoHint" class="demo-hint">
+          <span>시연: 예시 구직자로 채울 수 있어요</span>
+          <button type="button" class="btn btn-tertiary btn-sm" @click="openDemoTools">시연 도구 열기</button>
+        </p>
+      </div>
       <!-- 카드가 어떤 직업의 일인지 공공 자료로 받친다(고용24 직업정보 직무 개요, data/real/job-webdev.json) -->
       <p v-if="JOB_INFO.summary_short" class="job-info">
         <span class="job-info-text">{{ JOB_INFO.summary_short }}</span>
         <span class="job-info-src">고용24 직업정보 · {{ JOB_INFO.job_name }} 직무 개요</span>
-      </p>
-      <p class="hint">카드마다 기대돼요 · 걱정돼요 · 모르겠어요 중 하나를 골라요. 고른 것을 다시 누르면 풀려요.</p>
-      <p v-if="showDemoHint" class="demo-hint">
-        <span>시연: 예시 구직자로 한 번에 채울 수 있어요</span>
-        <button type="button" class="btn btn-tertiary btn-sm" @click="openDemoTools">시연 도구 열기</button>
       </p>
     </div>
 
@@ -168,7 +171,7 @@ const experienceHint = computed(() => {
 <style scoped>
 .pick-step {
   display: grid;
-  gap: 2.4rem;
+  gap: 1.6rem;
 }
 
 .intro {
@@ -176,13 +179,16 @@ const experienceHint = computed(() => {
   gap: 0.6rem;
 }
 
-.lead {
-  color: var(--krds-light-color-text-basic);
+.intro-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1.6rem;
 }
 
-.hint {
-  font-size: var(--krds-pc-font-size-body-small);
-  color: var(--krds-light-color-text-subtle);
+.lead {
+  color: var(--krds-light-color-text-basic);
 }
 
 /* 공공 자료 인용: 고용24 상세 화면의 출처 문단처럼 회색 왼쪽 선 하나(우리 강조색은 쓰지 않음) */
@@ -207,10 +213,8 @@ const experienceHint = computed(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-self: start;
-  gap: 0.6rem 1.2rem;
-  margin-top: 0.4rem;
-  padding: 0.6rem 0.6rem 0.6rem 1.2rem;
+  gap: 0.6rem 1rem;
+  padding: 0.2rem 0.2rem 0.2rem 1rem;
   border: 1px dashed var(--krds-light-color-border-gray);
   border-radius: var(--krds-radius-medium2);
   background: var(--krds-light-color-surface-gray-subtler);
@@ -364,10 +368,15 @@ const experienceHint = computed(() => {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* 글은 두 줄로 접고 버튼은 같은 줄 오른쪽에(카드가 덜 밀리게) */
+  /* 글과 버튼을 한 줄에(카드가 덜 밀리게) */
+  .lead {
+    font-size: var(--krds-pc-font-size-body-small);
+  }
+
   .demo-hint {
+    flex: 1 1 100%;
     flex-wrap: nowrap;
-    justify-self: stretch;
+    padding: 0.2rem 0.2rem 0.2rem 1.2rem;
   }
 
   .demo-hint > span {

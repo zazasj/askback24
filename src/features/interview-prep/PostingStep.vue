@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /**
- * S4 ① 공고 확인 — AI가 공고를 읽은 흔적. 공고 원문(고용24 상세 표 모양, 직무내용은 원문 줄 그대로 글 블록) + 형광펜 + 설명 말풍선,
+ * S4 ① 공고 확인 — AI가 공고를 읽은 흔적. 맨 위 "AI 분석 요약"(확인할 곳 수 + 먼저 볼 두 곳),
+ * 공고 원문(고용24 상세 표 모양, 직무내용은 원문 줄 그대로 글 블록) + 형광펜 + 설명 말풍선,
  * 옆(휴대폰은 아래)에 "AI가 찾은 확인할 점"과 회사 신호(출처 배지).
  * focusCard(주소 ?card=)가 오면 그 카드의 형광펜을 켜고 그 자리로 간다(③ "근거 보기").
  */
@@ -9,7 +10,7 @@ import { onKeyStroke, useEventListener } from '@vueuse/core'
 import { getCard } from '@shared/catalog'
 import type { CompanySignal, Posting, PostingAnalysis } from '@shared/contract'
 import PostingText from '@/features/jobs/PostingText.vue'
-import { checkPoints, postingTag } from './checkpoints'
+import { checkPoints, firstLooks, postingTag } from './checkpoints'
 import { markKey, marksOf, splitByQuotes, type Segment } from './highlight'
 
 const props = defineProps<{
@@ -101,6 +102,8 @@ const bubbleCards = computed(() =>
 )
 
 const points = computed(() => checkPoints(props.analysis))
+/** 맨 위 "AI 분석 요약"의 먼저 볼 두 곳(확인할 점 순서대로, 형광펜이 있는 것) */
+const looks = computed(() => firstLooks(points.value, spotFor))
 // 오른쪽 열이 공고보다 길어지지 않게 앞의 것(모호한 업무·근무 방식부터)만 먼저 보인다(DR-r1-03)
 const CHECKS_FIRST = 3
 const checksOpen = ref(false)
@@ -193,13 +196,29 @@ const isMarked = (s: Segment) => s.cardIds.length > 0
 
 <template>
   <section ref="root" class="posting-step" aria-labelledby="posting-step-title">
-    <div class="intro">
-      <h2 id="posting-step-title" class="section-title">공고 확인</h2>
-      <p class="lead">
-        <span class="lead-full">AI가 공고 문장을 업무 카드와 맞춰 봤어요. 노란 형광펜을 누르면 어떤 업무와 연결했는지 보여요.</span>
-        <span class="lead-short">형광펜을 누르면 AI가 연결한 업무가 보여요.</span>
+    <!-- "공고 확인"은 바로 위 단계 표시의 현재 단계와 같은 말이라 화면낭독기에만 남긴다(N4, D-089를 데스크톱까지) -->
+    <h2 id="posting-step-title" class="sr-only">공고 확인</h2>
+
+    <!-- 고용24식 안내 상자(채팅 말풍선 아님). 인용을 누르면 그 형광펜을 켜고 그리로 간다(F-04).
+         제목·개수 줄·목록이 이 상자의 바로 아래 자식이어야 한 묶음으로 읽힌다(둘만 감싸는 칸을 두지 않음) -->
+    <section v-if="points.length" class="ai-summary" aria-labelledby="ai-summary-title">
+      <h3 id="ai-summary-title" class="ai-summary-title">AI 분석 요약</h3>
+      <p class="ai-summary-count">확인할 곳 <strong>{{ points.length }}군데</strong>를 찾았어요.</p>
+      <ol v-if="looks.length" class="looks" :aria-label="`먼저 볼 ${looks.length === 2 ? '두' : '한'} 곳`">
+        <li v-for="(l, i) in looks" :key="l.key" class="look">
+          <span class="look-no" aria-hidden="true">{{ i + 1 }}</span>
+          <span class="look-body">
+            <button type="button" class="look-quote tap-target" data-bubble-keep @click="goToCard(l.cardId, true)">‘{{ l.quote }}’</button>
+            <span class="look-reason">{{ l.reason }}</span>
+          </span>
+        </li>
+      </ol>
+      <p class="ai-summary-help">
+        <span v-if="looks.length">먼저 볼 곳을 누르면 공고의 그 문구로 가요. </span>
+        <span class="help-full">노란 형광펜을 누르면 AI가 어떤 업무와 연결했는지 보여요.</span>
+        <span class="help-short">형광펜을 누르면 AI가 연결한 업무가 보여요.</span>
       </p>
-    </div>
+    </section>
 
     <div class="layout">
       <section class="posting" aria-labelledby="posting-title">
@@ -352,19 +371,104 @@ const isMarked = (s: Segment) => s.cardIds.length > 0
 <style scoped>
 .posting-step {
   display: grid;
-  gap: 2.4rem;
+  gap: 2rem;
 }
 
-.intro {
+/* ── AI 분석 요약(KRDS 안내 상자 모양 + 우리 강조색 왼쪽 선) ───────── */
+.ai-summary {
   display: grid;
-  gap: 0.6rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.8rem 1.2rem;
+  padding: 1.4rem 2rem 1.4rem 1.8rem;
+  border: 1px solid var(--rq-accent-border);
+  border-left: 0.4rem solid var(--rq-accent);
+  border-radius: var(--krds-radius-medium2);
+  background: var(--rq-accent-subtler);
 }
 
-.lead {
+.ai-summary-title {
+  font-size: var(--krds-pc-font-size-label-medium);
+  font-weight: 700;
+  color: var(--rq-accent-strong);
+}
+
+.ai-summary-count {
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-basic);
+}
+
+.ai-summary-count strong {
+  color: var(--krds-light-color-text-bolder);
+}
+
+.looks,
+.ai-summary-help {
+  grid-column: 1 / -1;
+}
+
+.looks {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.look {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  font-size: var(--krds-pc-font-size-body-small);
+}
+
+.look-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--krds-radius-max);
+  background: var(--rq-accent-subtle);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  font-weight: 700;
+  color: var(--rq-accent-strong);
+}
+
+.look-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.8rem;
+  min-width: 0;
+}
+
+/* 인용은 공고 형광펜과 같은 노란 바탕(누르면 그 형광펜으로 간다) */
+.look-quote {
+  padding: 0.1rem 0.4rem;
+  border: 0;
+  border-radius: var(--krds-radius-small1);
+  background: var(--rq-mark);
+  font-weight: 700;
+  color: var(--krds-light-color-text-bolder);
+  text-align: left;
+  text-decoration: underline dotted;
+  text-decoration-color: var(--krds-light-color-text-subtle);
+  text-underline-offset: 0.4rem;
+}
+
+.look-quote:hover {
+  background: var(--rq-mark-active);
+}
+
+.look-reason {
+  color: var(--krds-light-color-text-basic);
+}
+
+.ai-summary-help {
+  font-size: var(--krds-pc-font-size-body-xsmall);
   color: var(--krds-light-color-text-subtle);
 }
 
-.lead-short {
+.help-short {
   display: none;
 }
 
@@ -749,25 +853,17 @@ mark[data-active='true'] {
     gap: 1.6rem;
   }
 
-  .intro .section-title {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
+  .ai-summary {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.6rem;
+    padding: 1.2rem 1.4rem 1.2rem 1.2rem;
   }
 
-  .lead {
-    font-size: var(--krds-pc-font-size-body-small);
-  }
-
-  .lead-full {
+  .help-full {
     display: none;
   }
 
-  .lead-short {
+  .help-short {
     display: inline;
   }
 
