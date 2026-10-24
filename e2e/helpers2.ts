@@ -270,9 +270,15 @@ export async function rectOf(target: Locator): Promise<Box> {
 /** 아래 고정 바가 화면 아래끝에서 띄워져 있을 수 있는 틈(px). 실측: ① 바가 아래끝 8px 위(sticky). */
 export const BAR_GAP = 24
 
+/**
+ * 아래 고정 바로 셀 수 있는 모양인가: 아래에 붙였거나(`bottom` 값이 auto 아님) 화면 폭의 60% 이상.
+ * 위에 붙인 좁은 sticky 옆 상자(③ "내가 고른 것")는 아래끝이 우연히 화면 아래끝 근처여도 바가 아니다(SPEC-ISSUES F-02).
+ */
+export const BAR_MIN_WIDTH_RATIO = 0.6
+
 /** 고정(fixed·sticky)된 위·아래 띠를 뺀, 지금 실제로 보이는 세로 범위 */
 export async function visibleBand(page: Page): Promise<{ top: number; bottom: number; viewport: number }> {
-  return page.evaluate((BAR_GAP) => {
+  return page.evaluate(([BAR_GAP, BAR_MIN_WIDTH_RATIO]) => {
     const vh = window.innerHeight
     let top = 0
     let bottom = vh
@@ -282,11 +288,12 @@ export async function visibleBand(page: Page): Promise<{ top: number; bottom: nu
       if (cs.visibility === 'hidden' || cs.display === 'none' || Number(cs.opacity) === 0) continue
       const r = el.getBoundingClientRect()
       if (r.width < 1 || r.height < 1 || r.height > vh / 2) continue
-      if (r.bottom >= vh - BAR_GAP && r.top > vh / 2) bottom = Math.min(bottom, r.top)
+      const barShaped = cs.bottom !== 'auto' || r.width >= window.innerWidth * BAR_MIN_WIDTH_RATIO
+      if (r.bottom >= vh - BAR_GAP && r.top > vh / 2 && barShaped) bottom = Math.min(bottom, r.top)
       else if (r.top <= 2 && r.bottom > 0 && r.bottom < vh / 2) top = Math.max(top, r.bottom)
     }
     return { top, bottom, viewport: vh }
-  }, BAR_GAP)
+  }, [BAR_GAP, BAR_MIN_WIDTH_RATIO] as const)
 }
 
 export function insideBand(box: Box, band: { top: number; bottom: number }): boolean {
@@ -339,7 +346,7 @@ export async function settleScroll(page: Page): Promise<void> {
 
 /** 아래 고정 바 밑에 깔린(겹친) 글자. 바가 없으면 barTop null. */
 export async function textUnderBottomBar(page: Page): Promise<{ barTop: number | null; covered: string[] }> {
-  return page.evaluate((BAR_GAP) => {
+  return page.evaluate(([BAR_GAP, BAR_MIN_WIDTH_RATIO]) => {
     const vh = window.innerHeight
     const pinned = (el: Element | null): boolean => {
       for (let n = el; n; n = n.parentElement) {
@@ -355,7 +362,8 @@ export async function textUnderBottomBar(page: Page): Promise<{ barTop: number |
       if (cs.visibility === 'hidden' || cs.display === 'none') continue
       const r = el.getBoundingClientRect()
       if (r.width < 1 || r.height < 1 || r.height > vh / 2) continue
-      if (r.bottom >= vh - BAR_GAP && r.top > vh / 2) bars.push(r)
+      const barShaped = cs.bottom !== 'auto' || r.width >= window.innerWidth * BAR_MIN_WIDTH_RATIO
+      if (r.bottom >= vh - BAR_GAP && r.top > vh / 2 && barShaped) bars.push(r)
     }
     if (bars.length === 0) return { barTop: null, covered: [] }
     const covered: string[] = []
@@ -377,7 +385,7 @@ export async function textUnderBottomBar(page: Page): Promise<{ barTop: number |
       }
     }
     return { barTop: Math.min(...bars.map((b) => b.top)), covered }
-  }, BAR_GAP)
+  }, [BAR_GAP, BAR_MIN_WIDTH_RATIO] as const)
 }
 
 /** 요소 a 가 문서 순서로 b 보다 앞인가 */
