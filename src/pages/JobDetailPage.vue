@@ -8,6 +8,7 @@ import { useRoute } from 'vue-router'
 import { getPosting } from '@shared/catalog'
 import NotFoundContent from '@/components/ui/NotFoundContent.vue'
 import ApplyDialog from '@/features/jobs/ApplyDialog.vue'
+import PostingText from '@/features/jobs/PostingText.vue'
 import { DETAIL_SECTIONS, EMPTY_TEXT, rowText, salaryText } from '@/features/jobs/postingView'
 import { usePageTitle } from '@/lib/title'
 import { useDemoStore } from '@/stores/demo'
@@ -38,7 +39,7 @@ const summary = computed(() => {
 const sections = computed(() => {
   const p = posting.value
   if (!p) return []
-  return DETAIL_SECTIONS.map((s) => ({ ...s, rows: s.rows.map((r) => ({ label: r.label, text: rowText(p, r) })) }))
+  return DETAIL_SECTIONS.map((s) => ({ ...s, rows: s.rows.map((r) => ({ label: r.label, text: rowText(p, r), block: !!r.block })) }))
 })
 
 const dialogOpen = ref(false)
@@ -109,7 +110,8 @@ function submit(): void {
           <tr v-for="r in s.rows" :key="r.label">
             <th scope="row">{{ r.label }}</th>
             <td>
-              <span v-if="r.text" class="cell-text">{{ r.text }}</span>
+              <PostingText v-if="r.text && r.block" :text="r.text" />
+              <span v-else-if="r.text" class="cell-text">{{ r.text }}</span>
               <span v-else class="is-empty">{{ EMPTY_TEXT }}</span>
             </td>
           </tr>

@@ -14,6 +14,8 @@ export interface DetailRow {
   fields: PostingKey[]
   /** 붙일 단위(근로자 수 → "명") */
   suffix?: string
+  /** 긴 글 칸: 원문 줄·소제목·목록 기호 그대로 글 블록(PostingText, S4 ①과 같은 부품) */
+  block?: boolean
 }
 
 export interface DetailSection {
@@ -29,7 +31,7 @@ export const DETAIL_SECTIONS: readonly DetailSection[] = [
     title: '모집요강',
     rows: [
       { label: '모집직종', fields: ['jobsNm'] },
-      { label: '직무내용', fields: ['jobCont'] },
+      { label: '직무내용', fields: ['jobCont'], block: true },
       { label: '모집인원', fields: ['collectPsncnt'], suffix: '명' },
       { label: '경력', fields: ['enterTpNm'] },
       { label: '학력', fields: ['eduNm'] },

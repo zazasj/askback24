@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * S4 ① 공고 확인 — AI가 공고를 읽은 흔적. 공고 원문(고용24 상세 표 모양) + 형광펜 + 설명 말풍선,
+ * S4 ① 공고 확인 — AI가 공고를 읽은 흔적. 공고 원문(고용24 상세 표 모양, 직무내용은 원문 줄 그대로 글 블록) + 형광펜 + 설명 말풍선,
  * 옆(휴대폰은 아래)에 "AI가 찾은 확인할 점"과 회사 신호(출처 배지).
  * focusCard(주소 ?card=)가 오면 그 카드의 형광펜을 켜고 그 자리로 간다(③ "근거 보기").
  */
@@ -8,6 +8,7 @@ import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue'
 import { onKeyStroke, useEventListener } from '@vueuse/core'
 import { getCard } from '@shared/catalog'
 import type { CompanySignal, Posting, PostingAnalysis } from '@shared/contract'
+import PostingText from '@/features/jobs/PostingText.vue'
 import { checkPoints, postingTag } from './checkpoints'
 import { markKey, marksOf, splitByQuotes, type Segment } from './highlight'
 
@@ -30,10 +31,12 @@ interface RowDef {
   fields: PostingKey[]
   /** 비어 있으면 줄을 숨긴다(비어 있음이 확인할 점이 아닌 칸) */
   hideEmpty?: boolean
+  /** 긴 글 칸: 원문 줄·소제목·목록 기호 그대로 글 블록으로(S3 상세와 같은 부품) */
+  block?: boolean
 }
 
 const ROWS: readonly RowDef[] = [
-  { key: 'job', label: '직무내용', fields: ['jobCont'] },
+  { key: 'job', label: '직무내용', fields: ['jobCont'], block: true },
   { key: 'pf', label: '우대조건', fields: ['pfCond', 'etcPfCond'] },
   { key: 'emp', label: '고용형태', fields: ['empTpNm'] },
   { key: 'career', label: '경력', fields: ['enterTpNm'] },
@@ -136,6 +139,28 @@ function toggleMark(key: string): void {
   else open(key)
 }
 
+/** 형광펜 한 개의 속성. 글 블록(직무내용)과 짧은 칸이 같은 형광펜을 그린다 */
+function markBind(field: string, seg: Segment) {
+  const key = markKey(field, seg)
+  const isOpen = openKey.value === key
+  return {
+    role: 'button',
+    tabindex: 0,
+    'data-bubble-keep': '',
+    'data-mark-key': key,
+    'data-active': activeKey.value === key ? 'true' : undefined,
+    'aria-expanded': isOpen,
+    'aria-controls': isOpen ? 'mark-bubble' : undefined,
+    'aria-describedby': 'mark-help',
+  }
+}
+
+function onMarkKey(e: KeyboardEvent, field: string, seg: Segment): void {
+  if (e.key !== 'Enter' && e.key !== ' ') return
+  e.preventDefault()
+  toggleMark(markKey(field, seg))
+}
+
 /** 확인할 점·주소에서 카드의 형광펜으로 간다 */
 function goToCard(cardId: string, focus: boolean): void {
   const spot = spotFor(cardId)
@@ -202,22 +227,26 @@ const isMarked = (s: Segment) => s.cardIds.length > 0
             <tr v-for="row in rows" :key="row.key">
               <th scope="row">{{ row.label }}</th>
               <td>
-                <template v-if="row.parts.length">
+                <template v-if="row.parts.length && row.block">
+                  <PostingText v-for="part in row.parts" :key="part.field" :segments="part.segments">
+                    <template #mark="{ seg, text }"
+                      ><mark
+                        v-bind="markBind(part.field, seg)"
+                        @click="toggleMark(markKey(part.field, seg))"
+                        @keydown="onMarkKey($event, part.field, seg)"
+                        >{{ text }}</mark
+                      ></template
+                    >
+                  </PostingText>
+                </template>
+                <template v-else-if="row.parts.length">
                   <span v-for="part in row.parts" :key="part.field" class="part"
                     ><template v-for="seg in part.segments" :key="seg.start"
                       ><mark
                         v-if="isMarked(seg)"
-                        role="button"
-                        tabindex="0"
-                        data-bubble-keep
-                        :data-mark-key="markKey(part.field, seg)"
-                        :data-active="activeKey === markKey(part.field, seg) ? 'true' : undefined"
-                        :aria-expanded="openKey === markKey(part.field, seg)"
-                        :aria-controls="openKey === markKey(part.field, seg) ? 'mark-bubble' : undefined"
-                        aria-describedby="mark-help"
+                        v-bind="markBind(part.field, seg)"
                         @click="toggleMark(markKey(part.field, seg))"
-                        @keydown.enter.prevent="toggleMark(markKey(part.field, seg))"
-                        @keydown.space.prevent="toggleMark(markKey(part.field, seg))"
+                        @keydown="onMarkKey($event, part.field, seg)"
                         >{{ seg.text }}</mark
                       ><template v-else>{{ seg.text }}</template></template
                     ></span

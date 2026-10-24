@@ -29,6 +29,18 @@
       "card_id": "BE17",
       "state": "inferred",
       "reason": "공고에 팀 구성이 없어 백엔드를 몇 명이 맡는지 확인해 볼 만해요"
+    },
+    {
+      "card_id": "BE04",
+      "state": "inferred",
+      "evidence": { "field": "jobCont", "quote": "SQL 기본 문법을 이해하시는 분" },
+      "reason": "자격요건 'SQL 기본 문법을 이해하시는 분'에서 쿼리 작성 업무를 유추했어요"
+    },
+    {
+      "card_id": "BE14",
+      "state": "explicit",
+      "evidence": { "field": "jobCont", "quote": "프로젝트 개발 산출물 작성" },
+      "reason": "직무내용에 '프로젝트 개발 산출물 작성'이 적혀 있어요"
     }
   ],
   "blanks": [

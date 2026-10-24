@@ -45,8 +45,8 @@
       "topic": "workHours",
       "status": "check",
       "label": "근로시간",
-      "basis": "당직이 있고 당직 뒤 대체휴무가 있다고 적혀 있어요",
-      "evidence": { "field": "workdayWorkhrCont", "quote": "당직 시 대체휴무" },
+      "basis": "근무시간 칸은 비어 있고, 직무내용에 당직과 당직 뒤 대체휴무가 적혀 있어요",
+      "evidence": { "field": "jobCont", "quote": "당직 시 대체휴무" },
       "question": "당직은 한 달에 몇 번쯤이고, 당직 다음 날 대체휴무는 어떻게 쓰나요?"
     },
     {
