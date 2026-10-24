@@ -71,3 +71,12 @@ export function finalMeta(q: FinalQuestion, pref: Pref | null, stateLabel: strin
 export function finalTypeLabel(type: FinalQType): string {
   return FINAL_BOOK.type_labels[type]
 }
+
+/** "왜 이 질문인가요" 첫 줄: "충돌 확인: 걱정한 일이 …". 유형 이름과 뜻을 한 글로 둬 칩 이름만 따로 보이지 않게 한다 */
+export function firstTypeNote(type: QType): string {
+  return `${CARD_BOOK.type_labels[type]}: ${CARD_BOOK.type_descriptions[type]}`
+}
+
+export function finalTypeNote(type: FinalQType): string {
+  return `${FINAL_BOOK.type_labels[type]}: ${FINAL_BOOK.type_descriptions[type]}`
+}

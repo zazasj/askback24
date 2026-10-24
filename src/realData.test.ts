@@ -36,12 +36,12 @@ describe('DATA-01 업무 카드 NCS(직무정보 215L01)', () => {
     }
   })
 
-  it('② 카드의 NCS 줄: 찾은 카드는 응답 이름, 못 찾은 카드는 팀이 정리한 값, NCS 없는 카드는 근무 방식 카드', () => {
+  it('② 카드의 NCS 줄: 찾은 카드는 응답 이름, 못 찾은 카드는 팀이 정리한 값 + "(팀 정리)", NCS 없는 카드는 근무 방식 카드', () => {
     for (const c of CARDS) {
       const e = NCS_CARDS.cards.find((x) => x.card_id === c.id)
       if (!e) expect(ncsLine(c), c.id).toBe('근무 방식·환경 카드')
       else if (e.matched) expect(ncsLine(c), c.id).toBe(`NCS · ${e.unit.centerLabel}`)
-      else expect(ncsLine(c), c.id).toBe(`NCS · ${e.existing.map((n) => n.unit).join(', ')}`)
+      else expect(ncsLine(c), c.id).toBe(`NCS · ${e.existing.map((n) => n.unit).join(', ')} (팀 정리)`)
     }
   })
 })

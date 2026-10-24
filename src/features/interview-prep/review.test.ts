@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { PRESETS, REVIEW_EXAMPLE } from '@shared/catalog'
-import { buildTemplateFirst } from '@shared/generate'
-import { emptyReviewDraft, exampleDraft, isItemDone, isTouched, toFinalRequest, toReview } from './review'
+import { buildTemplateFirst, generateFinal } from '@shared/generate'
+import { createMockProvider } from '@shared/providers/mock'
+import { emptyReviewDraft, exampleDraft, isItemDone, isTouched, ruleJudgedAskedCount, toFinalRequest, toReview } from './review'
 
 const first = buildTemplateFirst({ mode: 'first', wantedAuthNo: 'K-MOCK-0001', picks: PRESETS.A.picks, experience: PRESETS.A.experience })
 const questions = first.questions
@@ -41,5 +42,21 @@ describe('1차 면접 정리 → 요청', () => {
     expect(req.mode).toBe('final')
     expect(req.picks.every((p) => p.has_exp === false)).toBe(true)
     expect(JSON.stringify(req)).not.toContain(PRESETS.A.experience)
+  })
+})
+
+describe('최종 ③ 일부 단순 규칙 판정 안내', () => {
+  it('예시 세트 그대로면 0개, 예시에 없는 들은 답 하나면 1개(못 물은 카드·회사가 물은 업무는 세지 않음)', async () => {
+    const provider = createMockProvider()
+    const example = exampleDraft(questions)
+    const fixed = await generateFinal(toFinalRequest('K-MOCK-0001', PRESETS.A.picks, example, questions), { provider })
+    expect(ruleJudgedAskedCount(fixed.card_states)).toBe(0)
+
+    const edited = { ...example, items: { ...example.items, BE07: { ...example.items.BE07!, heard: '유지보수와 신규가 반반이에요' } } }
+    const partial = await generateFinal(toFinalRequest('K-MOCK-0001', PRESETS.A.picks, edited, questions), { provider })
+    expect(ruleJudgedAskedCount(partial.card_states)).toBe(1)
+
+    const all = await generateFinal(toFinalRequest('K-MOCK-0001', PRESETS.A.picks, example, questions))
+    expect(ruleJudgedAskedCount(all.card_states)).toBe(4)
   })
 })

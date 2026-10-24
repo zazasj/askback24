@@ -5,13 +5,13 @@
       "card_id": "BE06",
       "state": "explicit",
       "evidence": { "field": "jobCont", "quote": "데이터 수집 배치 프로그램 개발" },
-      "reason": "직무내용에 '데이터 수집 배치 프로그램 개발'이 적혀 있어요"
+      "reason": "배치가 실패했을 때 누가 어떻게 대응하는지, 신입은 어디까지 맡는지 확인해 볼 만해요"
     },
     {
       "card_id": "BE05",
       "state": "explicit",
       "evidence": { "field": "jobCont", "quote": "고객사 시스템 연동 API 개발" },
-      "reason": "직무내용에 '고객사 시스템 연동 API 개발'이 적혀 있어요"
+      "reason": "고객사 40여 곳과 연동하고 운영까지 맡아, 연동 대상과 고객사 조율을 누가 하는지 확인해 볼 만해요"
     },
     {
       "card_id": "BE07",

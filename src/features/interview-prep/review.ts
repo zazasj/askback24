@@ -3,7 +3,17 @@
  * 여기서는 "무엇을 적었는지"만 다룬다. 들은 답·분위기는 메모리에만 두고 저장하지 않는다(R-09).
  */
 import { CARDS, FINAL_BOOK, REVIEW_EXAMPLE } from '@shared/catalog'
-import type { CardPick, Clarity, FinalQuestionsRequest, InterviewReview, Mood, NotAskedReason, Question, ReviewState } from '@shared/contract'
+import type {
+  CardPick,
+  CardState,
+  Clarity,
+  FinalQuestionsRequest,
+  InterviewReview,
+  Mood,
+  NotAskedReason,
+  Question,
+  ReviewState,
+} from '@shared/contract'
 import { HEARD_MAX } from '@shared/generate'
 
 export { HEARD_MAX }
@@ -43,6 +53,20 @@ export const REASONS = Object.keys(REASON_LABELS) as NotAskedReason[]
 export const MOODS = Object.keys(MOOD_LABELS) as Mood[]
 
 export const STATE_LABELS: Record<ReviewState, string> = FINAL_BOOK.state_labels
+
+const ASKED_RULE_BASES: ReadonlySet<string> = new Set([
+  FINAL_BOOK.basis.asked_clear,
+  FINAL_BOOK.basis.asked_vague,
+  FINAL_BOOK.basis.asked_unmarked,
+])
+
+/**
+ * 물어본 카드 중 단순 규칙으로 판정한 수. 응답에는 물어봤는지가 없어서 단순 규칙의 "물어봄" 근거 문장으로 가린다
+ * (못 물은 카드·회사가 물은 업무는 늘 규칙 판정이라 세지 않는다). 새로고침 뒤에도 저장된 결과만으로 셀 수 있다.
+ */
+export function ruleJudgedAskedCount(states: readonly CardState[]): number {
+  return states.filter((s) => s.source === 'rule' && ASKED_RULE_BASES.has(s.basis)).length
+}
 
 export function itemOf(draft: ReviewDraft, cardId: string): ReviewItemDraft {
   return draft.items[cardId] ?? emptyItem()

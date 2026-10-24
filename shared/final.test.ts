@@ -180,6 +180,23 @@ describe('R 판정·표현 단계', () => {
     expect(res.card_states.find((s) => s.card_id === 'BE07')?.state).toBe('confirmed')
   })
 
+  it('예시 세트에 없는 들은 답은 가짜 판정이 내지 않아 카드 source가 rule로 남고, 예시 세트 그대로면 물어본 카드는 모두 ai', async () => {
+    const review = r04Review()
+    review.asked = review.asked.map((a) =>
+      a.card_id === 'BE07' ? { ...a, heard: '유지보수와 신규 개발이 반반이에요' } : a.card_id === 'BE15' ? { ...a, heard: '상주는 거의 없어요', clarity: 'clear' as const } : a,
+    )
+    const res = await generateFinal(reqR04(review), { provider: createMockProvider() })
+    const states = Object.fromEntries(res.card_states.map((s) => [s.card_id, `${s.state}/${s.source}`]))
+    expect(states.BE07).toBe('confirmed/rule')
+    expect(states.BE15).toBe('confirmed/rule')
+    expect(states.BE02).toBe('confirmed/ai')
+    expect(states.BE01).toBe('confirmed/ai')
+
+    const fixed = await generateFinal(reqR04(), { provider: createMockProvider() })
+    const asked = new Set(REVIEW_EXAMPLE.asked.map((a) => a.card_id))
+    for (const s of fixed.card_states) expect(`${s.card_id}/${s.source}`).toBe(`${s.card_id}/${asked.has(s.card_id) ? 'ai' : 'rule'}`)
+  })
+
   it('S1 2행 시드(예시 A × (주)△△커머스)에도 예시 세트가 같은 카드에 맞는다', async () => {
     const res = await generateFinal(reqR04(r04Review(['BE02', 'BE03', 'BE01', 'BE07', 'BE15']), COMMERCE), { provider: createMockProvider() })
     expect(res.summary).toEqual({ confirmed: 2, mismatch: 1, still_unknown: 2, company_signal: 1 })

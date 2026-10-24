@@ -43,7 +43,10 @@ function goBack(): void {
     <!-- 결과·만드는 중 화면과 같은 태그(D-082). 확인하러 온 이 자리에서 실제 AI 결과로 읽히지 않게(DR-r2-04) -->
     <p v-if="isMock" class="mock-note">
       <MockModeTag />
-      <span>지금 시연은 가짜 응답 모드라 3단계 문장을 AI 대신 규칙과 예시 문장으로 만들어요. 순서·근거·검사는 같아요.</span>
+      <span>
+        지금 시연은 가짜 응답 모드라 1단계 공고 분석은 공고 {{ numbers.postings }}건을 미리 분석해 둔 결과이고, 3단계 문장과 1차 면접 답 판정은 AI 대신
+        규칙과 예시 문장으로 만들어요. 순서·근거·검사는 같아요.
+      </span>
     </p>
 
     <section class="block" aria-labelledby="about-steps">
@@ -157,7 +160,7 @@ function goBack(): void {
     <section class="block" aria-labelledby="about-privacy">
       <h2 id="about-privacy" class="section-title">개인정보</h2>
       <ul class="privacy">
-        <li>이력서 전체를 AI에 보내지 않아요. 내가 고른 경험 한 줄만 보내요.</li>
+        <li>질문을 만들 때 AI에 보내는 것은 고른 카드와 경험 한 줄이고, 최종 면접 준비 때는 1차 면접에서 들은 답까지예요. 이력서 전체는 보내지 않아요.</li>
         <li>서버는 경험 한 줄과 면접에서 들은 답을 저장하거나 기록하지 않아요.</li>
         <li>고른 카드와 질문 결과는 이 브라우저에만 저장되고, 들은 답은 브라우저에도 저장하지 않아요.</li>
       </ul>

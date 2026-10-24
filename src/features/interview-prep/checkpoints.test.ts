@@ -22,7 +22,10 @@ describe('AI 분석 요약 — 먼저 볼 두 곳(F-04)', () => {
     if (!posting || !analysis) throw new Error('K-MOCK-0001 없음')
     const looks = firstLooks(checkPoints(analysis), spotResolver(posting, analysis))
     expect(looks.map((l) => l.quote)).toEqual(['기타 업무 지원', '고객사 상주 가능자'])
-    expect(looks.map((l) => l.reason)).toEqual(['범위가 모호해 기존 시스템 유지보수가 포함될 수 있어요', '고객사 상주 개발 · 우대조건에 적혀 있어요'])
+    expect(looks.map((l) => l.reason)).toEqual([
+      '범위가 모호해 기존 시스템 유지보수가 포함될 수 있어요',
+      '고객사 상주 개발 · 상주 가능자를 우대해 신입도 고객사에 나가 일할 수 있어요. 기간과 비율을 확인해 볼 만해요',
+    ])
   })
 
   it('모든 공고: 최대 2곳, 형광펜이 서로 다르고 인용이 원문에 있으며, 이유는 비어 있지 않고 인용 따옴표를 남기지 않는다', () => {

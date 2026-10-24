@@ -139,6 +139,8 @@ export interface CardBook {
   preference_options: Record<Pref, string>
   posting_states: Record<PostingState, string>
   type_labels: Record<QType, string>
+  /** 유형 칩의 뜻("왜 이 질문인가요" 첫 줄). 회사를 따지는 말로 읽히지 않게 */
+  type_descriptions: Record<QType, string>
   gap_rules: GapRule[]
   cards: CardDef[]
 }
@@ -157,6 +159,7 @@ export interface FinalRule {
 export interface FinalBook {
   meta: Record<string, unknown>
   type_labels: Record<FinalQType, string>
+  type_descriptions: Record<FinalQType, string>
   state_labels: Record<ReviewState, string>
   final_rules: FinalRule[]
   offer_priority: number

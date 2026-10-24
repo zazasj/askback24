@@ -43,6 +43,8 @@ const focusCard = computed(() => (typeof route.query.card === 'string' ? route.q
 const apiFail = computed(() => route.query.apiFail === '1')
 /** 1차 결과(시드 포함)가 있어야 최종 흐름의 정리 단계로 갈 수 있다 */
 const hasFirst = computed(() => !!(application.value && questions.firstOf(application.value.apply_id)))
+/** 1차 질문을 만드는 중이면 곧 결과가 생기므로 "먼저 1차 면접 질문을 만들어 주세요"로 막지 않는다 */
+const firstGenerating = computed(() => !!(application.value && questions.isGenerating(application.value.apply_id)))
 
 function makeQuestions(): void {
   const app = application.value
@@ -120,7 +122,7 @@ useDemoToolActions(demoActions)
       :signals="signals"
       :next-label="NEXT_FROM_POSTING[mode]"
       :focus-card="focusCard"
-      :needs-first="mode === 'final' && !hasFirst"
+      :needs-first="mode === 'final' && !hasFirst && !firstGenerating"
       @next="goStep(2)"
       @first="toFirst"
     />

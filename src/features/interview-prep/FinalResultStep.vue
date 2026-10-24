@@ -16,8 +16,8 @@ import { useReviewStore } from '@/stores/review'
 import GeneratingView from './GeneratingView.vue'
 import { prefOf } from './picks'
 import QuestionCard from './QuestionCard.vue'
-import { FINAL_TONES, evidenceLabel, finalMeta, finalTypeLabel, offerMeta } from './questionView'
-import { MOOD_LABELS, STATE_LABELS, isTouched } from './review'
+import { FINAL_TONES, evidenceLabel, finalMeta, finalTypeLabel, finalTypeNote, offerMeta } from './questionView'
+import { MOOD_LABELS, STATE_LABELS, isTouched, ruleJudgedAskedCount } from './review'
 
 const props = defineProps<{ applyId: string; posting: Posting }>()
 const emit = defineEmits<{ edit: []; first: []; remake: [] }>()
@@ -29,6 +29,8 @@ const review = useReviewStore()
 const { copy } = useCopy()
 
 const hasFirst = computed(() => !!store.firstOf(props.applyId))
+/** 1차 질문을 만드는 중에 머리 라디오로 최종으로 바꾸면 아직 결과가 없다 — ②로 돌려보내지 않는다 */
+const firstGenerating = computed(() => store.isGenerating(props.applyId))
 const generating = computed(() => store.isGeneratingFinal(props.applyId))
 const failed = computed(() => store.hasFailedFinal(props.applyId))
 const result = computed(() => store.finalOf(props.applyId))
@@ -43,6 +45,8 @@ const ruleJudged = computed(() => {
   const states = result.value?.response.card_states ?? []
   return states.length > 0 && states.every((s) => s.source === 'rule')
 })
+/** 일부만 규칙 판정이어도 규칙 결과가 AI 판정으로 보이지 않게 개수를 알린다 */
+const ruleAskedCount = computed(() => ruleJudgedAskedCount(result.value?.response.card_states ?? []))
 
 // 만드는 중 ↔ 결과가 바뀔 때 누른 버튼이 사라지므로 초점을 제목으로 옮긴다
 const title = useTemplateRef<HTMLElement>('title')
@@ -169,6 +173,9 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
       <p v-if="ruleJudged" class="notice is-fallback">
         들은 답 판정도 단순 규칙(구체적 → 확인됨, 모호하거나 못 물음 → 아직 모름)으로 했어요. "기대와 다름"은 AI가 답을 읽어야 나와요.
       </p>
+      <p v-else-if="ruleAskedCount > 0" class="notice is-fallback">
+        카드 {{ ruleAskedCount }}개는 단순 규칙으로 판정했어요. "기대와 다름"은 AI가 답을 읽어야 나와요.
+      </p>
 
       <div class="result-layout">
         <ol class="questions" aria-label="최종 면접·처우 질문 목록">
@@ -188,6 +195,7 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
             :evidence-to="evidenceTo(q)"
             :watch-out="q.watch_out"
             :good-sign="q.good_sign"
+            :type-note="finalTypeNote(q.type)"
             @copy="copy(q.text)"
             @keep="store.toggleFinalKept(applyId, finalKey(q))"
           />
@@ -209,6 +217,10 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
         </aside>
       </div>
     </template>
+
+    <div v-else-if="firstGenerating" class="empty">
+      <p class="empty-title">1차 질문을 만들고 있어요</p>
+    </div>
 
     <div v-else-if="!hasFirst" class="empty">
       <p class="empty-title">먼저 1차 면접 질문을 만들어 주세요</p>

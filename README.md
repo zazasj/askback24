@@ -89,10 +89,10 @@ npm run check          # 위 세 가지(build · test:unit · test:e2e)를 차�
 | 데이터 | 구분 | 출처 | 화면 |
 |---|---|---|---|
 | 업무 카드 17개 | 실제 | NCS 국가직무능력표준 능력단위, 한국직업사전(웹프로그래머)을 바탕으로 팀이 정리 | ② 카드 |
-| 업무 카드 NCS 표시 | 실제 | 고용24 오픈API 직무정보(215L01) → `data/real/ncs-cards.json`. NCS 카드 15개 중 6개는 응답 값, 9개는 응답에서 같은 이름을 못 찾아 팀 값(`matched: false`) | ② 카드 "NCS" 줄 |
+| 업무 카드 NCS 표시 | 실제 | 고용24 오픈API 직무정보(215L01) → `data/real/ncs-cards.json`. NCS 카드 15개 중 6개는 응답의 능력단위명, 9개는 응답에서 같은 이름을 못 찾아 팀 값(`matched: false`, 카드에 "(팀 정리)") | ② 카드 "NCS" 줄 |
 | 웹개발자 직무 개요 | 실제 | 고용24 오픈API 직업정보(212D01) → `data/real/job-webdev.json` | ② 맨 위 한 줄 |
 | 지역·직종 코드 | 실제 | 고용24 오픈API 공통코드(21L01) → `data/real/common-codes.json` | 모의 공고 7건의 지역·직종 코드(단위 시험으로 확인) |
-| 강소기업 통계 | 실제 | 고용24 오픈API 강소기업(216L01) → `data/real/small-giants-summary.json` | `/about-ai` |
+| 강소기업 통계 | 실제 | 고용24 오픈API 강소기업(216L01) → `data/real/small-giants-summary.json`. 전국 15,282건(응답 15,291건 중 겹친 9건 뺌, 회사 15,281곳, 2024년 선정) 중 정보통신업 1,677건, 인증 종류 38가지 — `/about-ai`와 같은 기준 | `/about-ai` |
 | 채용 공고 7건 | 모의 | 채용정보 오픈API(210L01)는 개인회원이 쓸 수 없어 항목 이름만 따름 | S3, S4 ① |
 | 회사 신호: 국민연금 사업장 가입자 현황 | 실제 | 출처 종류만 실제. 시연 회사가 가상이라 값은 예시 | S4 ① |
 | 회사 신호: 공고 이력 · 강소기업 정보 · 업종 유추 · 임금체불 명단 | 모의 | 시연용으로 만든 값 | S4 ① |
@@ -109,6 +109,7 @@ staging(개발) ──push──▶ Vercel 미리보기 ──세진 확인─�
 - 개발은 **staging** 브랜치에서만 하고, 커밋·push도 staging에만 한다.
 - **main에는 직접 커밋·push 하지 않는다.** main은 심사위원이 보는 배포 주소라, 세진이 staging 미리보기를 확인한 뒤 GitHub에서 staging → main PR로만 합친다.
 - 심사 기간(11-10~19)에는 main merge를 하루 한 번 이하로, 확인한 것만 한다.
+- Vercel은 `vercel.json`의 `buildCommand`대로 가짜 응답 모드(`npm run build:mock`)로 빌드한다. staging 미리보기에서 ③ 제목 옆과 `/about-ai`에 회색 태그 "가짜 응답 모드 · AI 대신 규칙과 예시 문장"이 보이는지 확인한 뒤 main에 합친다.
 - 커밋 작성자는 레포 로컬 설정을 쓴다. 메시지 꼴과 그 밖의 규칙은 [`CLAUDE.md`](CLAUDE.md) 「git」을 본다.
 
 ## 제한 사항

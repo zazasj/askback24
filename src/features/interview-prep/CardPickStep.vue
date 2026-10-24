@@ -77,11 +77,13 @@ function useChip(chip: (typeof CHIPS)[number]): void {
   prep.setExperience(props.applyId, chip.text, chip.card_id)
 }
 
+// 경험 한 줄은 AI에 보내므로 사람·학교·회사를 알아볼 말을 빼 달라고 늘 같이 적는다(개인정보, A1-07)
+const EXPERIENCE_PRIVACY = '이름·학교·회사 이름은 빼고 적어 주세요.'
 const experienceHint = computed(() => {
-  if (!experience.value.trim()) return 'AI가 관련 있는 질문에만 붙여요. 비워 둬도 돼요.'
+  if (!experience.value.trim()) return `AI가 관련 있는 질문에만 붙여요. 비워 둬도 돼요. ${EXPERIENCE_PRIVACY}`
   const target = experienceTarget(selection.value)
-  if (!target) return '"기대돼요"를 고른 카드가 있으면 그 질문 앞에 붙여요.'
-  return `"${getCard(target)?.label ?? target}" 질문 앞에 붙여요.`
+  if (!target) return `"기대돼요"를 고른 카드가 있으면 그 질문 앞에 붙여요. ${EXPERIENCE_PRIVACY}`
+  return `"${getCard(target)?.label ?? target}" 질문 앞에 붙여요. ${EXPERIENCE_PRIVACY}`
 })
 </script>
 

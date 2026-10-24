@@ -260,6 +260,7 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
         <span v-if="looks.length">먼저 볼 곳을 누르면 공고의 그 문구로 가요. </span>
         <span class="help-full">노란 형광펜을 누르면 AI가 어떤 업무와 연결했는지 보여요.</span>
         <span class="help-short">형광펜을 누르면 AI가 연결한 업무가 보여요.</span>
+        <span> 공고 분석은 미리 만들어 둔 결과예요.</span>
       </p>
     </section>
 
@@ -377,6 +378,7 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
           <p class="signal-help">
             "실제"는 실제 서비스에서 공공데이터로 채울 항목이에요. 시연 회사는 가상이라 값은 예시예요. "모의"는 시연용으로 만든 항목이에요.
           </p>
+          <p class="signal-help">신호는 면접에서 그대로 말하지 말고, '신입이 자리 잡도록 어떤 도움을 주시나요?'처럼 돌려 물어보세요.</p>
         </section>
       </div>
     </div>
@@ -390,7 +392,7 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
       </div>
     </div>
     <div v-else class="step-bar">
-      <p v-if="points.length" class="step-bar-note">AI가 확인할 점 <strong>{{ points.length }}개</strong>를 찾았어요</p>
+      <p v-if="points.length" class="step-bar-note">확인할 곳 <strong>{{ points.length }}군데</strong>를 다 봤으면 다음 단계로 가요</p>
       <button type="button" class="btn btn-accent btn-lg next" @click="emit('next')">{{ nextLabel }}</button>
     </div>
   </section>

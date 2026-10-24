@@ -31,22 +31,30 @@ export function ncsEntry(cardId: string): NcsEntry | undefined {
   return ncsByCard.get(cardId)
 }
 
-/** ② 카드의 "NCS" 줄: 응답에서 찾은 능력단위명, 못 찾았으면 팀이 정리한 값 */
+/** 응답에서 같은 이름을 못 찾아 팀이 정리한 NCS 값에 붙이는 표시 */
+export const TEAM_NCS_MARK = ' (팀 정리)'
+
+/** ② 카드의 "NCS" 줄: 응답에서 찾은 능력단위명, 못 찾았으면 팀이 정리한 값 + "(팀 정리)" — 응답 값과 구별되게 */
 export function ncsLine(card: CardDef): string {
   const e = ncsEntry(card.id)
   if (e?.matched) return `NCS · ${e.unit.centerLabel}`
   const units = e && !e.matched ? e.existing : card.ncs
-  return units.length ? `NCS · ${units.map((n) => n.unit).join(', ')}` : '근무 방식·환경 카드'
+  if (!units.length) return '근무 방식·환경 카드'
+  return `NCS · ${units.map((n) => n.unit).join(', ')}${e && !e.matched ? TEAM_NCS_MARK : ''}`
 }
 
 export const JOB_INFO = jobJson as { fetched_on: string; jobCd: string; job_name: string; summary: string; summary_short: string }
 
 export interface GiantsSummary {
   fetched_on: string
+  /** 응답의 total(똑같은 줄 포함) */
   total: number
+  /** 똑같은 줄을 뺀 건수. 정보통신업·인증 종류는 이 건수로 셌다(D-121) */
   counted: number
+  counted_companies: number
   ict: { label: string; count: number }
   by_brand: Array<{ brand: string; count: number }>
+  by_year: Array<{ year: string; count: number }>
 }
 export const SMALL_GIANTS = giantsJson as unknown as GiantsSummary
 

@@ -23,6 +23,8 @@ defineProps<{
   evidenceTo?: RouteLocationRaw
   watchOut: string
   goodSign: string
+  /** 유형 칩의 뜻 "충돌 확인: 걱정한 일이 …" — 펼침 첫 줄 */
+  typeNote?: string
 }>()
 
 const emit = defineEmits<{ copy: []; keep: [] }>()
@@ -55,6 +57,7 @@ const emit = defineEmits<{ copy: []; keep: [] }>()
 
     <details class="why" data-print="hide">
       <summary>왜 이 질문인가요</summary>
+      <p v-if="typeNote" class="why-type">{{ typeNote }}</p>
       <dl class="why-list">
         <div class="why-row">
           <dt>근거</dt>
@@ -67,7 +70,10 @@ const emit = defineEmits<{ copy: []; keep: [] }>()
         </div>
         <div class="why-row">
           <dt>주의할 답</dt>
-          <dd>{{ watchOut }}</dd>
+          <dd>
+            {{ watchOut }}
+            <span class="why-note">'주의할 답'은 회사의 흠이 아니라 내 기대와 다를 수 있는 답이에요.</span>
+          </dd>
         </div>
         <div class="why-row">
           <dt>좋은 신호</dt>
@@ -279,6 +285,24 @@ const emit = defineEmits<{ copy: []; keep: [] }>()
   font-size: var(--krds-pc-font-size-body-small);
   line-height: 1.6;
   color: var(--krds-light-color-text-basic);
+}
+
+/* 유형 칩이 회사를 따지는 말로 읽히지 않게 뜻을 먼저 한 줄로 */
+.why-type {
+  margin-top: 1rem;
+  font-size: var(--krds-pc-font-size-body-small);
+  line-height: 1.6;
+  color: var(--krds-light-color-text-basic);
+}
+
+.why-type + .why-list {
+  margin-top: 0.6rem;
+}
+
+.why-note {
+  flex-basis: 100%;
+  font-size: var(--krds-pc-font-size-body-xsmall);
+  color: var(--krds-light-color-text-subtle);
 }
 
 .evidence {

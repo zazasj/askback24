@@ -18,7 +18,7 @@ import { useQuestionsStore } from '@/stores/questions'
 import GeneratingView from './GeneratingView.vue'
 import { PREFS, countByPref } from './picks'
 import QuestionCard from './QuestionCard.vue'
-import { FIRST_TONES, cardMeta, evidenceLabel } from './questionView'
+import { FIRST_TONES, cardMeta, evidenceLabel, firstTypeNote } from './questionView'
 
 const props = defineProps<{ applyId: string; posting: Posting; apiFail?: boolean }>()
 const emit = defineEmits<{ change: []; review: [] }>()
@@ -128,6 +128,7 @@ function printSheet(): void {
             :evidence-to="evidenceTo(q)"
             :watch-out="q.watch_out"
             :good-sign="q.good_sign"
+            :type-note="firstTypeNote(q.type)"
             @copy="copy(q.text)"
             @keep="store.toggleKept(applyId, q.card_id)"
           />

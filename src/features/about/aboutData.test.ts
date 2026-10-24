@@ -52,6 +52,10 @@ describe('DATA-06 출처 표의 고용24 오픈API 줄', () => {
     const stats = rows.find((r) => r.data === '강소기업 통계')
     expect(stats?.note.replace(/,/g, '')).toContain(String(SMALL_GIANTS.total))
     expect(stats?.note.replace(/,/g, '')).toContain(String(SMALL_GIANTS.ict.count))
+    // 정보통신업 수는 겹침 뺀 건수로 셌으니 전국 수도 같은 기준으로 먼저 쓰고 응답 total 과의 차이를 밝힌다(A1-05)
+    expect(stats?.note.replace(/(\d),(?=\d{3})/g, '$1')).toMatch(
+      new RegExp(`^전국 ${SMALL_GIANTS.counted}건\\(응답 ${SMALL_GIANTS.total}건 중 겹친 ${SMALL_GIANTS.total - SMALL_GIANTS.counted}건 뺌, 회사 ${SMALL_GIANTS.counted_companies}곳`),
+    )
     const signal = rows.filter((r) => r.data === '회사 신호' && r.origin.includes('강소기업'))
     expect(signal.length).toBeGreaterThan(0)
     expect(signal.every((r) => r.source === '모의' && r.fetched === '')).toBe(true)

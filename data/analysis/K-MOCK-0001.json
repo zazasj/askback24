@@ -5,7 +5,7 @@
       "card_id": "BE01",
       "state": "explicit",
       "evidence": { "field": "jobCont", "quote": "서버 개발" },
-      "reason": "직무내용에 '서버 개발'이 적혀 있어요"
+      "reason": "서버 쪽 일 중 새 API를 만드는 일이 얼마나 되고, 신입은 언제부터 맡는지 확인해 볼 만해요"
     },
     {
       "card_id": "BE07",
@@ -17,7 +17,7 @@
       "card_id": "BE15",
       "state": "explicit",
       "evidence": { "field": "pfCond", "quote": "고객사 상주 가능자" },
-      "reason": "우대조건에 '고객사 상주 가능자'가 적혀 있어요"
+      "reason": "상주 가능자를 우대해 신입도 고객사에 나가 일할 수 있어요. 기간과 비율을 확인해 볼 만해요"
     },
     {
       "card_id": "BE12",
@@ -40,7 +40,7 @@
       "card_id": "BE14",
       "state": "explicit",
       "evidence": { "field": "jobCont", "quote": "프로젝트 개발 산출물 작성" },
-      "reason": "직무내용에 '프로젝트 개발 산출물 작성'이 적혀 있어요"
+      "reason": "프로그램 명세서·단위 테스트 결과서 같은 문서도 맡아, 개발과 문서 작업의 비중을 확인해 볼 만해요"
     }
   ],
   "blanks": [

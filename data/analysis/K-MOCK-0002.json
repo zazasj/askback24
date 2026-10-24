@@ -5,19 +5,19 @@
       "card_id": "BE01",
       "state": "explicit",
       "evidence": { "field": "jobCont", "quote": "자사 커머스 서비스 API 개발" },
-      "reason": "직무내용에 '자사 커머스 서비스 API 개발'이 적혀 있어요"
+      "reason": "쇼핑몰 기능을 사내 개발팀이 직접 만드는 회사라, 신입이 새 API를 언제부터 어디까지 맡는지 확인해 볼 만해요"
     },
     {
       "card_id": "BE09",
       "state": "explicit",
       "evidence": { "field": "jobCont", "quote": "AWS 기반 배포" },
-      "reason": "직무내용에 'AWS 기반 배포'가 적혀 있어요"
+      "reason": "배포를 개발자가 직접 하는지, 서버 운영은 누가 맡는지 확인해 볼 만해요"
     },
     {
       "card_id": "BE11",
       "state": "explicit",
       "evidence": { "field": "jobCont", "quote": "테스트 코드 작성" },
-      "reason": "직무내용에 '테스트 코드 작성'이 적혀 있어요"
+      "reason": "테스트 코드를 쓰는 팀이라, 코드 검토와 테스트 범위를 어떻게 정하는지 확인해 볼 만해요"
     },
     {
       "card_id": "BE04",
@@ -34,7 +34,7 @@
       "card_id": "BE17",
       "state": "inferred",
       "evidence": { "field": "jobCont", "quote": "현재 백엔드 개발자 2명" },
-      "reason": "직무내용에 '현재 백엔드 개발자 2명'이 적혀 있어 팀이 작아요"
+      "reason": "백엔드 개발자가 2명이라, 둘이 어떻게 나눠 맡고 신입은 누구에게 배우는지 확인해 볼 만해요"
     }
   ],
   "blanks": [
@@ -49,9 +49,9 @@
       "topic": "workHours",
       "status": "check",
       "label": "근로시간",
-      "basis": "근무 시간은 적혀 있지만 24시간 운영 서비스예요",
+      "basis": "근무시간은 '주 5일(월~금) 09:00~18:00, 시차출근제'로 적혀 있고 시차출근 범위와 근무 시간 밖 연락은 적혀 있지 않아요",
       "evidence": { "field": "workdayWorkhrCont", "quote": "시차출근제" },
-      "question": "시차출근제는 어떤 범위에서 쓸 수 있고, 장애 대응으로 근무 외 시간에 일하면 어떻게 보상되나요?"
+      "question": "시차출근제는 어떤 범위에서 쓸 수 있고, 근무 시간 밖에 연락이나 대응이 필요한 일이 있다면 어떻게 보상되나요?"
     },
     {
       "topic": "probation",

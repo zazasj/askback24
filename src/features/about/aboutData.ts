@@ -5,7 +5,7 @@
 import { ANALYSES, CARDS, POSTINGS, getPosting, getSignals } from '@shared/catalog'
 import type { CompanySignal } from '@shared/contract'
 import { quoteInPosting } from '@shared/validate'
-import { NCS_CARDS, SMALL_GIANTS, apiOf, fetchedOn, type RealSourceId } from '@/realData'
+import { NCS_CARDS, SMALL_GIANTS, TEAM_NCS_MARK, apiOf, fetchedOn, type RealSourceId } from '@/realData'
 
 export interface AuditNumbers {
   cards: number
@@ -46,11 +46,24 @@ const REAL_SIGNAL_NOTE = '실제 서비스에서는 이 공공데이터 값을 �
 const MOCK_SIGNAL_NOTE = '시연용으로 만든 값이에요.'
 // 강소기업은 실제 명단을 받았지만 시연 회사가 가상이라 회사별 여부는 지어낼 수밖에 없어 "모의"다(DATA-04)
 const SIGNAL_NOTES: Record<string, string> = {
-  '고용24 강소기업 정보': '시연 회사는 가상이라 인증 여부도 예시예요. 실제 명단으로 센 숫자는 "강소기업 통계" 줄에 있어요.',
+  '고용24 강소기업 정보': '시연 회사는 가상이라 명단에 올라 있는지도 예시예요. 실제 명단으로 센 숫자는 "강소기업 통계" 줄에 있어요.',
 }
 
 const num = (n: number): string => n.toLocaleString('ko-KR')
 const openApi = (id: RealSourceId, name: string): string => `고용24 오픈API ${name}(${apiOf(id)})`
+
+/**
+ * 강소기업 통계 한 줄. 정보통신업·인증 종류는 똑같은 줄을 뺀 건수로 셌으므로 전국 수도 같은 기준(counted)으로 쓰고
+ * 응답 total 과의 차이를 괄호에 밝힌다(A1-05). 숫자는 모두 파일 값.
+ */
+export function giantsNote(): string {
+  const g = SMALL_GIANTS
+  const years = [...new Set(g.by_year.map((y) => y.year))].join('·')
+  return (
+    `전국 ${num(g.counted)}건(응답 ${num(g.total)}건 중 겹친 ${num(g.total - g.counted)}건 뺌, 회사 ${num(g.counted_companies)}곳, ${years}년 선정) ` +
+    `중 ${g.ict.label} ${num(g.ict.count)}건, 인증 종류 ${g.by_brand.length}가지. 시연 회사는 가상이라 회사별로는 쓰지 않아요.`
+  )
+}
 
 /** 고용24 오픈API에서 받은 4종: 직무정보 · 직업정보 · 공통코드 · 강소기업 */
 function realApiRows(): SourceRow[] {
@@ -61,7 +74,7 @@ function realApiRows(): SourceRow[] {
       data: '업무 카드 NCS 표시',
       origin: openApi('duty', '직무정보'),
       source: '실제',
-      note: `NCS 카드 ${ncsCards}개 중 ${matched}개는 응답의 능력단위명·정의·코드를 그대로 써요. 나머지 ${ncsCards - matched}개는 응답에서 같은 이름을 찾지 못해 팀이 정리한 값이에요.`,
+      note: `NCS 카드 ${ncsCards}개 중 ${matched}개는 응답의 능력단위명을 그대로 보여요(정의·분류 코드는 data/real/ncs-cards.json에 저장). 나머지 ${ncsCards - matched}개는 응답에서 같은 이름을 찾지 못해 팀이 정리한 값이라 카드에 "${TEAM_NCS_MARK.trim()}"를 붙였어요.`,
       fetched: fetchedOn('duty'),
     },
     {
@@ -82,7 +95,7 @@ function realApiRows(): SourceRow[] {
       data: '강소기업 통계',
       origin: openApi('giants', '강소기업'),
       source: '실제',
-      note: `전국 ${num(SMALL_GIANTS.total)}건 중 ${SMALL_GIANTS.ict.label} ${num(SMALL_GIANTS.ict.count)}건, 인증 종류 ${SMALL_GIANTS.by_brand.length}가지. 시연 회사는 가상이라 회사별 인증 여부에는 쓰지 않아요.`,
+      note: giantsNote(),
       fetched: fetchedOn('giants'),
     },
   ]

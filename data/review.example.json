@@ -1,8 +1,8 @@
 {
   "label": "1차 면접 다녀온 예시",
-  "note": "시연 도구 「1차 면접 다녀온 것으로 채우기」가 넣는 값이자 가짜 응답 모드의 판정 고정값(ACCEPTANCE R-04). 예시 구직자 A의 1차 질문(BE15·BE07·BE02·BE03·BE01) 기준. state 가 있는 항목은 들은 답이 글자 그대로 같을 때만 그 판정을 쓴다.",
+  "note": "시연 도구 「1차 면접 다녀온 것으로 채우기」가 넣는 값이자 가짜 응답 모드의 판정 고정값(ACCEPTANCE R-04). 예시 구직자 A의 1차 질문(BE15·BE07·BE02·BE03·BE01) 기준. state 가 있는 항목은 들은 답·답 모양이 글자 그대로 같을 때만 그 판정을 쓰고, 그 밖의 입력은 가짜 판정을 내지 않아 단순 규칙 판정이 남는다.",
   "asked": [
-    { "card_id": "BE15", "heard": "프로젝트마다 달라서요", "clarity": "vague" },
+    { "card_id": "BE15", "heard": "프로젝트마다 달라서요", "clarity": "vague", "state": "still_unknown" },
     { "card_id": "BE07", "heard": "유지보수가 7할쯤 되고 신규는 프로젝트 들어갈 때만요", "clarity": "clear", "state": "mismatch" },
     { "card_id": "BE02", "heard": "설계 리뷰에 신입도 들어가고 작은 기능은 직접 설계해요", "clarity": "clear", "state": "confirmed" },
     { "card_id": "BE01", "heard": "수습 끝나면 작은 API부터 맡겨요", "clarity": "clear", "state": "confirmed" }

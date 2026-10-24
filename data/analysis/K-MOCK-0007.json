@@ -5,13 +5,13 @@
       "card_id": "BE07",
       "state": "explicit",
       "evidence": { "field": "jobCont", "quote": "창고관리시스템(WMS) 유지보수 및 고도화" },
-      "reason": "직무내용에 '창고관리시스템(WMS) 유지보수 및 고도화'가 적혀 있어요"
+      "reason": "유지보수와 고도화를 함께 맡아, 둘의 비중과 신입이 고도화에 언제 참여하는지 확인해 볼 만해요"
     },
     {
       "card_id": "BE05",
       "state": "explicit",
       "evidence": { "field": "jobCont", "quote": "화주사·택배사 시스템 연동" },
-      "reason": "직무내용에 '화주사·택배사 시스템 연동'이 적혀 있어요"
+      "reason": "화주사 200여 곳과 택배사 시스템을 잇는 일이라, 연동 대상과 조율 담당을 확인해 볼 만해요"
     },
     {
       "card_id": "BE15",

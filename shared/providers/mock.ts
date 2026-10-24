@@ -58,7 +58,11 @@ type Lead = (item: DraftItem) => string
 
 const quoteOf = (item: DraftItem) => item.evidence?.quote ?? ''
 
-/** 유형별 앞말. 문장 끝에 공백을 둔다. 공고에 없는 카드(absent)에는 공고를 말하지 않는다 */
+/**
+ * 유형별 앞말. 문장 끝에 공백을 둔다. 공고를 인용하는 앞말은 그 업무가 공고에 적힌(explicit) 카드와
+ * 충돌 확인의 모호한 표현(vague)에만 쓴다. 유추한(inferred) 카드의 근거 문구는 질문 내용과 직접 이어지지 않아
+ * ("고객사 상주 가능자" → 요구사항 협의) 인용하면 엉뚱해지고, 공고에 없는 카드(absent)는 공고를 말하지 않는다.
+ */
 const LEADS: Record<QType, (item: DraftItem) => readonly Lead[]> = {
   conflict: (item) => {
     const q = quoteOf(item)
@@ -67,7 +71,7 @@ const LEADS: Record<QType, (item: DraftItem) => readonly Lead[]> = {
         () => `공고의 '${q}'${iraneun(q)} 표현이 어떤 업무까지 포함하는지 궁금했어요. `,
         () => `'${q}'${iraneun(q)} 문구의 범위를 미리 알고 싶어요. `,
       ]
-    if (q)
+    if (q && item.state === 'explicit')
       return [() => `공고에 '${q}'라고 적혀 있어 여쭤요. `, () => `'${q}' 부분을 보고 미리 확인하고 싶었어요. `]
     return [() => '입사 전에 꼭 확인하고 싶은 부분이 있어요. ', () => '미리 알아 두고 싶은 부분이 있어요. ']
   },
@@ -75,7 +79,8 @@ const LEADS: Record<QType, (item: DraftItem) => readonly Lead[]> = {
   opportunity: () => [() => '꼭 해 보고 싶은 일이라 여쭤요. ', () => '제가 기대하는 일이라 궁금했어요. '],
   depth: (item) => {
     const q = quoteOf(item)
-    if (q) return [() => `공고에서 '${q}' 부분을 보고 더 궁금해졌어요. `, () => `'${q}' 부분이 제가 기대하는 일과 맞닿아 있어 여쭤요. `]
+    if (q && item.state === 'explicit')
+      return [() => `공고에서 '${q}' 부분을 보고 더 궁금해졌어요. `, () => `'${q}' 부분이 제가 기대하는 일과 맞닿아 있어 여쭤요. `]
     return [() => '기대하는 업무라 조금 더 자세히 여쭤요. ', () => '제가 해 보고 싶은 일이라 여쭤요. ']
   },
   explore: () => [() => '아직 잘 몰라서 여쭤보고 싶어요. ', () => '어떤 일인지 감이 오지 않아 여쭤요. '],
@@ -101,18 +106,19 @@ export function mockSentence(item: DraftItem, experience: string, variant = 0): 
 
 // ── 최종 면접 ─────────────────────────────────────────────────
 /**
- * 가짜 판정: 예시 세트(data/review.example.json)의 들은 답과 글자 그대로 같으면 그 고정값,
- * 그 밖은 단순 규칙(구체적 → 확인됨, 그 밖 → 아직 모름). "기대와 다름"은 실제 LLM 몫이라 예시 세트에서만 나온다.
+ * 가짜 판정: 예시 세트(data/review.example.json)의 들은 답·답 모양과 글자 그대로 같고 state 가 있으면 그 고정값만 낸다.
+ * 그 밖은 판정하지 않아(null) 단순 규칙 결과(source: rule)가 그대로 남는다 — 규칙 판정이 AI 판정으로 보이지 않게(D-059).
+ * "기대와 다름"은 실제 LLM 몫이라 예시 세트에서만 나온다.
  */
-export function mockJudgement(item: JudgeItem): Judgement {
+export function mockJudgement(item: JudgeItem): Judgement | null {
   const B = FINAL_BOOK.basis
   const fixed = REVIEW_EXAMPLE.asked.find(
     (e) => e.card_id === item.card_id && e.heard === item.heard.trim() && e.clarity === item.clarity && e.state,
   )
   if (fixed?.state === 'mismatch') return { card_id: item.card_id, state: 'mismatch', basis: `${B.mismatch} · 주의할 답: ${item.watch_out}` }
   if (fixed?.state === 'confirmed') return { card_id: item.card_id, state: 'confirmed', basis: `${B.good_sign} · 좋은 신호: ${item.good_sign}` }
-  if (fixed?.state === 'still_unknown' || item.clarity !== 'clear') return { card_id: item.card_id, state: 'still_unknown', basis: B.asked_vague }
-  return { card_id: item.card_id, state: 'confirmed', basis: B.asked_clear }
+  if (fixed?.state === 'still_unknown') return { card_id: item.card_id, state: 'still_unknown', basis: B.asked_vague }
+  return null
 }
 
 /**
@@ -170,7 +176,7 @@ export function createMockProvider(options: MockOptions = {}): LlmProvider {
     async judgeReview(input: JudgeInput, signal: AbortSignal): Promise<Judgement[]> {
       if (delayMs > 0) await wait(Math.round(delayMs / 2), signal)
       if (fail) throw new Error('mock provider failure')
-      return input.items.map(mockJudgement)
+      return input.items.flatMap((item) => mockJudgement(item) ?? [])
     },
     async writeFinal(input: FinalDraftInput, signal: AbortSignal): Promise<FinalDraft[]> {
       if (delayMs > 0) await wait(delayMs - Math.round(delayMs / 2), signal)

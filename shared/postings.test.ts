@@ -62,6 +62,31 @@ describe('S3 모의 공고', () => {
   })
 })
 
+describe('유추한 카드의 가짜 공급자 앞말(field-r1-02)', () => {
+  it('예시 A·B × 모든 공고 × variant 0·1: 공고에서 유추한 카드 질문은 앞말에서 공고 문구를 인용하지 않는다', async () => {
+    let seen = 0
+    for (const p of POSTINGS) {
+      const original = Object.values(p).filter((v): v is string => typeof v === 'string').join('\n')
+      const analysis = getAnalysis(p.wantedAuthNo)
+      for (const preset of Object.values(PRESETS)) {
+        for (const variant of [0, 1]) {
+          const res = await generateFirst(
+            { mode: 'first', wantedAuthNo: p.wantedAuthNo, picks: preset.picks, experience: preset.experience },
+            { provider: createMockProvider({ variant }) },
+          )
+          for (const q of res.questions) {
+            if (analysis?.cards.find((c) => c.card_id === q.card_id)?.state !== 'inferred') continue
+            seen++
+            const tag = `${p.wantedAuthNo} ${preset.label} v${variant} ${q.card_id}: ${q.text}`
+            for (const m of q.text.matchAll(/'([^']+)'/g)) expect(original.includes(m[1] ?? ''), tag).toBe(false)
+          }
+        }
+      }
+    }
+    expect(seen, '유추한 카드 질문이 있다(예시 B × (주)OO소프트 BE12 등)').toBeGreaterThan(0)
+  })
+})
+
 /** "공고에 고객사 상주 우대가 있던데"처럼 원문 인용 없이 공고 내용을 말함 */
 const UNQUOTED_PRESUPPOSE = /공고에 [^'.?!]*?(?:있던데|있는데)/
 

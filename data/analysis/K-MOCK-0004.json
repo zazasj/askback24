@@ -5,25 +5,25 @@
       "card_id": "BE01",
       "state": "explicit",
       "evidence": { "field": "jobCont", "quote": "결제 승인 API 개발" },
-      "reason": "직무내용에 '결제 승인 API 개발'이 적혀 있어요"
+      "reason": "결제처럼 중요한 API를 신입이 언제부터, 누구의 검토를 받아 맡는지 확인해 볼 만해요"
     },
     {
       "card_id": "BE06",
       "state": "explicit",
       "evidence": { "field": "jobCont", "quote": "가맹점 정산 배치 프로그램 개발" },
-      "reason": "직무내용에 '가맹점 정산 배치 프로그램 개발'이 적혀 있어요"
+      "reason": "정산 배치는 금액이 걸린 일이라, 실패했을 때 누가 어떻게 대응하는지 확인해 볼 만해요"
     },
     {
       "card_id": "BE05",
       "state": "explicit",
       "evidence": { "field": "jobCont", "quote": "카드사·은행 시스템 연동" },
-      "reason": "직무내용에 '카드사·은행 시스템 연동'이 적혀 있어요"
+      "reason": "바깥 기관 시스템과 맞추는 일이 있어, 기관과의 조율은 누가 맡는지 확인해 볼 만해요"
     },
     {
       "card_id": "BE08",
       "state": "explicit",
       "evidence": { "field": "jobCont", "quote": "24시간 서비스 모니터링(당직 순번제)" },
-      "reason": "직무내용에 '24시간 서비스 모니터링(당직 순번제)'이 적혀 있어요"
+      "reason": "당직을 순번으로 서는 일이라, 신입은 언제부터 당직에 들어가고 한 달에 몇 번쯤 서는지 확인해 볼 만해요"
     },
     {
       "card_id": "BE16",

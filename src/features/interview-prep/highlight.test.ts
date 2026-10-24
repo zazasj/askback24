@@ -104,6 +104,21 @@ describe('근거 인용 없는 유추 카드(DR-r2-03)', () => {
     expect(seen, '시험할 카드가 있다(OO소프트 BE17 등)').toBeGreaterThan(0)
   })
 
+  it('근로조건(blanks)의 근거·처우 질문도 회사 신호 문장을 옮기지 않고, 공고에 없는 "24시간"을 전제하지 않는다', () => {
+    for (const posting of POSTINGS) {
+      const analysis = getAnalysis(posting.wantedAuthNo)
+      const signals = getSignals(posting.wantedAuthNo).map((s) => s.text.replace(/요$/, ''))
+      const postingText = Object.values(posting).filter((v) => typeof v === 'string').join('\n')
+      for (const b of analysis?.blanks ?? []) {
+        const where = `${posting.wantedAuthNo} ${b.topic}`
+        for (const text of [b.basis, b.question]) {
+          for (const s of signals) expect(text, `${where}: 회사 신호 "${s}"`).not.toContain(s)
+          if (!postingText.includes('24시간')) expect(text, `${where}: 공고에 없는 24시간`).not.toContain('24시간')
+        }
+      }
+    }
+  })
+
   it('근거 인용이 있는 유추·공고에 있음·모호는 그대로, 분석에 없는 카드는 표시 없음', () => {
     expect(postingTag({ state: 'inferred', evidence: { field: 'pfCond', quote: '고객사 상주 가능자' } })).toBe('공고에서 유추')
     expect(postingTag({ state: 'explicit', evidence: { field: 'jobCont', quote: '서버 개발' } })).toBe('공고에 있음')

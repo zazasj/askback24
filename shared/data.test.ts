@@ -1,6 +1,6 @@
 /** 정적 데이터 점검: 형광펜이 안 칠해지는 근거(= 근거 없는 전제) 0건, 가상 인물 정보만. */
 import { describe, expect, it } from 'vitest'
-import { ANALYSES, CARDS, CARD_BOOK, POSTINGS, PRESETS, getCard, getPosting, getSignals } from './catalog'
+import { ANALYSES, CARDS, CARD_BOOK, FINAL_BOOK, POSTINGS, PRESETS, getCard, getPosting, getSignals } from './catalog'
 import type { Evidence, Posting } from './contract'
 import seed from '../data/applications.seed.json' with { type: 'json' }
 import persona from '../data/persona.json' with { type: 'json' }
@@ -29,6 +29,21 @@ describe('업무 카드', () => {
   it('유형 라벨 5종', () => {
     expect(Object.values(CARD_BOOK.type_labels)).toEqual(['충돌 확인', '기회 확인', '깊이 확인', '충돌 예방', '탐색'])
   })
+
+  it('유형마다 뜻 한 줄(1차·최종): 해요체, 1차 뜻에는 처우 말이 없고 회사를 평가하는 말이 없다', () => {
+    const books = [
+      { labels: CARD_BOOK.type_labels, notes: CARD_BOOK.type_descriptions, first: true },
+      { labels: FINAL_BOOK.type_labels, notes: FINAL_BOOK.type_descriptions, first: false },
+    ]
+    for (const { labels, notes, first } of books) {
+      expect(Object.keys(notes).sort()).toEqual(Object.keys(labels).sort())
+      for (const [type, note] of Object.entries(notes)) {
+        expect(note, type).toMatch(/요$/)
+        expect(note, type).not.toMatch(/아까|하셨는데|말씀하신|나쁜|위험|블랙/)
+        if (first) expect(note, type).not.toMatch(/연봉|수당|처우/)
+      }
+    }
+  })
 })
 
 describe('공고·분석·신호', () => {
@@ -54,6 +69,18 @@ describe('공고·분석·신호', () => {
       for (const b of a.blanks) {
         if (b.evidence) expect(quoteFound(posting, b.evidence), `${a.wantedAuthNo} ${b.topic} "${b.evidence.quote}"`).toBe(true)
         expect(b.question).toBeTruthy()
+      }
+    }
+  })
+
+  it('분석 설명은 어디에 적혔는지만 말하지 않는다("…에 \'…\'가 적혀 있어요"만 있는 설명 0건), 해요체, 회사를 평가하는 말이 없다', () => {
+    const LOCATION_ONLY = /^[^']*에 '[^']+'(?:이|가) 적혀 있어요\.?$/
+    for (const a of ANALYSES) {
+      for (const c of a.cards) {
+        const where = `${a.wantedAuthNo} ${c.card_id}: ${c.reason}`
+        expect(c.reason, where).not.toMatch(LOCATION_ONLY)
+        expect(c.reason, where).toMatch(/요(?:\([^)]*\))?\.?$/)
+        expect(c.reason, where).not.toMatch(/팀이 작|나쁜|위험|블랙|악덕/)
       }
     }
   })

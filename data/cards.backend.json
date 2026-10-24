@@ -41,6 +41,13 @@
     "prevent": "충돌 예방",
     "explore": "탐색"
   },
+  "type_descriptions": {
+    "conflict": "걱정한 일이 공고에 있거나 포함될 수 있어 범위를 확인해요",
+    "opportunity": "기대한 일이 공고에 분명하지 않아 맡을 기회가 있는지 확인해요",
+    "depth": "기대한 일이 공고에서 보여 얼마나 깊이 맡는지 확인해요",
+    "prevent": "걱정한 일이 공고에 없어 생길 수 있는지 미리 확인해요",
+    "explore": "잘 모르는 일이라 어떤 일인지 알아봐요"
+  },
   "gap_rules": [
     {
       "preference": "avoid",

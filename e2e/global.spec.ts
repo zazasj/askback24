@@ -62,6 +62,7 @@ test('G-02 어느 화면에도 "공식 전자정부 누리집", "누리집입니
 
 test('G-03 주 메뉴 다섯 항목 · "채용정보"는 /jobs · 나머지는 범위 밖 알림이 뜨고 주소가 그대로', async ({ page }) => {
   // 휴대폰 주 메뉴는 가로로 미는 한 줄(D-026·D-071)이라 화면 밖 항목은 밀어서 보이게 한 뒤 누른다
+  // 흐린 항목은 G-14대로 aria-disabled="true"라 Playwright가 비활성으로 보고 기다리므로 force로 누른다(SPEC-ISSUES G-03)
   await gotoApplications(page)
   const nav = page.getByRole('navigation', { name: '주 메뉴' })
   const item = (name: string) => nav.getByRole('link', { name, exact: true }).or(nav.getByRole('button', { name, exact: true })).first()
@@ -70,12 +71,14 @@ test('G-03 주 메뉴 다섯 항목 · "채용정보"는 /jobs · 나머지는 �
   for (const name of MAIN_MENU.slice(1)) {
     const before = page.url()
     await item(name).scrollIntoViewIfNeeded()
-    await item(name).click()
+    await expect(item(name), `"${name}" 흐림 표시`).toHaveAttribute('aria-disabled', 'true')
+    await item(name).click({ force: true })
     await expect(page.getByRole('status').filter({ hasText: OUT_OF_SCOPE }).first(), `"${name}" → 알림`).toBeVisible()
     expect(page.url(), `"${name}" 뒤 주소`).toBe(before)
   }
 
   await item('채용정보').scrollIntoViewIfNeeded()
+  await expect(item('채용정보'), '"채용정보"는 흐림 표시가 아님').not.toHaveAttribute('aria-disabled', 'true')
   await item('채용정보').click()
   await expect(page).toHaveURL(/\/jobs(?:[?#].*)?$/)
 })

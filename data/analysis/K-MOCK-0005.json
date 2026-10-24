@@ -5,19 +5,19 @@
       "card_id": "BE10",
       "state": "explicit",
       "evidence": { "field": "jobCont", "quote": "기존 데이터 이관" },
-      "reason": "직무내용에 '기존 데이터 이관'이 적혀 있어요"
+      "reason": "차세대 전환 사업에서 데이터를 옮기는 일을 신입이 언제, 얼마나 맡는지 확인해 볼 만해요"
     },
     {
       "card_id": "BE14",
       "state": "explicit",
       "evidence": { "field": "jobCont", "quote": "설계서·산출물 작성" },
-      "reason": "직무내용에 '설계서·산출물 작성'이 적혀 있어요"
+      "reason": "공공 사업 문서도 함께 맡아, 개발과 문서 작업의 비중이 어느 정도인지 확인해 볼 만해요"
     },
     {
       "card_id": "BE15",
       "state": "explicit",
       "evidence": { "field": "jobCont", "quote": "발주처 파견 근무(프로젝트 기간 중)" },
-      "reason": "직무내용에 '발주처 파견 근무(프로젝트 기간 중)'가 적혀 있어요"
+      "reason": "프로젝트 기간에는 발주처에 나가 일해, 파견 기간과 근무지가 어떻게 바뀌는지 확인해 볼 만해요"
     },
     {
       "card_id": "BE12",
