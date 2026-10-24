@@ -3,8 +3,8 @@
  * 최종 면접에서는 들은 답을 읽고 카드 상태를 판정하는 일(judgeReview)도 맡는다.
  * 공급자가 틀리거나 늦어도 shared/generate.ts 가 검수 문장·단순 규칙으로 대신한다.
  */
-import type { BlankTopic, Clarity, Evidence, FinalPref, FinalQType, Posting, PostingState, Pref, QType, ReviewState } from '../contract'
-import type { Origin, Tone } from '../finalRules'
+import type { BlankTopic, Clarity, Evidence, FinalPref, FinalQType, Posting, PostingState, Pref, QType, ReviewState } from '../contract.js'
+import type { Origin, Tone } from '../finalRules.js'
 
 export interface DraftItem {
   rank: number

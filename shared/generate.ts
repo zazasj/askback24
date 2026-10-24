@@ -16,12 +16,12 @@ import type {
   NotAskedReason,
   Pref,
   Question,
-} from './contract'
-import { getAnalysis, getCard, getPosting } from './catalog'
-import { finalPrefOf, rankFinal, ruleJudgements, summarize, type FinalRanked, type Judged } from './finalRules'
-import { pickTop5, questionTemplate, type RankedPick } from './rules'
-import { checkFinalQuestion, checkFirstQuestion, hasForbiddenWord, quotesHeard, type Issue } from './validate'
-import type { Draft, DraftItem, FinalDraft, FinalDraftItem, FirstDraftInput, JudgeItem, Judgement, LlmProvider } from './providers/types'
+} from './contract.js'
+import { getAnalysis, getCard, getPosting } from './catalog.js'
+import { finalPrefOf, rankFinal, ruleJudgements, summarize, type FinalRanked, type Judged } from './finalRules.js'
+import { pickTop5, questionTemplate, type RankedPick } from './rules.js'
+import { checkFinalQuestion, checkFirstQuestion, hasForbiddenWord, quotesHeard, type Issue } from './validate.js'
+import type { Draft, DraftItem, FinalDraft, FinalDraftItem, FirstDraftInput, JudgeItem, Judgement, LlmProvider } from './providers/types.js'
 
 export const EXPERIENCE_MAX = 100
 /** 들은 답 한 줄 */

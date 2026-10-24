@@ -2,7 +2,7 @@
  * 정적 데이터(data/*.json)를 타입을 붙여 꺼내는 곳. 화면과 서버 함수가 같이 쓴다.
  * import 속성(with { type: 'json' })은 Vercel 함수가 번들 없이 Node ESM으로 돌 때도 JSON을 읽게 하려는 것.
  */
-import type { CardBook, CardDef, CardPick, CompanySignal, FinalBook, Posting, PostingAnalysis, ReviewExample } from './contract'
+import type { CardBook, CardDef, CardPick, CompanySignal, FinalBook, Posting, PostingAnalysis, ReviewExample } from './contract.js'
 import cardBookJson from '../data/cards.backend.json' with { type: 'json' }
 import finalBookJson from '../data/final.backend.json' with { type: 'json' }
 import reviewExampleJson from '../data/review.example.json' with { type: 'json' }

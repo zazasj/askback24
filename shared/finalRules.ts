@@ -18,9 +18,9 @@ import type {
   PostingState,
   ReviewState,
   ReviewSummary,
-} from './contract'
-import { FINAL_BOOK, getCard } from './catalog'
-import { ABSENT_REASON, classify, questionTemplate } from './rules'
+} from './contract.js'
+import { FINAL_BOOK, getCard } from './catalog.js'
+import { ABSENT_REASON, classify, questionTemplate } from './rules.js'
 
 export type Origin = 'asked' | 'not_asked' | 'received'
 export type Tone = 'basic' | 'cushion' | 'direct'

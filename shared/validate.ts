@@ -2,7 +2,7 @@
  * AI가 쓴 질문 문장 검사. 하나라도 걸리면 그 질문은 검수 문장으로 바꾼다(shared/generate.ts).
  * 기획안 "근거 없는 전제 0건" 지표를 지키는 마지막 관문이라 규칙을 넓게 잡지 않고 확실한 것만 본다.
  */
-import type { Evidence, Posting, PostingState } from './contract'
+import type { Evidence, Posting, PostingState } from './contract.js'
 
 export type Issue =
   | 'empty'

@@ -2,7 +2,7 @@
  * Vercel 함수 POST /api/questions (웹 표준 형식, D-015). 1차·최종을 mode 하나로 받는다(D-011).
  * LLM 키는 여기서 process.env 로만 읽는다.
  */
-import { handleQuestions } from './_lib/handler'
+import { handleQuestions } from './_lib/handler.js'
 
 export function POST(request: Request): Promise<Response> {
   return handleQuestions(request, {

@@ -1,9 +1,9 @@
 /**
  * 서버 환경변수로 공급자를 고른다. 키는 여기서만 받아 공급자에 넘긴다(화면 번들에 들어가지 않는 곳).
  */
-import { createEnnoiaProvider } from '../../shared/providers/ennoia'
-import { createMockProvider } from '../../shared/providers/mock'
-import type { LlmProvider } from '../../shared/providers/types'
+import { createEnnoiaProvider } from '../../shared/providers/ennoia.js'
+import { createMockProvider } from '../../shared/providers/mock.js'
+import type { LlmProvider } from '../../shared/providers/types.js'
 
 export interface ServerEnv {
   LLM_PROVIDER?: string

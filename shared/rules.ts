@@ -2,8 +2,8 @@
  * 1차·기술 면접 질문 순서 규칙(데모 v0.2 classify()·build() 이관).
  * 질문 순서는 여기서만 정한다. 화면·서버 함수·대체 결과가 모두 이 함수를 쓴다.
  */
-import type { CardDef, CardPick, Evidence, GapRule, PostingAnalysis, PostingState, Pref, QType } from './contract'
-import { CARD_BOOK, getCard } from './catalog'
+import type { CardDef, CardPick, Evidence, GapRule, PostingAnalysis, PostingState, Pref, QType } from './contract.js'
+import { CARD_BOOK, getCard } from './catalog.js'
 
 export const QUESTION_LIMIT = 5
 export const ABSENT_REASON = '공고에 근거가 없어 직접 확인이 필요해요'

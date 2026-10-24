@@ -13,9 +13,9 @@ import type {
   JudgeItem,
   Judgement,
   LlmProvider,
-} from './types'
-import type { FinalQType, QType } from '../contract'
-import { FINAL_BOOK, REVIEW_EXAMPLE } from '../catalog'
+} from './types.js'
+import type { FinalQType, QType } from '../contract.js'
+import { FINAL_BOOK, REVIEW_EXAMPLE } from '../catalog.js'
 
 export interface MockOptions {
   /** 응답 지연(ms). 화면은 1.5초 */

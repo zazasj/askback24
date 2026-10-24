@@ -1,8 +1,8 @@
 /**
  * POST /api/questions 요청 검사. 오류 문구에 입력값을 넣지 않는다(경험 한 줄·들은 답이 섞일 수 있음).
  */
-import type { CardPick, FinalQuestionsRequest, FirstQuestionsRequest, InterviewReview, Mood, NotAskedReason, Pref, QuestionsRequest } from '../../shared/contract'
-import { EXPERIENCE_MAX, HEARD_MAX } from '../../shared/generate'
+import type { CardPick, FinalQuestionsRequest, FirstQuestionsRequest, InterviewReview, Mood, NotAskedReason, Pref, QuestionsRequest } from '../../shared/contract.js'
+import { EXPERIENCE_MAX, HEARD_MAX } from '../../shared/generate.js'
 
 export const PICKS_MAX = 17
 const PREFS: readonly Pref[] = ['want', 'avoid', 'unsure']

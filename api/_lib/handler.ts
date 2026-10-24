@@ -2,9 +2,9 @@
  * POST /api/questions 처리. 요청 검사 → shared/generate → 응답.
  * 경험 한 줄·들은 답은 저장·기록하지 않는다. 로그에는 공급자 이름과 개수만 남긴다(API-05).
  */
-import { GenerateError, PROVIDER_TIMEOUT_MS, generateFinal, generateFirst, type GenerateReport } from '../../shared/generate'
-import { providerFor, type ServerEnv } from './provider'
-import { parseQuestionsRequest } from './request'
+import { GenerateError, PROVIDER_TIMEOUT_MS, generateFinal, generateFirst, type GenerateReport } from '../../shared/generate.js'
+import { providerFor, type ServerEnv } from './provider.js'
+import { parseQuestionsRequest } from './request.js'
 
 /** 공고 ID·카드 17개·경험 100자면 2KB 안팎. 넉넉히 잡되 큰 본문은 읽지 않는다 */
 export const BODY_MAX = 16_000
