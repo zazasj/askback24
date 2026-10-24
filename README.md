@@ -24,7 +24,7 @@ npm run build:mock
 npm run preview        # http://localhost:4173
 ```
 
-고치면서 볼 때는 `npm run dev -- --mode mock` (http://localhost:5173).
+고치면서 볼 때는 `npm run dev:mock` (터미널에 찍힌 `Local:` 주소, 보통 http://localhost:5173). Windows PowerShell 5.1은 `npm run dev -- --mode mock`의 `--`를 지워서 Vite가 `mock`을 폴더로 읽고 흰 화면(모든 주소 404)이 되므로 `dev:mock`을 쓴다.
 
 ### 실제 모드
 
