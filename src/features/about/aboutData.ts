@@ -5,6 +5,7 @@
 import { ANALYSES, CARDS, POSTINGS, getPosting, getSignals } from '@shared/catalog'
 import type { CompanySignal } from '@shared/contract'
 import { quoteInPosting } from '@shared/validate'
+import { NCS_CARDS, SMALL_GIANTS, apiOf, fetchedOn, type RealSourceId } from '@/realData'
 
 export interface AuditNumbers {
   cards: number
@@ -37,12 +38,58 @@ export interface SourceRow {
   origin: string
   source: CompanySignal['source']
   note: string
+  /** 받은 날짜 "2026-10-25"(고용24 오픈API에서 받은 것만), 없으면 "" */
+  fetched: string
 }
 
 const REAL_SIGNAL_NOTE = '실제 서비스에서는 이 공공데이터 값을 써요. 시연 회사는 가상이라 값은 예시예요.'
 const MOCK_SIGNAL_NOTE = '시연용으로 만든 값이에요.'
+// 강소기업은 실제 명단을 받았지만 시연 회사가 가상이라 회사별 여부는 지어낼 수밖에 없어 "모의"다(DATA-04)
+const SIGNAL_NOTES: Record<string, string> = {
+  '고용24 강소기업 정보': '시연 회사는 가상이라 인증 여부도 예시예요. 실제 명단으로 센 숫자는 "강소기업 통계" 줄에 있어요.',
+}
 
-/** 데이터 출처 표: 업무 카드 · 공고 · 회사 신호(출처별 한 줄, "실제" 먼저) · 김00 이력서 */
+const num = (n: number): string => n.toLocaleString('ko-KR')
+const openApi = (id: RealSourceId, name: string): string => `고용24 오픈API ${name}(${apiOf(id)})`
+
+/** 고용24 오픈API에서 받은 4종: 직무정보 · 직업정보 · 공통코드 · 강소기업 */
+function realApiRows(): SourceRow[] {
+  const ncsCards = NCS_CARDS.cards.length
+  const matched = NCS_CARDS.cards.filter((c) => c.matched).length
+  const rows: SourceRow[] = [
+    {
+      data: '업무 카드 NCS 표시',
+      origin: openApi('duty', '직무정보'),
+      source: '실제',
+      note: `NCS 카드 ${ncsCards}개 중 ${matched}개는 응답의 능력단위명·정의·코드를 그대로 써요. 나머지 ${ncsCards - matched}개는 응답에서 같은 이름을 찾지 못해 팀이 정리한 값이에요.`,
+      fetched: fetchedOn('duty'),
+    },
+    {
+      data: '웹개발자 직무 개요',
+      origin: openApi('job', '직업정보'),
+      source: '실제',
+      note: '"내 기대·걱정" 단계 맨 위 한 줄이에요.',
+      fetched: fetchedOn('job'),
+    },
+    {
+      data: '지역·직종 코드',
+      origin: openApi('codes', '공통코드'),
+      source: '실제',
+      note: `모의 공고 ${POSTINGS.length}건의 지역·직종 코드를 실제 코드로 맞췄어요.`,
+      fetched: fetchedOn('codes'),
+    },
+    {
+      data: '강소기업 통계',
+      origin: openApi('giants', '강소기업'),
+      source: '실제',
+      note: `전국 ${num(SMALL_GIANTS.total)}건 중 ${SMALL_GIANTS.ict.label} ${num(SMALL_GIANTS.ict.count)}건, 인증 종류 ${SMALL_GIANTS.by_brand.length}가지. 시연 회사는 가상이라 회사별 인증 여부에는 쓰지 않아요.`,
+      fetched: fetchedOn('giants'),
+    },
+  ]
+  return rows.filter((r) => r.fetched)
+}
+
+/** 데이터 출처 표: 업무 카드 · 고용24 오픈API 4종 · 공고 · 회사 신호(출처별 한 줄, "실제" 먼저) · 김00 이력서 */
 export function sourceRows(): SourceRow[] {
   const signals = new Map<string, CompanySignal['source']>()
   for (const p of POSTINGS) for (const s of getSignals(p.wantedAuthNo)) if (!signals.has(s.source_name)) signals.set(s.source_name, s.source)
@@ -52,7 +99,8 @@ export function sourceRows(): SourceRow[] {
       data: '회사 신호',
       origin,
       source,
-      note: source === '실제' ? REAL_SIGNAL_NOTE : MOCK_SIGNAL_NOTE,
+      note: SIGNAL_NOTES[origin] ?? (source === '실제' ? REAL_SIGNAL_NOTE : MOCK_SIGNAL_NOTE),
+      fetched: '',
     }))
   return [
     {
@@ -60,14 +108,17 @@ export function sourceRows(): SourceRow[] {
       origin: 'NCS 국가직무능력표준 능력단위, 한국직업사전(웹프로그래머)',
       source: '실제',
       note: '공공 자료를 바탕으로 팀이 백엔드 업무를 나눠 정리했어요.',
+      fetched: '',
     },
+    ...realApiRows(),
     {
       data: '채용 공고',
       origin: '고용24 채용정보 항목 이름(직무내용·우대조건·임금·근무시간 등)',
       source: '모의',
-      note: '항목 이름만 따랐어요. 회사명과 공고는 예시예요.',
+      note: '채용정보 오픈API는 개인회원은 쓸 수 없어서 항목 이름만 따랐어요. 회사명과 공고는 예시예요.',
+      fetched: '',
     },
     ...signalRows,
-    { data: '김00 이력서', origin: '가상 인물', source: '모의', note: '연락처와 주소는 예시 값이에요.' },
+    { data: '김00 이력서', origin: '가상 인물', source: '모의', note: '연락처와 주소는 예시 값이에요.', fetched: '' },
   ]
 }

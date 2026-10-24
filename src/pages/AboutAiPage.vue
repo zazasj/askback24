@@ -16,6 +16,12 @@ const numbers = auditNumbers()
 const sources = sourceRows()
 const typeOrder = Object.values(CARD_BOOK.type_labels).join(' → ')
 
+/** "2026-10-25" → ["2026.", "10.25"](휴대폰 좁은 칸에서 연도 뒤에서만 줄이 바뀌게) */
+function dateParts(iso: string): [string, string] {
+  const [y = '', m = '', d = ''] = iso.split('-')
+  return [`${y}.`, `${m}.${d}`]
+}
+
 // 앞 화면(③ 등)에서 왔으면 뒤로 가기, 주소로 바로 열었으면 지원 내역으로
 const cameFromApp = typeof window !== 'undefined' && typeof (window.history.state as { back?: unknown } | null)?.back === 'string'
 
@@ -107,21 +113,26 @@ function goBack(): void {
 
     <section class="block" aria-labelledby="about-sources">
       <h2 id="about-sources" class="section-title">데이터 출처</h2>
-      <p class="muted">"실제"는 실제 공공 자료를 출처로 쓰는 항목, "모의"는 시연용으로 만든 항목이에요.</p>
+      <p class="muted">
+        "실제"는 실제 공공 자료를 출처로 쓰는 항목, "모의"는 시연용으로 만든 항목이에요. 고용24 오픈API 값은 미리 받아 저장해 두고, 화면에서는
+        API를 부르지 않아요.
+      </p>
       <table class="source-table">
         <caption class="sr-only">
-          데이터 출처: 데이터, 출처, 구분
+          데이터 출처: 데이터, 출처, 구분, 받은 날짜
         </caption>
         <colgroup>
           <col class="w-data" />
           <col />
           <col class="w-source" />
+          <col class="w-date" />
         </colgroup>
         <thead>
           <tr>
             <th scope="col">데이터</th>
             <th scope="col">출처</th>
             <th scope="col">구분</th>
+            <th scope="col">받은 날짜</th>
           </tr>
         </thead>
         <tbody>
@@ -133,6 +144,10 @@ function goBack(): void {
             </td>
             <td>
               <span class="source" :class="r.source === '실제' ? 'is-real' : 'is-mock'">{{ r.source }}</span>
+            </td>
+            <td class="date">
+              <time v-if="r.fetched" :datetime="r.fetched">{{ dateParts(r.fetched)[0] }}<wbr />{{ dateParts(r.fetched)[1] }}</time>
+              <span v-else>-</span>
             </td>
           </tr>
         </tbody>
@@ -300,6 +315,15 @@ function goBack(): void {
   width: 9.6rem;
 }
 
+.source-table .w-date {
+  width: 11.2rem;
+}
+
+.source-table .date {
+  color: var(--krds-light-color-text-basic);
+  white-space: nowrap;
+}
+
 .source-table th,
 .source-table td {
   padding: 1.4rem 1.6rem;
@@ -409,6 +433,14 @@ function goBack(): void {
 
   .source-table .w-source {
     width: 6.4rem;
+  }
+
+  .source-table .w-date {
+    width: 6.4rem;
+  }
+
+  .source-table .date {
+    white-space: normal;
   }
 
   .source-table th,

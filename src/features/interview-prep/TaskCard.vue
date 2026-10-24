@@ -6,6 +6,7 @@
 import { computed } from 'vue'
 import { CARD_BOOK } from '@shared/catalog'
 import type { CardDef, Pref } from '@shared/contract'
+import { ncsLine } from '@/realData'
 import { PREFS } from './picks'
 
 const props = defineProps<{ card: CardDef; pref: Pref | null; tag: string | null }>()
@@ -21,9 +22,8 @@ function onSpaceUp(e: KeyboardEvent, p: Pref): void {
 }
 const nameId = computed(() => `card-${props.card.id}-name`)
 const descId = computed(() => `card-${props.card.id}-desc`)
-const basis = computed(() =>
-  props.card.ncs.length ? `NCS · ${props.card.ncs.map((n) => n.unit).join(', ')}` : '근무 방식·환경 카드',
-)
+// 고용24 직무정보에서 찾은 능력단위명(못 찾은 카드는 팀이 정리한 값) — data/real/ncs-cards.json
+const basis = computed(() => ncsLine(props.card))
 </script>
 
 <template>

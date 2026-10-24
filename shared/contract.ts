@@ -47,6 +47,8 @@ export interface Posting {
   busiCont: string
   wantedTitle: string
   jobsNm: string
+  /** 직종코드 — 고용24 공통코드(21L01 dtlGb=2) 실제 코드(data/real/common-codes.json) */
+  jobsCd: string
   jobCont: string
   empTpNm: string
   collectPsncnt: string
@@ -58,6 +60,8 @@ export interface Posting {
   etcPfCond: string
   selMthd: string
   workRegion: string
+  /** 지역코드 — 고용24 공통코드(21L01 dtlGb=1) 실제 코드. 시연 공고는 구·시가 가려져 있어 시·도 코드 */
+  regionCd: string
   workdayWorkhrCont: string
   fourIns: string
   retirepay: string

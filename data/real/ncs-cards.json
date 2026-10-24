@@ -1,0 +1,409 @@
+{
+  "source": "고용24 오픈API 직무정보(215L01, 표준직무기술서)",
+  "fetched_on": "2026-10-25",
+  "method": "카드에 팀이 붙여 둔 NCS 능력단위명에서 띄어쓰기를 뺀 말을 jobCont 로 넣어 상위 10개를 받고(설명 문장은 띄어쓰기 때문에 빈 응답), 기존 능력단위명과 같거나 가장 가까운 것을 고름. 카드마다 능력단위 2개까지 차례로 찾음. unit 은 응답 값 그대로(묶음 칸 지식·기술·태도는 뺌). 못 찾으면 matched: false 이고 existing(팀이 정리한 값)을 씀",
+  "matched_count": 6,
+  "cards": [
+    {
+      "card_id": "BE01",
+      "label": "신규 API 개발",
+      "matched": true,
+      "query": "서버프로그램구현",
+      "basis": {
+        "rank": 2,
+        "name": "서버프로그램 구현",
+        "compared_with": "서버프로그램 구현",
+        "how": "기존 능력단위명과 같은 이름"
+      },
+      "unit": {
+        "ablt_def": "서버프로그램 구현이란 애플리케이션 설계를 기반으로 개발에 필요한 환경을 구성하고, 프로그래밍 언어와 도구를 활용하여 공통모듈, 업무프로그램과 배치 프로그램을 구현하는 능력이다.",
+        "job_scfn": "정보기술개발",
+        "job_mcn": "정보기술",
+        "centerLabel": "서버프로그램 구현",
+        "centerURL": "http://lod.work.go.kr/task/업무/_2001020211",
+        "job_mlsf_cd": "http://lod.work.go.kr/task/중분류/_2001",
+        "job_sdvn": "응용SW엔지니어링",
+        "job_scla_cd": "http://lod.work.go.kr/task/소분류/_200102",
+        "job_lrcl_cd": "http://lod.work.go.kr/task/대분류/_20",
+        "job_lcfn": "정보통신",
+        "job_sdvn_cd": "http://lod.work.go.kr/task/직무/_20010202",
+        "ablt_unit": "2001020211"
+      }
+    },
+    {
+      "card_id": "BE02",
+      "label": "서비스 구조 설계",
+      "matched": true,
+      "query": "애플리케이션설계",
+      "basis": {
+        "rank": 8,
+        "name": "애플리케이션 설계",
+        "compared_with": "애플리케이션 설계",
+        "how": "기존 능력단위명과 같은 이름"
+      },
+      "unit": {
+        "ablt_def": "애플리케이션 설계란 요구사항 확인을 통한 상세 분석 결과, 소프트웨어아키텍처 가이드라인 및 소프트웨어 아키텍처 산출물에 의거하여 이에 따른 애플리케이션 구현을 수행하기 위해 공통모듈 설계, 타 시스템 연동에대하여 상세 설계하는 능력이다.",
+        "job_scfn": "정보기술개발",
+        "job_mcn": "정보기술",
+        "centerLabel": "애플리케이션 설계",
+        "centerURL": "http://lod.work.go.kr/task/업무/_2001020221",
+        "job_mlsf_cd": "http://lod.work.go.kr/task/중분류/_2001",
+        "job_sdvn": "응용SW엔지니어링",
+        "job_scla_cd": "http://lod.work.go.kr/task/소분류/_200102",
+        "job_lrcl_cd": "http://lod.work.go.kr/task/대분류/_20",
+        "job_lcfn": "정보통신",
+        "job_sdvn_cd": "http://lod.work.go.kr/task/직무/_20010202",
+        "ablt_unit": "2001020221"
+      }
+    },
+    {
+      "card_id": "BE03",
+      "label": "DB 테이블 설계",
+      "matched": false,
+      "basis": {
+        "how": "응답에 능력단위가 없음",
+        "tried": [
+          {
+            "query": "논리데이터베이스설계",
+            "response_count": 0,
+            "top": []
+          },
+          {
+            "query": "물리데이터베이스설계",
+            "response_count": 0,
+            "top": []
+          }
+        ]
+      },
+      "existing": [
+        {
+          "subcategory": "DB엔지니어링",
+          "unit": "논리 데이터베이스 설계"
+        },
+        {
+          "subcategory": "DB엔지니어링",
+          "unit": "물리 데이터베이스 설계"
+        }
+      ]
+    },
+    {
+      "card_id": "BE04",
+      "label": "SQL 작성·쿼리 개선",
+      "matched": false,
+      "basis": {
+        "how": "응답에 능력단위가 없음",
+        "tried": [
+          {
+            "query": "SQL활용",
+            "response_count": 0,
+            "top": []
+          },
+          {
+            "query": "SQL응용",
+            "response_count": 0,
+            "top": []
+          }
+        ]
+      },
+      "existing": [
+        {
+          "subcategory": "DB엔지니어링",
+          "unit": "SQL활용"
+        },
+        {
+          "subcategory": "DB엔지니어링",
+          "unit": "SQL응용"
+        },
+        {
+          "subcategory": "DB엔지니어링",
+          "unit": "데이터베이스 성능 확보"
+        }
+      ]
+    },
+    {
+      "card_id": "BE05",
+      "label": "외부 시스템 연동",
+      "matched": true,
+      "query": "통합구현",
+      "basis": {
+        "rank": 5,
+        "name": "통합 구현",
+        "compared_with": "통합 구현",
+        "how": "기존 능력단위명과 같은 이름"
+      },
+      "unit": {
+        "ablt_def": "통합 구현이란 모듈 간의 분산이 이루어진 경우를 포함하여 단위 모듈 간의 데이터 관계를 분석하여 이를 기반으로 한 메커니즘을 통해 모듈 간의효율적인 연계를 구현하고 검증하는 능력이다.",
+        "job_scfn": "정보기술개발",
+        "job_mcn": "정보기술",
+        "centerLabel": "통합 구현",
+        "centerURL": "http://lod.work.go.kr/task/업무/_2001020206",
+        "job_mlsf_cd": "http://lod.work.go.kr/task/중분류/_2001",
+        "job_sdvn": "응용SW엔지니어링",
+        "job_scla_cd": "http://lod.work.go.kr/task/소분류/_200102",
+        "job_lrcl_cd": "http://lod.work.go.kr/task/대분류/_20",
+        "job_lcfn": "정보통신",
+        "job_sdvn_cd": "http://lod.work.go.kr/task/직무/_20010202",
+        "ablt_unit": "2001020206"
+      }
+    },
+    {
+      "card_id": "BE06",
+      "label": "배치·정산 프로그램",
+      "matched": true,
+      "query": "서버프로그램구현",
+      "basis": {
+        "rank": 2,
+        "name": "서버프로그램 구현",
+        "compared_with": "서버프로그램 구현 (배치 프로그램 구현하기)",
+        "how": "기존 능력단위명과 같은 이름"
+      },
+      "unit": {
+        "ablt_def": "서버프로그램 구현이란 애플리케이션 설계를 기반으로 개발에 필요한 환경을 구성하고, 프로그래밍 언어와 도구를 활용하여 공통모듈, 업무프로그램과 배치 프로그램을 구현하는 능력이다.",
+        "job_scfn": "정보기술개발",
+        "job_mcn": "정보기술",
+        "centerLabel": "서버프로그램 구현",
+        "centerURL": "http://lod.work.go.kr/task/업무/_2001020211",
+        "job_mlsf_cd": "http://lod.work.go.kr/task/중분류/_2001",
+        "job_sdvn": "응용SW엔지니어링",
+        "job_scla_cd": "http://lod.work.go.kr/task/소분류/_200102",
+        "job_lrcl_cd": "http://lod.work.go.kr/task/대분류/_20",
+        "job_lcfn": "정보통신",
+        "job_sdvn_cd": "http://lod.work.go.kr/task/직무/_20010202",
+        "ablt_unit": "2001020211"
+      }
+    },
+    {
+      "card_id": "BE07",
+      "label": "기존 시스템 유지보수",
+      "matched": false,
+      "basis": {
+        "how": "응답에 능력단위가 없음",
+        "tried": [
+          {
+            "query": "응용SW운영관리",
+            "response_count": 0,
+            "top": []
+          }
+        ]
+      },
+      "existing": [
+        {
+          "subcategory": "IT시스템관리",
+          "unit": "응용SW 운영관리"
+        }
+      ]
+    },
+    {
+      "card_id": "BE08",
+      "label": "장애 대응·온콜",
+      "matched": false,
+      "basis": {
+        "how": "응답에 능력단위가 없음",
+        "tried": [
+          {
+            "query": "IT시스템통합운영관리",
+            "response_count": 0,
+            "top": []
+          },
+          {
+            "query": "응용SW운영관리",
+            "response_count": 0,
+            "top": []
+          }
+        ]
+      },
+      "existing": [
+        {
+          "subcategory": "IT시스템관리",
+          "unit": "응용SW 운영관리"
+        },
+        {
+          "subcategory": "IT시스템관리",
+          "unit": "IT시스템통합 운영관리"
+        }
+      ]
+    },
+    {
+      "card_id": "BE09",
+      "label": "배포·서버 운영",
+      "matched": true,
+      "query": "제품소프트웨어패키징",
+      "basis": {
+        "rank": 2,
+        "name": "제품소프트웨어 패키징",
+        "compared_with": "제품소프트웨어 패키징",
+        "how": "기존 능력단위명과 같은 이름"
+      },
+      "unit": {
+        "ablt_def": "제품소프트웨어 패키징이란 개발이 완료된 제품소프트웨어를 고객에게 전달하기 위한 형태로 패키징하고, 설치와 사용에 필요한 제반 절차 및 환경등 전체 내용을 포함하는 매뉴얼을 작성하며, 제품소프트웨어에 대한 패치 개발과 업그레이드를 위해 버전관리를 수행하는 능력이다.",
+        "job_scfn": "정보기술개발",
+        "job_mcn": "정보기술",
+        "centerLabel": "제품소프트웨어 패키징",
+        "centerURL": "http://lod.work.go.kr/task/업무/_2001020209",
+        "job_mlsf_cd": "http://lod.work.go.kr/task/중분류/_2001",
+        "job_sdvn": "응용SW엔지니어링",
+        "job_scla_cd": "http://lod.work.go.kr/task/소분류/_200102",
+        "job_lrcl_cd": "http://lod.work.go.kr/task/대분류/_20",
+        "job_lcfn": "정보통신",
+        "job_sdvn_cd": "http://lod.work.go.kr/task/직무/_20010202",
+        "ablt_unit": "2001020209"
+      }
+    },
+    {
+      "card_id": "BE10",
+      "label": "데이터 이전·시스템 전환",
+      "matched": false,
+      "basis": {
+        "how": "응답에 능력단위가 없음",
+        "tried": [
+          {
+            "query": "데이터전환설계",
+            "response_count": 0,
+            "top": []
+          },
+          {
+            "query": "데이터전환",
+            "response_count": 0,
+            "top": []
+          }
+        ]
+      },
+      "existing": [
+        {
+          "subcategory": "DB엔지니어링",
+          "unit": "데이터 전환 설계"
+        },
+        {
+          "subcategory": "DB엔지니어링",
+          "unit": "데이터 전환"
+        },
+        {
+          "subcategory": "응용SW엔지니어링",
+          "unit": "정보시스템 이행"
+        }
+      ]
+    },
+    {
+      "card_id": "BE11",
+      "label": "테스트·품질 검증",
+      "matched": false,
+      "basis": {
+        "how": "응답 상위 10개 안에 기존 능력단위명과 같거나 가까운 이름이 없음",
+        "tried": [
+          {
+            "query": "애플리케이션테스트수행",
+            "response_count": 10,
+            "top": [
+              "인공지능서비스 테스트",
+              "제품소프트웨어 패키징",
+              "서버프로그램 구현"
+            ]
+          }
+        ]
+      },
+      "existing": [
+        {
+          "subcategory": "응용SW엔지니어링",
+          "unit": "애플리케이션 테스트 수행"
+        }
+      ]
+    },
+    {
+      "card_id": "BE12",
+      "label": "요구사항 협의",
+      "matched": true,
+      "query": "요구사항확인",
+      "basis": {
+        "rank": 9,
+        "name": "요구사항 확인",
+        "compared_with": "요구사항 확인",
+        "how": "기존 능력단위명과 같은 이름"
+      },
+      "unit": {
+        "ablt_def": "요구사항 확인이란 업무 분석가가 수집･분석･정의한 요구사항과 이에따른 분석모델에 대해서 확인과 현행 시스템에 대해 분석하는 능력이다.",
+        "job_scfn": "정보기술개발",
+        "job_mcn": "정보기술",
+        "centerLabel": "요구사항 확인",
+        "centerURL": "http://lod.work.go.kr/task/업무/_2001020201",
+        "job_mlsf_cd": "http://lod.work.go.kr/task/중분류/_2001",
+        "job_sdvn": "응용SW엔지니어링",
+        "job_scla_cd": "http://lod.work.go.kr/task/소분류/_200102",
+        "job_lrcl_cd": "http://lod.work.go.kr/task/대분류/_20",
+        "job_lcfn": "정보통신",
+        "job_sdvn_cd": "http://lod.work.go.kr/task/직무/_20010202",
+        "ablt_unit": "2001020201"
+      }
+    },
+    {
+      "card_id": "BE13",
+      "label": "화면 개발 겸업",
+      "matched": false,
+      "basis": {
+        "how": "응답 상위 10개 안에 기존 능력단위명과 같거나 가까운 이름이 없음",
+        "tried": [
+          {
+            "query": "화면구현",
+            "response_count": 10,
+            "top": [
+              "애플리케이션 테스트 관리",
+              "통합 구현",
+              "인터페이스 구현"
+            ]
+          }
+        ]
+      },
+      "existing": [
+        {
+          "subcategory": "응용SW엔지니어링",
+          "unit": "화면 구현"
+        }
+      ]
+    },
+    {
+      "card_id": "BE14",
+      "label": "개발 문서·산출물 작성",
+      "matched": false,
+      "basis": {
+        "how": "응답에 능력단위가 없음",
+        "tried": [
+          {
+            "query": "소프트웨어공학활용",
+            "response_count": 0,
+            "top": []
+          }
+        ]
+      },
+      "existing": [
+        {
+          "subcategory": "응용SW엔지니어링",
+          "unit": "소프트웨어공학 활용"
+        }
+      ]
+    },
+    {
+      "card_id": "BE16",
+      "label": "보안 점검·취약점 조치",
+      "matched": false,
+      "basis": {
+        "how": "응답 상위 10개 안에 기존 능력단위명과 같거나 가까운 이름이 없음",
+        "tried": [
+          {
+            "query": "보안운영관리",
+            "response_count": 9,
+            "top": [
+              "기구 대량생산성 관리",
+              "IT기술교육 자료개발",
+              "생산계획"
+            ]
+          }
+        ]
+      },
+      "existing": [
+        {
+          "subcategory": "IT시스템관리",
+          "unit": "보안 운영관리"
+        }
+      ]
+    }
+  ]
+}

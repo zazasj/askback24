@@ -1,0 +1,33 @@
+{
+  "source": "고용24 오픈API(scripts/fetch-work24.ts)",
+  "files": [
+    {
+      "id": "duty",
+      "label": "직무정보",
+      "api": "215L01",
+      "file": "ncs-cards.json",
+      "fetched_on": "2026-10-25"
+    },
+    {
+      "id": "job",
+      "label": "직업정보",
+      "api": "212D01",
+      "file": "job-webdev.json",
+      "fetched_on": "2026-10-25"
+    },
+    {
+      "id": "codes",
+      "label": "공통코드",
+      "api": "21L01",
+      "file": "common-codes.json",
+      "fetched_on": "2026-10-25"
+    },
+    {
+      "id": "giants",
+      "label": "강소기업",
+      "api": "216L01",
+      "file": "small-giants-summary.json",
+      "fetched_on": "2026-10-25"
+    }
+  ]
+}

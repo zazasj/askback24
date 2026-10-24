@@ -9,6 +9,7 @@
     "noEmit": true,
     "jsx": "preserve",
     "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
@@ -26,6 +27,7 @@
     "src/**/*.vue",
     "shared/**/*.ts",
     "api/**/*.ts",
+    "scripts/**/*.ts",
     "e2e/**/*.ts",
     "vite.config.ts",
     "playwright.config.ts"

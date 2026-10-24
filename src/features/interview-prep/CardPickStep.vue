@@ -8,6 +8,7 @@ import { CARDS, CARD_BOOK, getCard } from '@shared/catalog'
 import type { PostingAnalysis, Pref } from '@shared/contract'
 import { API_MODE } from '@/api/client'
 import { PERSONA } from '@/demoData'
+import { JOB_INFO } from '@/realData'
 import { useDemoToolsStore } from '@/stores/demoTools'
 import { usePrepStore } from '@/stores/prep'
 import { postingTag } from './checkpoints'
@@ -89,6 +90,11 @@ const experienceHint = computed(() => {
     <div class="intro">
       <h2 id="pick-step-title" class="section-title">내 기대·걱정</h2>
       <p class="lead">백엔드 개발자가 실제로 하는 일 17가지예요. 아는 만큼만 골라도 돼요.</p>
+      <!-- 카드가 어떤 직업의 일인지 공공 자료로 받친다(고용24 직업정보 직무 개요, data/real/job-webdev.json) -->
+      <p v-if="JOB_INFO.summary_short" class="job-info">
+        <span class="job-info-text">{{ JOB_INFO.summary_short }}</span>
+        <span class="job-info-src">고용24 직업정보 · {{ JOB_INFO.job_name }} 직무 개요</span>
+      </p>
       <p class="hint">카드마다 기대돼요 · 걱정돼요 · 모르겠어요 중 하나를 골라요. 고른 것을 다시 누르면 풀려요.</p>
       <p v-if="showDemoHint" class="demo-hint">
         <span>시연: 예시 구직자로 한 번에 채울 수 있어요</span>
@@ -176,6 +182,23 @@ const experienceHint = computed(() => {
 
 .hint {
   font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-subtle);
+}
+
+/* 공공 자료 인용: 고용24 상세 화면의 출처 문단처럼 회색 왼쪽 선 하나(우리 강조색은 쓰지 않음) */
+.job-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 1rem;
+  padding: 0.2rem 0 0.2rem 1.2rem;
+  border-left: 0.3rem solid var(--krds-light-color-border-gray);
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-basic);
+}
+
+.job-info-src {
+  font-size: var(--krds-pc-font-size-body-xsmall);
   color: var(--krds-light-color-text-subtle);
 }
 
