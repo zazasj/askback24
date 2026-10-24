@@ -6,10 +6,11 @@
  * focusCard(주소 ?card=)가 오면 그 카드의 형광펜을 켜고 그 자리로 간다(③ "근거 보기").
  */
 import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue'
-import { onKeyStroke, useEventListener } from '@vueuse/core'
+import { createReusableTemplate, onKeyStroke, useEventListener } from '@vueuse/core'
 import { getCard } from '@shared/catalog'
 import type { CompanySignal, Posting, PostingAnalysis } from '@shared/contract'
 import PostingText from '@/features/jobs/PostingText.vue'
+import { lastLineOf, postingLines, type PostingLine } from '@/features/jobs/postingText'
 import { checkPoints, firstLooks, postingTag } from './checkpoints'
 import { markKey, marksOf, splitByQuotes, type Segment } from './highlight'
 
@@ -192,10 +193,52 @@ onMounted(() => {
 })
 
 const isMarked = (s: Segment) => s.cardIds.length > 0
+
+/** 말풍선 하나를 글 블록 줄 밑과 짧은 칸 밑 두 자리에서 쓴다 */
+const [DefineBubble, ReuseBubble] = createReusableTemplate()
+
+/**
+ * 긴 글 칸에서는 열린 형광펜이 있는 그 줄 바로 밑에 펼친다(칸 끝에 펼치면 형광펜과 수백 px 떨어짐, N6).
+ * 형광펜이 줄을 넘으면 마지막 줄 밑 한 곳에만.
+ */
+const bubbleLine = computed<{ field: string; index: number } | null>(() => {
+  const key = openKey.value
+  if (!key) return null
+  for (const row of rows.value) {
+    if (!row.block) continue
+    for (const part of row.parts) {
+      const index = lastLineOf(postingLines(part.segments), (seg) => seg.cardIds.length > 0 && markKey(part.field, seg) === key)
+      if (index !== null) return { field: part.field, index }
+    }
+  }
+  return null
+})
+const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLine.value?.field === field && bubbleLine.value.index === line.index
 </script>
 
 <template>
   <section ref="root" class="posting-step" aria-labelledby="posting-step-title">
+    <!-- 말풍선 틀(그리지 않음). 아래 두 자리에서 ReuseBubble 로 쓴다 -->
+    <DefineBubble>
+      <div v-if="openSpot" id="mark-bubble" class="bubble" data-bubble-keep>
+        <p class="bubble-quote">‘{{ openSpot.quote }}’</p>
+        <ul class="bubble-cards">
+          <li v-for="c in bubbleCards" :key="c.id">
+            <p class="bubble-card">
+              <strong>{{ c.label }}</strong>
+              <span v-if="c.tag" class="tag">{{ c.tag }}</span>
+            </p>
+            <p class="bubble-reason">{{ c.reason }}</p>
+          </li>
+        </ul>
+        <button type="button" class="bubble-close" aria-label="설명 닫기" @click="close(true)">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+            <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          </svg>
+        </button>
+      </div>
+    </DefineBubble>
+
     <!-- "공고 확인"은 바로 위 단계 표시의 현재 단계와 같은 말이라 화면낭독기에만 남긴다(N4, D-089를 데스크톱까지) -->
     <h2 id="posting-step-title" class="sr-only">공고 확인</h2>
 
@@ -256,6 +299,7 @@ const isMarked = (s: Segment) => s.cardIds.length > 0
                         >{{ text }}</mark
                       ></template
                     >
+                    <template #after="{ line }"><ReuseBubble v-if="bubbleAfterLine(part.field, line)" /></template>
                   </PostingText>
                 </template>
                 <template v-else-if="row.parts.length">
@@ -273,23 +317,7 @@ const isMarked = (s: Segment) => s.cardIds.length > 0
                 </template>
                 <span v-else class="empty">공고에 적혀 있지 않아요</span>
 
-                <div v-if="openSpot && openSpot.row === row.key" id="mark-bubble" class="bubble" data-bubble-keep>
-                  <p class="bubble-quote">‘{{ openSpot.quote }}’</p>
-                  <ul class="bubble-cards">
-                    <li v-for="c in bubbleCards" :key="c.id">
-                      <p class="bubble-card">
-                        <strong>{{ c.label }}</strong>
-                        <span v-if="c.tag" class="tag">{{ c.tag }}</span>
-                      </p>
-                      <p class="bubble-reason">{{ c.reason }}</p>
-                    </li>
-                  </ul>
-                  <button type="button" class="bubble-close" aria-label="설명 닫기" @click="close(true)">
-                    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
-                      <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-                    </svg>
-                  </button>
-                </div>
+                <ReuseBubble v-if="openSpot && openSpot.row === row.key && !row.block" />
               </td>
             </tr>
           </tbody>
@@ -593,6 +621,11 @@ mark[data-active='true'] {
   border-radius: var(--krds-radius-large1);
   background: var(--rq-accent-subtler);
   box-shadow: var(--rq-shadow-card);
+}
+
+/* 글 블록 줄 사이에 펼쳤을 때 다음 줄과 붙지 않게 */
+.bubble:not(:last-child) {
+  margin-bottom: 1.2rem;
 }
 
 .bubble::before {

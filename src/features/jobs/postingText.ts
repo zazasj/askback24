@@ -101,5 +101,17 @@ function trimPieces(pieces: readonly TextPiece[]): TextPiece[] {
   return out
 }
 
+/**
+ * 고른 조각이 들어 있는 마지막 줄 번호(S4 ① 형광펜 설명을 그 줄 바로 밑에 펼칠 자리).
+ * 조각이 줄을 넘으면 끝 줄 밑 한 곳만. 없으면 null.
+ */
+export function lastLineOf(lines: readonly PostingLine[], hit: (seg: TextSegment) => boolean): number | null {
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i]
+    if (line?.pieces.some((p) => hit(p.seg))) return line.index
+  }
+  return null
+}
+
 /** 형광펜 없는 글 한 덩이(S3 상세처럼 칠하지 않는 곳) */
 export const plainSegments = (text: string): TextSegment[] => (text ? [{ text, start: 0, cardIds: [] }] : [])

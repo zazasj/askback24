@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { POSTINGS, getAnalysis } from '@shared/catalog'
 import { marksOf, segmentsFor } from '@/features/interview-prep/highlight'
-import { lineKind, plainSegments, postingLines } from './postingText'
+import { lastLineOf, lineKind, plainSegments, postingLines } from './postingText'
 
 const norm = (s: string) => s.replace(/\s+/g, ' ').trim()
 const sourceLines = (text: string) => text.split(/\r?\n/).map(norm).filter(Boolean)
@@ -68,6 +68,25 @@ describe('공고 글 블록 줄 나누기', () => {
       ['head', false, '□ 담당 업무'],
       ['item', true, '○ 기존 데이터 이관'],
     ])
+  })
+
+  it('형광펜 설명 자리: 그 형광펜이 든 줄 바로 밑(OO소프트 "기타 업무 지원"은 담당업무 줄), 줄을 넘는 조각은 끝 줄', () => {
+    const oo = POSTINGS.find((p) => p.corpNm === '(주)OO소프트')
+    expect(oo).toBeDefined()
+    const lines = postingLines(segmentsFor('jobCont', oo?.jobCont ?? '', marksOf(getAnalysis(oo?.wantedAuthNo ?? ''))))
+    const at = lastLineOf(lines, (seg) => seg.text === '기타 업무 지원')
+    const line = lines.find((l) => l.index === at)
+    expect(line && lineText(line)).toContain('기타 업무 지원')
+    // 칸 끝(마지막 줄)이 아니라 형광펜 줄 밑이라 긴 공고에서 설명이 형광펜과 떨어지지 않는다
+    expect(at).toBeLessThan(lines[lines.length - 1]?.index ?? 0)
+
+    const segs = [
+      { text: '첫 줄\n둘째 ', start: 0, cardIds: [] },
+      { text: '줄 넘는\n형광펜', start: 7, cardIds: ['BE01'] },
+      { text: ' 뒤\n넷째 줄', start: 14, cardIds: [] },
+    ]
+    expect(lastLineOf(postingLines(segs), (seg) => seg.cardIds.length > 0)).toBe(2)
+    expect(lastLineOf(postingLines(segs), () => false)).toBeNull()
   })
 
   it('빈 글은 줄이 없다', () => {
