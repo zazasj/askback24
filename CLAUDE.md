@@ -44,7 +44,9 @@ Vue 3 (`<script setup lang="ts">`, Composition API) · Vite · TypeScript · Vue
 
 ## git
 
-- 마일스톤·수정 라운드마다 커밋한다. **push 하지 않는다.** (원격 `zazasj/askback24`는 사람이 아침에 push)
+- 작업 브랜치는 **staging**이다. 커밋은 staging에만 한다. **main에는 커밋·push 하지 않는다**(main merge는 세진이 GitHub에서 한다).
+- push는 `git -C /d/Source/askback24 push origin staging`만 허용한다. 밤샘 루프에서는 릴리스 단계가 마지막에 한 번만 한다.
+- 서버(dev·preview)를 백그라운드로 남기지 않는다. 화면 확인은 Playwright webServer가 띄우고 끈다.
 - 작성자는 레포 로컬 설정(`Devjin` / zazasj noreply)을 쓴다. 전역 git 설정을 바꾸거나 `--author`로 덮어쓰지 않는다.
 - 메시지: `[Feat] M2 공고 형광펜과 업무 카드` / `[Fix] r1 S4-13 유형 순서` / `[Chore] …` / `[Docs] …`
 - 메시지 끝에 빈 줄 후 `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.

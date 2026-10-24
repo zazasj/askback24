@@ -10,3 +10,4 @@ review/tmp
 review/e2e-results.json
 .vercel
 *.log
+.cache
