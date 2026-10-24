@@ -34,12 +34,13 @@ test('S2-03 "kim00@example.com"과 "010-0000-0000"이 보인다', async ({ page 
   await expect(page.getByText('010-0000-0000').first()).toBeVisible()
 })
 
-test('S2-04 경력에 FastAPI, 직업훈련에 AWS, 프로젝트에 DB 설계, 자격에 정보처리기사', async ({ page }) => {
+test('S2-04 경력은 없음(신입), 직업훈련에 FastAPI·AWS, 프로젝트에 DB 설계, 자격에 정보처리기사', async ({ page }) => {
   await gotoResume(page)
   for (const name of S2_SECTIONS) await expect(heading(page, name)).toBeVisible()
   const texts = await sectionTexts(page, S2_SECTIONS)
   const section = (name: (typeof S2_SECTIONS)[number]) => texts[S2_SECTIONS.indexOf(name)] ?? ''
-  expect(section('경력'), '경력').toContain('FastAPI')
+  expect(section('경력'), '경력').toContain('경력 사항이 없어요')
+  expect(section('직업훈련'), '직업훈련').toContain('FastAPI')
   expect(section('직업훈련'), '직업훈련').toContain('AWS')
   expect(section('프로젝트'), '프로젝트').toContain('DB 설계')
   expect(section('자격·어학'), '자격·어학').toContain('정보처리기사')

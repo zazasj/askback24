@@ -61,7 +61,7 @@ describe('S4-12 예시 구직자 A로 채우기', () => {
   it('기대 3 · 걱정 2 · 모르겠어요 1, 경험 한 줄, 6개', () => {
     expect(sel.picks).toHaveLength(6)
     expect(countByPref(sel.picks)).toEqual({ want: 3, avoid: 2, unsure: 1 })
-    expect(sel.experience).toBe('인턴 때 FastAPI로 API를 설계부터 배포까지 맡아 봤는데')
+    expect(sel.experience).toBe('직업훈련 팀 프로젝트에서 FastAPI로 API를 설계부터 배포까지 맡아 봤는데')
     expect(isSelection(sel)).toBe(true)
   })
 

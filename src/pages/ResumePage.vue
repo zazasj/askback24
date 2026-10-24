@@ -113,7 +113,8 @@ function notInDemo(): void {
 
     <section class="resume-section" aria-labelledby="sec-career">
       <h2 id="sec-career" class="section-title">경력</h2>
-      <ul class="entries">
+      <p v-if="p.careers.length === 0" class="entry-body">경력 사항이 없어요 (신입)</p>
+      <ul v-else class="entries">
         <li v-for="c in p.careers" :key="c.company" class="entry">
           <p class="entry-head">
             <strong class="entry-title">{{ c.company }}</strong>

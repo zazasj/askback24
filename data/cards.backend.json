@@ -20,7 +20,7 @@
       "mapping_confidence가 low인 카드는 API 응답으로 근거를 재확인한다",
       "카드 문구는 실제 구직자 5명 이상에게 보여주고 다듬는다"
     ],
-    "anchor_rule": "{anchor}는 구직자 경험이 이 카드와 연결될 때만 채운다. 예: '인턴 때 FastAPI로 API를 설계부터 배포까지 맡아 봤는데, '. 연결되는 경험이 없으면 빈 문자열.",
+    "anchor_rule": "{anchor}는 구직자 경험이 이 카드와 연결될 때만 채운다. 예: '직업훈련 팀 프로젝트에서 FastAPI로 API를 설계부터 배포까지 맡아 봤는데, '. 연결되는 경험이 없으면 빈 문자열.",
     "migrated": "2026-10-24 데모 v0.2(면접 역질문 메이커 v0.2.html)의 DATA를 옮김. 걱정돼요 × 공고에 없음 규칙의 type을 conflict → prevent로 바꿈(D-016)."
   },
   "preference_options": {

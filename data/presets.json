@@ -10,7 +10,7 @@
       { "card_id": "BE15", "pref": "avoid", "has_exp": false },
       { "card_id": "BE08", "pref": "unsure", "has_exp": false }
     ],
-    "experience": "인턴 때 FastAPI로 API를 설계부터 배포까지 맡아 봤는데"
+    "experience": "직업훈련 팀 프로젝트에서 FastAPI로 API를 설계부터 배포까지 맡아 봤는데"
   },
   "B": {
     "label": "예시 구직자 B",

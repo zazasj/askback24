@@ -54,7 +54,7 @@ export const PRESET_A = {
   expect: ['신규 API 개발', '서비스 구조 설계', 'DB 테이블 설계'],
   worry: ['기존 시스템 유지보수', '고객사 상주 개발'],
   unknown: ['장애 대응·온콜'],
-  experience: '인턴 때 FastAPI로 API를 설계부터 배포까지 맡아 봤는데',
+  experience: '직업훈련 팀 프로젝트에서 FastAPI로 API를 설계부터 배포까지 맡아 봤는데',
 } as const
 
 export const NOT_ASKED_REASONS = ['시간이 없었어요', '분위기가 아니었어요', '잊어버렸어요', '질문할 기회가 없었어요', '회사가 먼저 설명해 줬어요'] as const
