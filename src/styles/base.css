@@ -233,6 +233,26 @@ input[type='date']:focus-within {
   text-decoration: underline;
 }
 
+/*
+ * 시연 범위 밖(G-14, v-demo-off). 투명도로 흐리지 않고 글자색을 KRDS 회색 토큰으로 바꾸고 밑줄·호버 효과를 없앤다.
+ * 화면마다 다른 글자색·호버 규칙보다 늘 이겨야 하는 상태 표시라 !important 를 쓴다(.sr-only 와 같은 이유).
+ */
+.is-demo-off,
+.is-demo-off:hover,
+.is-demo-off:active {
+  color: var(--rq-demo-off-text) !important;
+  text-decoration: none !important;
+  cursor: default;
+}
+
+/* 배경색이 있는 버튼은 회색 테두리 버튼으로 */
+.btn.is-demo-off,
+.btn.is-demo-off:hover,
+.btn.is-demo-off:active {
+  border-color: var(--krds-light-color-border-disabled) !important;
+  background: var(--krds-light-color-surface-white) !important;
+}
+
 @media (max-width: 767px) {
   .btn {
     min-height: var(--rq-touch);

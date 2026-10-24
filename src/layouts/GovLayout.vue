@@ -12,6 +12,7 @@ import GovHeader from '@/components/gov/GovHeader.vue'
 import MainMenu from '@/components/gov/MainMenu.vue'
 import SideNav from '@/components/gov/SideNav.vue'
 import SideSelect from '@/components/gov/SideSelect.vue'
+import DemoOffTip from '@/components/ui/DemoOffTip.vue'
 import ToastHost from '@/components/ui/ToastHost.vue'
 
 const route = useRoute()
@@ -39,6 +40,7 @@ const isPrep = computed(() => route.name === 'prep')
   </div>
   <GovFooter />
   <ToastHost />
+  <DemoOffTip />
 </template>
 
 <style scoped>

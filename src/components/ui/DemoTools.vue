@@ -133,6 +133,15 @@ async function resetDemo(): Promise<void> {
   height: 1.6rem;
 }
 
+/* 휴대폰: 띠 글이 둘레로 흐르도록 폭을 띠(DemoBanner)가 비워 둔 자리에 맞춘다 */
+@media (max-width: 767px) {
+  .toggle {
+    justify-content: center;
+    width: var(--demo-tools-w, auto);
+    padding: 0 0.6rem;
+  }
+}
+
 /* 패널은 띠 바로 아래로 펼친다(본문 위에 겹치지만 열었을 때만) */
 .panel {
   position: absolute;

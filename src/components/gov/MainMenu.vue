@@ -1,9 +1,8 @@
 <script setup lang="ts">
-// 고용24와 같은 다섯 메뉴. 채용정보만 동작하고 나머지는 "시연 범위 밖" 알림만 띄운다(G-03).
-import { useToastStore } from '@/stores/toast'
+// 고용24와 같은 다섯 메뉴. 채용정보만 동작하고 나머지는 흐림 표시 + 누르면 "시연 범위 밖" 알림(G-03·G-14).
+import { vDemoOff } from '@/lib/demoOff'
 
 const OTHERS = ['취업지원', '실업급여', '직업 능력 개발', '출산휴가·육아휴직'] as const
-const toast = useToastStore()
 </script>
 
 <template>
@@ -18,16 +17,14 @@ const toast = useToastStore()
             </svg>
           </RouterLink>
         </li>
+        <!-- 흐린 메뉴는 펼칠 것이 없어 화살표를 뺀다 -->
         <li v-for="name in OTHERS" :key="name">
-          <button type="button" class="menu-item" @click="toast.outOfScope()">
+          <button v-demo-off type="button" class="menu-item">
             <span>{{ name }}</span>
-            <svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
-              <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" />
-            </svg>
           </button>
         </li>
       </ul>
-      <button type="button" class="all-menu" @click="toast.outOfScope()">
+      <button v-demo-off type="button" class="all-menu">
         <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
           <path d="M2 4h12M2 8h12M2 12h12" fill="none" stroke="currentColor" stroke-width="1.6" />
         </svg>
@@ -75,10 +72,14 @@ const toast = useToastStore()
   white-space: nowrap;
 }
 
-.menu-item:hover,
+.menu-item:not(.is-demo-off):hover,
 .menu-item.is-active {
   border-bottom-color: var(--krds-light-color-border-primary);
   color: var(--krds-light-color-text-primary);
+}
+
+.menu-item.is-demo-off {
+  font-weight: 500;
 }
 
 .chev {

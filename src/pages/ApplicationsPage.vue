@@ -8,6 +8,7 @@ import { useRouter } from 'vue-router'
 import { getPosting } from '@shared/catalog'
 import AiLabel from '@/components/ui/AiLabel.vue'
 import { daysBefore, formatDate, parseIsoDate, toIsoDate } from '@/lib/dates'
+import { vDemoOff } from '@/lib/demoOff'
 import { useDemoStore } from '@/stores/demo'
 import type { Application } from '@/types'
 
@@ -32,6 +33,8 @@ interface Filter {
 
 const demo = useDemoStore()
 const router = useRouter()
+
+const OTHER_TABS = ['관심기업 관리', '채용담당자와 한마디'] as const
 
 function appliedDate(app: Application, now: Date): Date {
   return (app.applied_on && parseIsoDate(app.applied_on)) || daysBefore(app.applied_days_ago ?? 0, now)
@@ -120,6 +123,16 @@ async function closeGuide(): Promise<void> {
 <template>
   <div ref="root" class="s1">
     <h1 ref="title" class="page-title" tabindex="-1">알선/입사지원 내역</h1>
+
+    <!-- 고용24 지원 내역의 탭 줄. 지금 화면만 동작하고 나머지는 흐림 표시(G-14) -->
+    <nav class="sub-tabs" aria-label="알선/입사지원 메뉴">
+      <ul>
+        <li><span class="sub-tab is-current" aria-current="page">입사지원 관리</span></li>
+        <li v-for="name in OTHER_TABS" :key="name">
+          <button v-demo-off type="button" class="sub-tab">{{ name }}</button>
+        </li>
+      </ul>
+    </nav>
 
     <section v-if="!demo.guideClosed" class="guide" aria-labelledby="guide-title">
       <div class="guide-body">
@@ -262,6 +275,46 @@ async function closeGuide(): Promise<void> {
 <style scoped>
 .page-title {
   margin-bottom: 2.4rem;
+}
+
+/* ── 탭 줄(고용24 기존 영역, KRDS tab 모양) ─────────── */
+.sub-tabs {
+  margin-bottom: 2.4rem;
+}
+
+.sub-tabs ul {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--krds-light-color-border-gray-light);
+  border-radius: var(--krds-radius-medium2);
+  overflow: hidden;
+}
+
+.sub-tabs li + li {
+  border-left: 1px solid var(--krds-light-color-border-gray-light);
+}
+
+.sub-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 4.8rem;
+  padding: 0.6rem 1.2rem;
+  border: 0;
+  background: var(--krds-light-color-surface-white);
+  font-size: var(--krds-pc-font-size-label-small);
+  font-weight: 500;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--krds-light-color-text-basic);
+}
+
+.sub-tab.is-current {
+  background: var(--krds-light-color-button-primary-fill);
+  font-weight: 700;
+  color: var(--krds-light-color-text-basic-inverse);
 }
 
 /* ── 안내 띠(우리 기능) ─────────────────────────────── */
@@ -495,6 +548,16 @@ fieldset.search-row > legend {
 }
 
 @media (max-width: 767px) {
+  .sub-tabs {
+    margin-bottom: 1.6rem;
+  }
+
+  .sub-tab {
+    min-height: var(--rq-touch);
+    padding: 0.4rem 0.6rem;
+    font-size: var(--krds-pc-font-size-label-xsmall);
+  }
+
   .guide {
     padding: 1.4rem 1.6rem;
   }

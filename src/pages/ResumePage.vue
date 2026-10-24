@@ -5,10 +5,11 @@
  * 경력·직업훈련·프로젝트의 경험 세 줄이 S4 ② "이력서에서 가져오기" 칩이 된다.
  */
 import { PERSONA } from '@/demoData'
-import { useToastStore } from '@/stores/toast'
+import { vDemoOff } from '@/lib/demoOff'
 
-const toast = useToastStore()
 const p = PERSONA
+/** 흐린 버튼(G-14)을 눌렀을 때의 알림 */
+const NOT_IN_DEMO = '시연에서는 이력서 출력만 쓸 수 있어요'
 
 const BASIC: ReadonlyArray<{ label: string; value: string; note?: string }> = [
   { label: '성명', value: p.basic.name },
@@ -32,9 +33,6 @@ function printResume(): void {
   window.print()
 }
 
-function notInDemo(): void {
-  toast.show('시연에서는 이력서 출력만 쓸 수 있어요')
-}
 </script>
 
 <template>
@@ -42,8 +40,9 @@ function notInDemo(): void {
     <h1 class="page-title">이력서/자기소개서 관리</h1>
 
     <div class="toolbar" data-print="hide">
-      <button type="button" class="btn btn-tertiary" @click="notInDemo">이메일 보내기</button>
-      <button type="button" class="btn btn-tertiary" @click="notInDemo">수정</button>
+      <button v-demo-off="NOT_IN_DEMO" type="button" class="btn btn-tertiary">이메일 보내기</button>
+      <button v-demo-off="NOT_IN_DEMO" type="button" class="btn btn-tertiary">항목 순서변경</button>
+      <button v-demo-off="NOT_IN_DEMO" type="button" class="btn btn-tertiary">수정</button>
       <button type="button" class="btn btn-secondary" @click="printResume">
         <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false">
           <path

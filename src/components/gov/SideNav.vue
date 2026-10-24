@@ -1,11 +1,11 @@
 <script setup lang="ts">
 /**
  * 마이페이지 왼쪽 메뉴. 고용24처럼 여러 묶음을 보이되 "구직(이력서) 관리"만 펼쳐 둔다.
- * 나머지 묶음은 회색으로 접힌 채 누르면 범위 밖 알림만 띄운다.
+ * 동작하는 두 링크 말고는 흐림 표시 + 누르면 범위 밖 알림(G-14).
  */
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { useToastStore } from '@/stores/toast'
+import { vDemoOff } from '@/lib/demoOff'
 import { SIDE_LINKS } from './sideLinks'
 
 const OTHER_GROUPS_BEFORE = ['회원정보 관리'] as const
@@ -14,7 +14,6 @@ const OTHER_ITEMS_BEFORE = ['구직신청'] as const
 const OTHER_ITEMS_AFTER = ['e-채용마당'] as const
 
 const route = useRoute()
-const toast = useToastStore()
 const current = computed(() => route.meta.side)
 </script>
 
@@ -23,13 +22,13 @@ const current = computed(() => route.meta.side)
     <h2 class="side-title">마이페이지(개인)</h2>
     <ul class="groups">
       <li v-for="g in OTHER_GROUPS_BEFORE" :key="g">
-        <button type="button" class="group-btn is-dim" @click="toast.outOfScope()">{{ g }}</button>
+        <button v-demo-off type="button" class="group-btn">{{ g }}</button>
       </li>
       <li class="is-open">
         <span class="group-btn">구직(이력서) 관리</span>
         <ul class="items">
           <li v-for="i in OTHER_ITEMS_BEFORE" :key="i">
-            <button type="button" class="item-link is-dim" @click="toast.outOfScope()">{{ i }}</button>
+            <button v-demo-off type="button" class="item-link">{{ i }}</button>
           </li>
           <li v-for="link in SIDE_LINKS" :key="link.key">
             <!-- RouterLink 이 현재 화면 링크에 aria-current="page"를 단다. S4는 그 아래 화면이라 모양만 켠다 -->
@@ -38,12 +37,12 @@ const current = computed(() => route.meta.side)
             </RouterLink>
           </li>
           <li v-for="i in OTHER_ITEMS_AFTER" :key="i">
-            <button type="button" class="item-link is-dim" @click="toast.outOfScope()">{{ i }}</button>
+            <button v-demo-off type="button" class="item-link">{{ i }}</button>
           </li>
         </ul>
       </li>
       <li v-for="g in OTHER_GROUPS_AFTER" :key="g">
-        <button type="button" class="group-btn is-dim" @click="toast.outOfScope()">{{ g }}</button>
+        <button v-demo-off type="button" class="group-btn">{{ g }}</button>
       </li>
     </ul>
   </nav>
@@ -80,9 +79,8 @@ const current = computed(() => route.meta.side)
   color: var(--krds-light-color-text-bolder);
 }
 
-.group-btn.is-dim {
+.group-btn.is-demo-off {
   font-weight: 500;
-  color: var(--krds-light-color-text-subtle);
 }
 
 .items {
@@ -102,13 +100,9 @@ const current = computed(() => route.meta.side)
   color: var(--krds-light-color-text-basic);
 }
 
-.item-link:hover {
+.item-link:not(.is-demo-off):hover {
   background: var(--krds-light-color-surface-gray-subtler);
   color: var(--krds-light-color-text-bolder);
-}
-
-.item-link.is-dim {
-  color: var(--krds-light-color-text-subtle);
 }
 
 .item-link[aria-current='page'],

@@ -16,6 +16,9 @@
   --rq-tone-orange: #a84300;
   --rq-tone-orange-subtle: #ffede0;
 
+  /* 시연 범위 밖 흐린 글자(G-14): KRDS gray-50. 흰 바탕 대비 4.6:1이라 흐려 보여도 읽힌다 */
+  --rq-demo-off-text: var(--krds-color-light-gray-50);
+
   /* 공고 형광펜 */
   --rq-mark: #fff0a0;
   --rq-mark-active: #ffd23f;
