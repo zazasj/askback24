@@ -114,13 +114,25 @@ export function finalTypeLabel(type: FinalQType): string {
   return FINAL_BOOK.type_labels[type]
 }
 
-const fill = (template: string, label: string) => template.replace(/\{label\}/g, label)
+const fill = (template: string, label: string) => template.replace(/\{label\}/g, () => label)
+const fillQuote = (template: string, quote: string) => template.replace(/\{quote\}/g, () => quote)
 const stripAnchor = (template: string) => template.replace('{anchor}', '').trim()
 
 /**
+ * 다시 확인 질문의 앞말. 물어본 질문은 "지난 면접에 이어 … 조금 더 구체적으로"(근거가 있으면 공고 인용),
+ * 못 물은 질문은 근거가 있을 때만 공고 인용. 1차 면접관의 말은 옮기지 않는다.
+ */
+function recheckLead(card: CardDef, origin: Origin, evidence?: Evidence): string {
+  const L = FINAL_BOOK.templates.recheck_lead
+  if (origin === 'asked') return evidence ? fillQuote(L.asked_evidence, evidence.quote) : fill(L.asked, card.label)
+  return evidence ? fillQuote(L.not_asked_evidence, evidence.quote) : ''
+}
+
+/**
  * 카드 질문의 검수 문장(완충 문장 앞).
- * 다시 확인: 1차에 가져간 질문 틀 그대로(모호했으면 숫자·예를 청하는 꼬리). 공고 문구를 전제하는 충돌 확인 틀 대신
- * 충돌 예방 틀이 있으면 그것을 쓴다. 신호 확인은 공고를 전제하지 않는 충돌 예방(없으면 충돌 확인) 틀.
+ * 다시 확인: 1차 질문을 이어 받는다 — 앞말(recheckLead) + 1차에 가져간 것과 같은 유형의 질문 틀.
+ * 질문 틀은 공고 내용을 말하지 않으므로(D-075) 충돌 확인 틀도 그대로 쓴다. 충돌 예방 틀("…경우도 있나요?")로 바꾸면
+ * 공고에 적힌 것을 처음부터 다시 묻는 말이 된다(DA-02). 신호 확인은 공고를 전제하지 않는 충돌 예방(없으면 충돌 확인) 틀.
  */
 export function finalCardTemplate(
   card: CardDef,
@@ -128,13 +140,15 @@ export function finalCardTemplate(
   pref: FinalPref,
   postingState: PostingState,
   origin: Origin,
+  evidence?: Evidence,
 ): string {
   const T = FINAL_BOOK.templates
   switch (type) {
     case 'recheck': {
       const firstType = classify(pref === 'none' ? 'unsure' : pref, postingState, false)?.type ?? 'explore'
-      const base = stripAnchor(questionTemplate(card, firstType === 'conflict' ? 'prevent' : firstType))
-      return origin === 'asked' ? `${base} ${T.recheck_vague_tail}` : base
+      const base = stripAnchor(questionTemplate(card, firstType))
+      const lead = recheckLead(card, origin, evidence)
+      return lead ? `${lead} ${base}` : base
     }
     case 'scope':
       return fill(T.scope[pref === 'avoid' ? 'avoid' : 'want'], card.label)
@@ -201,7 +215,7 @@ function cardCandidates(picks: readonly CardPick[], judged: readonly Judged[], a
       basis: `${j.basis} · ${found?.reason ?? ABSENT_REASON}`,
       watch_out: pref === 'want' ? card.interpretation.mismatch_if_want : card.interpretation.mismatch_if_avoid,
       good_sign: card.interpretation.good_if,
-      template: finalCardTemplate(card, hit.type, pref, postingState, j.origin),
+      template: finalCardTemplate(card, hit.type, pref, postingState, j.origin, found?.evidence),
       order: j.order,
     }
     if (found?.evidence) c.evidence = found.evidence

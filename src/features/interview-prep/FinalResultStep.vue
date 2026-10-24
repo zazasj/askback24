@@ -528,12 +528,36 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
     gap: 0.8rem;
   }
 
+  /* 인쇄물에서는 질문 수 안내 문장보다 질문이 먼저 */
+  .intro .lead {
+    display: none;
+  }
+
   .result-layout {
     display: block;
   }
 
   .questions {
-    gap: 0.6rem;
+    gap: 0.5rem;
+  }
+
+  /* 최종은 질문이 7~8개라 1차(5개)와 같은 크기면 A4 2쪽이 된다(DA-01). 질문 글자와 "들은 답" 칸을 조금 줄여 한 장에 */
+  .questions :deep(.question) {
+    gap: 0.4rem;
+    padding: 0.8rem 1.2rem;
+  }
+
+  .questions :deep(.q-text) {
+    font-size: 10pt;
+    line-height: 1.5;
+  }
+
+  .questions :deep(.print-memo) {
+    min-height: 1cm;
+  }
+
+  .questions :deep(.print-memo-label) {
+    font-size: 8pt;
   }
 }
 </style>

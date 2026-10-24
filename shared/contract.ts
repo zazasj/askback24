@@ -172,7 +172,8 @@ export interface FinalBook {
     good_sign: string
   }
   templates: {
-    recheck_vague_tail: string
+    /** 다시 확인 질문의 앞말(1차 질문을 이어 받음). {label} 카드 이름 · {quote} 공고 근거 인용 */
+    recheck_lead: { asked: string; asked_evidence: string; not_asked_evidence: string }
     scope: { avoid: string; want: string }
     signal_lead: string
   }

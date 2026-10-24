@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { POSTINGS, getPosting } from '@shared/catalog'
-import { DETAIL_SECTIONS, listOrder, matchesQuery, rowText, salaryText } from './postingView'
+import { DETAIL_SECTIONS, listOrder, matchesQuery, rowText, salaryChunks, salaryText } from './postingView'
 
 const OO = getPosting('K-MOCK-0001')!
 const COMMERCE = getPosting('K-MOCK-0002')!
@@ -47,5 +47,19 @@ describe('S3 목록', () => {
     expect(matchesQuery(OO, '백엔드')).toBe(true)
     expect(matchesQuery(COMMERCE, 'aws')).toBe(true)
     expect(matchesQuery(OO, '커머스')).toBe(false)
+  })
+})
+
+describe('Q-04 (DA-06) 임금 글 조각', () => {
+  it('금액과 단위, "~"와 뒤 금액, 괄호 묶음은 한 조각이다', () => {
+    expect(salaryChunks('연봉 3,200만 원 ~ 3,800만 원')).toEqual(['연봉', '3,200만 원', '~ 3,800만 원'])
+    expect(salaryChunks('연봉 3,400만원 이상 (협의 가능)')).toEqual(['연봉', '3,400만원', '이상', '(협의 가능)'])
+    expect(salaryChunks('월급 250 만 원')).toEqual(['월급', '250 만 원'])
+    expect(salaryChunks('연봉 회사내규에 따름')).toEqual(['연봉', '회사내규에', '따름'])
+    expect(salaryChunks('')).toEqual([])
+  })
+
+  it('목록의 모든 공고 임금 조각을 이으면 원래 글과 같다', () => {
+    for (const p of POSTINGS) expect(salaryChunks(salaryText(p)).join(' ')).toBe(salaryText(p))
   })
 })

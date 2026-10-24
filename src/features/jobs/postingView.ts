@@ -80,6 +80,23 @@ export function salaryText(posting: Posting): string {
   return posting.sal.trim() ? [posting.salTpNm, posting.sal].map((t) => t.trim()).filter(Boolean).join(' ') : ''
 }
 
+/**
+ * 임금 글을 줄이 바뀌어도 되는 조각으로 나눈다. 금액과 단위("3,200만 원"), "~"와 뒤 금액, 괄호 묶음("(협의 가능)")은
+ * 한 조각이라 그 안에서는 줄이 바뀌지 않는다(DA-06: "3,400만 / 원", "(협의 / 가능)"처럼 끝말만 떨어짐).
+ */
+export function salaryChunks(text: string): string[] {
+  const out: string[] = []
+  let glueNext = false
+  for (const token of text.trim().split(/\s+/).filter(Boolean)) {
+    const prev = out[out.length - 1]
+    const openParen = prev !== undefined && (prev.match(/\(/g)?.length ?? 0) > (prev.match(/\)/g)?.length ?? 0)
+    if (prev !== undefined && (glueNext || openParen || /^(?:만원?|원)[),.]*$/.test(token))) out[out.length - 1] = `${prev} ${token}`
+    else out.push(token)
+    glueNext = token === '~'
+  }
+  return out
+}
+
 /** 목록 순서: 최근 등록(공고 번호가 큰 것) 먼저 */
 export function listOrder(postings: readonly Posting[]): Posting[] {
   return [...postings].sort((a, b) => b.wantedAuthNo.localeCompare(a.wantedAuthNo))

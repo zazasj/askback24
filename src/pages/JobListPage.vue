@@ -6,7 +6,7 @@
 import { computed, ref } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { POSTINGS, getAnalysis } from '@shared/catalog'
-import { EMPTY_TEXT, listOrder, matchesQuery, salaryText } from '@/features/jobs/postingView'
+import { EMPTY_TEXT, listOrder, matchesQuery, salaryChunks, salaryText } from '@/features/jobs/postingView'
 import { useDemoStore } from '@/stores/demo'
 
 const demo = useDemoStore()
@@ -26,7 +26,7 @@ const rows = computed(() =>
   ALL.filter((p) => matchesQuery(p, appliedQuery.value)).map((p) => ({
     p,
     to: `/jobs/${p.wantedAuthNo}`,
-    salary: salaryText(p),
+    salary: salaryChunks(salaryText(p)),
     applied: demo.hasApplied(p.wantedAuthNo),
   })),
 )
@@ -81,7 +81,10 @@ const rows = computed(() =>
                 <span v-if="r.applied" class="badge badge-primary">지원함</span>
               </span>
             </td>
-            <td :class="{ 'is-empty': !r.salary }">{{ r.salary || EMPTY_TEXT }}</td>
+            <td :class="{ 'is-empty': !r.salary.length }">
+              <template v-for="(c, i) in r.salary" :key="i"><span class="keep">{{ c }}</span>{{ i < r.salary.length - 1 ? ' ' : '' }}</template>
+              <template v-if="!r.salary.length">{{ EMPTY_TEXT }}</template>
+            </td>
             <td>{{ r.p.workRegion }}</td>
             <td>
               {{ r.p.enterTpNm }}<br />
@@ -111,7 +114,10 @@ const rows = computed(() =>
         <dl class="meta">
           <div>
             <dt>임금</dt>
-            <dd :class="{ 'is-empty': !r.salary }">{{ r.salary || EMPTY_TEXT }}</dd>
+            <dd :class="{ 'is-empty': !r.salary.length }">
+              <template v-for="(c, i) in r.salary" :key="i"><span class="keep">{{ c }}</span>{{ i < r.salary.length - 1 ? ' ' : '' }}</template>
+              <template v-if="!r.salary.length">{{ EMPTY_TEXT }}</template>
+            </dd>
           </div>
           <div>
             <dt>근무지역</dt>
@@ -193,6 +199,11 @@ const rows = computed(() =>
   gap: 0.8rem;
   font-size: var(--krds-pc-font-size-body-xsmall);
   color: var(--krds-light-color-text-subtle);
+}
+
+/* 임금 글은 금액·단위·괄호 묶음 사이에서만 줄이 바뀐다(DA-06, postingView salaryChunks) */
+.keep {
+  white-space: nowrap;
 }
 
 /* ── 표 ─────────────────────────────────────────────── */

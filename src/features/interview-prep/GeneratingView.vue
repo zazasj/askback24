@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
  * 만드는 중: 세 줄이 차례로 켜지고 아래에 질문 카드 모양 빈 틀. 세 줄은 처음부터 다 보이고 상태만 바뀐다.
+ * 가짜 응답 모드 태그는 이 화면을 품은 ③ 제목 옆에 이미 있어 여기에는 달지 않는다(DA-05).
  */
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import MockModeTag from '@/components/ui/MockModeTag.vue'
 
 const props = withDefaults(defineProps<{ count?: number; stages?: readonly string[] }>(), {
   count: 5,
@@ -32,7 +32,6 @@ const stateOf = (i: number) => (i < active.value ? 'done' : i === active.value ?
     <div class="stages" role="status" aria-live="polite">
       <div class="stages-head">
         <p class="stages-title">질문을 만들고 있어요</p>
-        <MockModeTag />
       </div>
       <ol class="stage-list">
         <li v-for="(s, i) in props.stages" :key="s" class="stage" :data-state="stateOf(i)">

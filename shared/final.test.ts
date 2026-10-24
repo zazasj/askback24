@@ -1,7 +1,7 @@
 /** 최종 면접·처우 질문(ACCEPTANCE R·API-07). 판정 → 순서 규칙 → 표현 단계 → 검사. */
 import { describe, expect, it } from 'vitest'
-import { ANALYSES, CARDS, FINAL_BOOK, PRESETS, REVIEW_EXAMPLE, getPosting } from './catalog'
-import type { CardPick, FinalPref, FinalQuestionsRequest, InterviewReview, PostingState, ReviewState } from './contract'
+import { ANALYSES, CARDS, FINAL_BOOK, PRESETS, REVIEW_EXAMPLE, getCard, getPosting } from './catalog'
+import type { CardPick, Evidence, FinalPref, FinalQuestionsRequest, InterviewReview, PostingState, ReviewState } from './contract'
 import { generateFinal } from './generate'
 import { classifyFinal, finalCardTemplate, rankFinal, ruleJudgements, type Origin } from './finalRules'
 import { createEnnoiaProvider } from './providers/ennoia'
@@ -187,6 +187,52 @@ describe('R 판정·표현 단계', () => {
   })
 })
 
+describe('Q-01 다시 확인은 1차 질문을 이어 받는다(DA-02)', () => {
+  /** 공고에 적힌 상주를 처음부터 다시 묻는 말(충돌 예방 틀) */
+  const ASK_FROM_SCRATCH = /투입되는 경우도 있나요/
+  const CUSHIONS = /^(?:[^?]*여쭤도 될까요\? )+/
+
+  it('Q-01 (주)OO소프트 + R-04 최종 1번: 공고 인용으로 이어 받고 "상주"·"비율"·"기간"을 다시 묻는다(가짜 공급자·검수 문장)', async () => {
+    for (const options of [{ provider: createMockProvider() }, {}]) {
+      const res = await generateFinal(reqR04(), options)
+      const first = res.final_questions[0]!
+      expect(first.type).toBe('recheck')
+      const body = first.text.replace(CUSHIONS, '')
+      expect(body, first.text).toMatch(/^지난 면접에 이어 공고의 '고객사 상주 가능자' 부분을/)
+      for (const word of ['상주', '비율', '기간']) expect(first.text).toContain(word)
+      expect(first.text).not.toMatch(ASK_FROM_SCRATCH)
+      for (const q of res.final_questions) expect(q.text).not.toMatch(QUOTE_WORDS)
+    }
+  })
+
+  it('물어본 질문은 "지난 면접에 이어"(근거가 있으면 공고 인용), 못 물은 질문은 근거가 있을 때만 공고 인용 + 1차와 같은 유형 틀', () => {
+    const be15 = getCard('BE15')!
+    const ev: Evidence = { field: 'pfCond', quote: '고객사 상주 가능자' }
+    expect(finalCardTemplate(be15, 'recheck', 'avoid', 'explicit', 'asked', ev)).toBe(
+      `지난 면접에 이어 공고의 '고객사 상주 가능자' 부분을 조금 더 구체적으로 알고 싶어요. ${be15.questions.conflict}`,
+    )
+    expect(finalCardTemplate(be15, 'recheck', 'avoid', 'explicit', 'not_asked', ev)).toBe(
+      `공고의 '고객사 상주 가능자' 부분을 보고 꼭 확인하고 싶었어요. ${be15.questions.conflict}`,
+    )
+    // 공고에 없던 카드는 1차에도 "…경우도 있나요?"(충돌 예방)로 물었으니 그 틀을 이어 쓴다
+    expect(finalCardTemplate(be15, 'recheck', 'avoid', 'absent', 'asked')).toBe(
+      `지난 면접에 이어 고객사 상주 개발 부분을 조금 더 구체적으로 알고 싶어요. ${be15.questions.prevent}`,
+    )
+    expect(finalCardTemplate(be15, 'recheck', 'avoid', 'absent', 'not_asked')).toBe(be15.questions.prevent)
+  })
+
+  it('가짜 공급자는 앞말을 품은 다시 확인 검수 문장에 앞말을 겹쳐 붙이지 않는다', async () => {
+    for (const variant of [0, 1]) {
+      const res = await generateFinal(reqR04({ ...r04Review(), impression: { mood: 'normal' } }), { provider: createMockProvider({ variant }) })
+      const rechecks = res.final_questions.filter((x) => x.type === 'recheck')
+      expect(rechecks.length).toBeGreaterThan(0)
+      for (const q of rechecks) {
+        for (const lead of [/지난 면접에 이어/g, /공고의 '/g, /구체적으로/g, /싶었/g]) expect(q.text.match(lead)?.length ?? 0, q.text).toBeLessThanOrEqual(1)
+      }
+    }
+  })
+})
+
 describe('API-05·검사: 들은 답은 응답에 남지 않는다', () => {
   it('API-05 응답 어디에도 들은 답 원문이 없다(가짜 공급자·검수 문장)', async () => {
     for (const options of [{ provider: createMockProvider() }, {}]) {
@@ -264,7 +310,7 @@ describe('검수 문장 전수 검사', () => {
           const hit = classifyFinal(state, pref)
           if (!hit) continue
           for (const cushion of ['', ...FINAL_BOOK.cushions]) {
-            const text = `${cushion}${finalCardTemplate(card, hit.type, pref, postingState, origin)}`
+            const text = `${cushion}${finalCardTemplate(card, hit.type, pref, postingState, origin, found?.evidence)}`
             const check = { text, state: postingState, ...(found?.evidence ? { evidence: found.evidence } : {}) }
             expect(checkFinalQuestion(check, posting, HEARD), `${a.wantedAuthNo} ${card.id} ${state}/${pref}/${origin}: ${text}`).toEqual([])
             checked++

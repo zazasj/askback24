@@ -126,7 +126,7 @@ describe('문체: 질문 틀·주의할 답·좋은 신호는 해요체(DR-r1-10
   it('DR-r1-10 질문 틀(카드·최종·처우 재료)에 "…습니다/합니다"가 없다', () => {
     for (const c of CARDS) for (const [t, text] of Object.entries(c.questions)) expect(text, `${c.id}.${t}`).not.toMatch(FORMAL)
     const T = FINAL_BOOK.templates
-    for (const text of [T.recheck_vague_tail, T.scope.avoid, T.scope.want, T.signal_lead, ...FINAL_BOOK.cushions]) expect(text).not.toMatch(FORMAL)
+    for (const text of [...Object.values(T.recheck_lead), T.scope.avoid, T.scope.want, T.signal_lead, ...FINAL_BOOK.cushions]) expect(text).not.toMatch(FORMAL)
     for (const a of ANALYSES) for (const b of a.blanks) expect(b.question, `${a.wantedAuthNo} ${b.topic}`).not.toMatch(FORMAL)
   })
 

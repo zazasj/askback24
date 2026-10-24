@@ -20,6 +20,11 @@ const MODES: readonly Mode[] = ['first', 'final']
         <span class="title">{{ wantedTitle }}</span>
         <span class="sep" aria-hidden="true">·</span>
         <span class="result" :class="{ 'is-empty': result === '-' }"><span class="result-label">지원결과 </span><b>{{ result }}</b></span>
+        <!-- 서류합격 건이 1차를 다녀와 최종으로 넘어가도 지원결과는 그대로라 지금 준비하는 면접을 같이 적는다(DA-04) -->
+        <template v-if="mode === 'final'">
+          <span class="sep" aria-hidden="true">·</span>
+          <span class="stage">준비 중: <b>최종 면접</b></span>
+        </template>
       </p>
       <fieldset class="mode">
         <legend class="mode-legend">준비할 면접</legend>
@@ -78,6 +83,10 @@ const MODES: readonly Mode[] = ['first', 'final']
 
 .result b {
   color: var(--krds-light-color-text-primary);
+}
+
+.stage b {
+  color: var(--rq-accent-strong);
 }
 
 .mode {

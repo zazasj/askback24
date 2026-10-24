@@ -115,12 +115,13 @@ export function mockJudgement(item: JudgeItem): Judgement {
   return { card_id: item.card_id, state: 'confirmed', basis: B.asked_clear }
 }
 
-/** 최종 질문 유형별 앞말. 1차 면접에서 들은 말을 가리키지 않는다 */
+/**
+ * 최종 질문 유형별 앞말. 1차 면접에서 들은 말을 가리키지 않는다.
+ * 다시 확인 검수 문장은 물어본 질문·근거가 있는 질문이면 이미 앞말("지난 면접에 이어 …")을 품고 있어 겹쳐 붙이지 않는다.
+ */
 const FINAL_LEADS: Record<FinalQType, (item: FinalDraftItem) => readonly string[]> = {
   recheck: (item) =>
-    item.origin === 'asked'
-      ? ['조금 더 구체적으로 듣고 싶은 부분이 있어요. ', '한 번 더 정리해서 듣고 싶은 부분이 있어요. ']
-      : ['꼭 여쭤보고 싶었던 부분이 있어요. ', '미리 알아 두고 싶은 부분이 있어요. '],
+    item.origin === 'asked' || item.evidence ? [''] : ['꼭 여쭤보고 싶었던 부분이 있어요. ', '미리 알아 두고 싶은 부분이 있어요. '],
   signal: () => ['미리 준비해 두고 싶어 여쭤요. ', '맡게 될 일을 그려 보고 싶어요. '],
   scope: () => ['맡게 될 업무 범위를 분명히 알고 싶어요. ', '제가 맡게 될 일을 미리 그려 보고 싶어요. '],
   offer: () => ['근무 조건도 미리 알고 싶어요. ', '처우도 미리 확인하고 싶어요. '],
