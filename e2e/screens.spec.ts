@@ -3,7 +3,7 @@
  * 화면마다 전체 페이지를 review/screens/<이름>-<프로젝트>.png 로 저장한다(desktop·mobile).
  * 준비 동작이 막혀도 그때 화면을 그대로 찍고, 막힌 까닭은 annotation 으로 남긴다.
  */
-import { test, type Page, type TestInfo } from '@playwright/test'
+import { test, type Locator, type Page, type TestInfo } from '@playwright/test'
 import { join } from 'node:path'
 import {
   ABOUT_TITLE,
@@ -22,7 +22,10 @@ import {
   makeFirstQuestions,
   openPrep,
   questionItems,
+  stepText,
+  stepUrl,
 } from './helpers'
+import { AI_SUMMARY_COUNT, AI_SUMMARY_TITLE, MAIN_MENU_OFF, S2_BUTTONS_OFF, control, keyboardFocus, mainMenuItem, scrollToTop, settleScroll } from './helpers2'
 
 test.use({ actionTimeout: 15_000, navigationTimeout: 20_000 })
 test.describe.configure({ timeout: 120_000 })
@@ -126,5 +129,156 @@ for (const screen of SCREENS) {
       testInfo.annotations.push({ type: 'screen-setup-failed', description: String(e).slice(0, 800) })
     }
     await capture(page, testInfo, screen.name)
+  })
+}
+
+// ── 2차 화면(2026-10-25): 흐림 표시·첫 화면·AI 분석 요약·긴 글 공고·출처 표 ──────────
+// shot: full = 전체 페이지, view = 지금 보이는 첫 화면(스크롤 전), element = 그 부분만
+
+type Shot2 = {
+  name: string
+  shot: 'full' | 'view' | 'element'
+  setup: (page: Page, isMobile: boolean) => Promise<Locator | void>
+}
+
+/** 데스크톱은 스크롤 맨 위, 휴대폰은 이동 직후 그대로를 "첫 화면"으로 본다(F-02와 같음). */
+async function firstView(page: Page, isMobile: boolean): Promise<void> {
+  await settleScroll(page)
+  if (!isMobile) await scrollToTop(page)
+}
+
+/** 흐린 컨트롤에 마우스(데스크톱)나 초점(휴대폰)을 줘서 "시연 범위 밖이에요" 설명을 띄운다. */
+async function showTip(page: Page, target: Locator, isMobile: boolean): Promise<void> {
+  await target.scrollIntoViewIfNeeded()
+  if (isMobile) await keyboardFocus(target)
+  else await target.hover()
+  await page.waitForTimeout(400)
+}
+
+const SCREENS_2: ReadonlyArray<Shot2> = [
+  {
+    name: '2-demo-off-main-menu-tip',
+    shot: 'view',
+    setup: async (page, isMobile) => {
+      await gotoApplications(page)
+      await showTip(page, mainMenuItem(page, MAIN_MENU_OFF[0]), isMobile)
+    },
+  },
+  {
+    name: '2-demo-off-resume-tip',
+    shot: 'view',
+    setup: async (page, isMobile) => {
+      await page.goto('/mypage/resume')
+      await heading(page, S2_TITLE).waitFor()
+      await showTip(page, control(page, S2_BUTTONS_OFF[2]).filter({ visible: true }).first(), isMobile)
+    },
+  },
+  {
+    name: '2-s4-first-1-first-view',
+    shot: 'view',
+    setup: async (page, isMobile) => {
+      await openPrep(page, 'oo')
+      await expectCurrentStep(page, '공고 확인')
+      await firstView(page, isMobile)
+    },
+  },
+  {
+    name: '2-s4-first-2-first-view',
+    shot: 'view',
+    setup: async (page, isMobile) => {
+      const base = await openPrep(page, 'oo')
+      await goToCardsStep(page, base)
+      await firstView(page, isMobile)
+    },
+  },
+  {
+    name: '2-s4-first-3-first-view',
+    shot: 'view',
+    setup: async (page, isMobile) => {
+      await makeFirstQuestions(page, 'oo')
+      await firstView(page, isMobile)
+    },
+  },
+  {
+    name: '2-s4-final-3-first-view',
+    shot: 'view',
+    setup: async (page, isMobile) => {
+      await makeFinalQuestions(page)
+      await firstView(page, isMobile)
+    },
+  },
+  {
+    name: '2-s4-first-1-ai-summary',
+    shot: 'element',
+    setup: async (page) => {
+      await openPrep(page, 'oo')
+      await expectCurrentStep(page, '공고 확인')
+      return page
+        .locator('*')
+        .filter({ has: page.getByText(AI_SUMMARY_TITLE, { exact: true }) })
+        .filter({ hasText: AI_SUMMARY_COUNT })
+        .last()
+    },
+  },
+  {
+    name: '2-s4-first-1-posting-data',
+    shot: 'full',
+    setup: async (page) => {
+      await openPrep(page, 'data')
+      await expectCurrentStep(page, '공고 확인')
+    },
+  },
+  {
+    name: '2-s4-final-1-posting-commerce',
+    shot: 'full',
+    setup: async (page) => {
+      const base = await openPrep(page, 'commerce')
+      if (!(await stepText(page)).includes('공고 확인')) await page.goto(stepUrl(base, 1))
+      await expectCurrentStep(page, '공고 확인')
+    },
+  },
+  ...Array.from({ length: 7 }, (_v, i): Shot2 => ({
+    name: `2-s3-job-detail-${i + 1}`,
+    shot: 'full',
+    setup: async (page) => {
+      const paths = await jobDetailPaths(page)
+      const path = paths[i]
+      if (!path) throw new Error(`상세 링크가 ${paths.length}개뿐이다`)
+      await page.goto(path)
+      await heading(page, '모집요강').waitFor()
+    },
+  })),
+  {
+    name: '2-about-ai-sources',
+    shot: 'element',
+    setup: async (page) => {
+      await page.goto('/about-ai')
+      await heading(page, ABOUT_TITLE).waitFor()
+      return page.getByRole('table').filter({ has: page.getByRole('columnheader', { name: '받은 날짜' }) }).first()
+    },
+  },
+]
+
+for (const screen of SCREENS_2) {
+  test(`SCREENS ${screen.name}`, async ({ page, isMobile }, testInfo) => {
+    let part: Locator | void = undefined
+    try {
+      part = await screen.setup(page, isMobile)
+    } catch (e) {
+      testInfo.annotations.push({ type: 'screen-setup-failed', description: String(e).slice(0, 800) })
+    }
+    const path = join(REPO_ROOT, 'review', 'screens', `${screen.name}-${testInfo.project.name}.png`)
+    await page.evaluate(async () => {
+      await document.fonts.ready
+    })
+    if (screen.shot === 'element' && part) {
+      try {
+        await part.screenshot({ path, animations: 'disabled', timeout: 10_000 })
+        return
+      } catch (e) {
+        testInfo.annotations.push({ type: 'screen-element-failed', description: String(e).slice(0, 800) })
+      }
+    }
+    await page.screenshot({ path, fullPage: screen.shot !== 'view', animations: 'disabled' })
   })
 }
