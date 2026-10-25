@@ -153,3 +153,20 @@ export function sourceRows(): SourceRow[] {
     { data: '김00 이력서', origin: '가상 인물', source: '모의', note: '연락처와 주소는 예시 값이에요.', fetched: '' },
   ]
 }
+
+/**
+ * 팀이 고용24 공개 채용 화면에서 직접 센 숫자(H1-23). API·파일에서 셀 수 없어 측정 날짜와 함께 값으로 둔다.
+ * 모의 공고(P-02)가 임금·근무시간을 비워 둔 근거다.
+ */
+export const TEAM_MEASURE = {
+  query: '개발자',
+  postings: 50,
+  wageBlank: 40,
+  hoursBlank: 37,
+  measuredOn: '2026-10-05',
+} as const
+
+/** 임금 빈칸·협의 비율(%) — 정수로 */
+export function wageBlankRate(): number {
+  return Math.round((TEAM_MEASURE.wageBlank / TEAM_MEASURE.postings) * 100)
+}

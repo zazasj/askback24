@@ -157,6 +157,9 @@ function printSheet(): void {
 }
 
 const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'AI가 문장 쓰는 중'] as const
+
+/** 고용노동부 「개정 표준 근로계약서」 게시 글(2025-03-07, 근로기준정책과). 2026-10-25 열어 내려받기 파일 확인(H1-21) */
+const STANDARD_CONTRACT_URL = 'https://www.moel.go.kr/policy/policydata/view.do?bbs_seq=20250300356'
 </script>
 
 <template>
@@ -263,8 +266,24 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
             <p class="side-line">꼭 물을 질문에 "면접에서 쓸 것 같아요"를 누르면 인쇄·복사 때 맨 위에 와요.</p>
             <RouterLink class="about-link tap-target" to="/about-ai">이 질문은 어떻게 만들어지나요</RouterLink>
           </div>
+          <!-- 처우 질문 뒤 공공 정보로 잇는다(H1-21). 이 상자는 인쇄하지 않아 링크 주소도 종이에 찍히지 않는다 -->
+          <div class="side-box">
+            <p class="side-line">근로계약서에 꼭 적혀야 할 항목(임금·근로시간·휴일 등)은 표준근로계약서에서 볼 수 있어요.</p>
+            <a class="about-link tap-target" :href="STANDARD_CONTRACT_URL" target="_blank" rel="noopener noreferrer">
+              고용노동부 표준근로계약서<span class="sr-only"> (새 창)</span>
+            </a>
+          </div>
         </aside>
       </div>
+
+      <!-- 질문 7~8개로 끝나지 않게 다음 할 일을 둔다(H2-13). 1차 ③ "1차 면접을 다녀오면"과 같은 모양, 인쇄하지 않음 -->
+      <section class="next-box" aria-labelledby="final-next-title" data-print="hide">
+        <h3 id="final-next-title" class="next-title">최종 면접을 다녀오면</h3>
+        <p>
+          들은 답이 기대와 달랐던 것은 처우 협의 때 한 번 더 물어보세요. 합격하면 서명하기 전에 근로계약서에 들은 조건이 그대로
+          적혔는지 확인해 보세요.
+        </p>
+      </section>
 
       <!-- 아래 고정 바(1차 ③ .result-bar와 같은 모양, H2-08 나): "전체 복사"는 1차와 같은 자리, 채운 버튼은 면접에 들고 갈 한 장 -->
       <div class="result-bar" data-print="hide">
@@ -514,6 +533,27 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
   color: var(--krds-light-color-text-subtle);
 }
 
+/* ── 다음 할 일(1차 ③ .next-box와 같은 모양) ───────────── */
+.next-box {
+  display: grid;
+  gap: 0.4rem;
+  padding: 1.6rem 2rem;
+  border: 1px solid var(--rq-accent-border);
+  border-radius: var(--krds-radius-large1);
+  background: var(--rq-accent-subtler);
+}
+
+.next-title {
+  font-size: var(--krds-pc-font-size-heading-xxsmall);
+  font-weight: 700;
+  color: var(--krds-light-color-text-bolder);
+}
+
+.next-box p {
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-basic);
+}
+
 /* ── 아래 고정 바(1차 ③ .result-bar와 같은 모양) ───────── */
 .result-bar {
   position: sticky;
@@ -652,6 +692,10 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
 
   .side-btn {
     min-height: var(--rq-touch);
+  }
+
+  .next-box {
+    padding: 1.4rem 1.6rem;
   }
 
   /* 휴대폰: 바가 화면을 덜 가리게 버튼 두 개만 한 줄로(1차 ③과 같음) */

@@ -8,13 +8,15 @@ import { CARD_BOOK } from '@shared/catalog'
 import { API_MODE } from '@/api/client'
 import AiLabel from '@/components/ui/AiLabel.vue'
 import MockModeTag from '@/components/ui/MockModeTag.vue'
-import { auditNumbers, sourceRows } from '@/features/about/aboutData'
+import { TEAM_MEASURE, auditNumbers, sourceRows, wageBlankRate } from '@/features/about/aboutData'
 
 const router = useRouter()
 const isMock = API_MODE === 'mock'
 const numbers = auditNumbers()
 const sources = sourceRows()
 const typeOrder = Object.values(CARD_BOOK.type_labels).join(' → ')
+const team = TEAM_MEASURE
+const wageRate = wageBlankRate()
 
 /** "2026-10-25" → ["2026.", "10.25"](휴대폰 좁은 칸에서 연도 뒤에서만 줄이 바뀌게) */
 function dateParts(iso: string): [string, string] {
@@ -36,6 +38,19 @@ function goBack(): void {
       <h1 class="page-title">이 질문은 어떻게 만들어지나요</h1>
       <AiLabel />
     </div>
+    <!-- 서비스 목적과 근거 숫자(H1-03 ①③). 숫자는 현상만 말하고, 이 서비스가 그 숫자를 줄인다고 쓰지 않는다 -->
+    <section class="purpose" aria-labelledby="about-purpose">
+      <h2 id="about-purpose" class="sr-only">서비스 목적</h2>
+      <p class="purpose-line">
+        입사 전에 하게 될 일과 근로조건이 내 기대와 맞는지 면접에서 확인하도록 돕는 서비스예요. 지원할 곳을 추천하지 않고, 이미 지원한
+        공고의 면접 준비를 도와요.
+      </p>
+      <p class="purpose-stat">
+        <span class="stat-label">첫 직장 1년 안 이탈</span>
+        <strong class="stat-value">38.5%</strong>
+      </p>
+      <p class="purpose-source">출처: 국가데이터처 MDIS 경제활동인구조사 청년층 부가조사(2024~2026.5) 팀 자체 분석</p>
+    </section>
     <p class="lead">
       면접 역질문 준비는 AI 혼자 질문을 정하지 않아요. 공고 근거와 정해 둔 순서 규칙이 먼저 질문을 고르고, AI는 그 질문의 문장을 써요. AI가 쓴
       문장도 검사를 통과해야 화면에 나와요.
@@ -88,6 +103,16 @@ function goBack(): void {
         1차 면접을 다녀와 물어본 질문과 들은 답을 정리하면, 아직 모르는 것과 처우(임금·근무시간·수습) 질문을 최종 면접용으로 다시 골라요. 들은 답은
         구체적이었는지만 보고 회사를 평가하지 않아요. 걱정한 업무는 답이 구체적이어도 걱정이 풀렸는지 알 수 없어 아직 모름으로 남겨요.
       </p>
+      <!-- 운영 그림(H1-07 ①②). 앞날 일은 약속이 아니라 계획으로 적고, 추정치가 없는 비용 숫자는 넣지 않는다 -->
+      <section class="plan" aria-labelledby="about-plan">
+        <h3 id="about-plan" class="plan-title">고용24에 붙이면</h3>
+        <ul class="plan-list">
+          <li>공고 분석은 공고마다 한 번 만들고, 공고가 고쳐지면 다시 만들 계획이에요.</li>
+          <li>AI 문장은 "질문 만들기"를 누를 때만 써요.</li>
+          <li>처음에는 백엔드 개발 공고부터 다룰 계획이에요. 지금 시연의 모의 공고 {{ numbers.postings }}건은 미리 분석해 둔 결과예요.</li>
+          <li>채용정보 상세에서도 면접을 준비하도록 넓힐 계획이에요.</li>
+        </ul>
+      </section>
     </section>
 
     <section class="block" aria-labelledby="about-numbers">
@@ -111,8 +136,22 @@ function goBack(): void {
           <dt>검수 문장 틀</dt>
           <dd><strong>{{ numbers.templates }}</strong>개</dd>
         </div>
+        <!-- 팀이 공개 화면에서 직접 센 숫자(H1-23). 늘 같은 "근거 n/n"과 달리 모의 공고를 왜 이렇게 만들었는지 보인다 -->
+        <div class="number is-wide">
+          <dt>팀 실측 · 고용24 '{{ team.query }}' 공개 공고 {{ team.postings }}건</dt>
+          <dd>
+            <span class="keep">임금 빈칸·협의 <strong>{{ team.wageBlank }}</strong>건({{ wageRate }}%)</span> ·
+            <span class="keep">근무시간 빈칸 <strong>{{ team.hoursBlank }}</strong>건</span>
+            <span class="measured">{{ team.measuredOn }} 팀 측정</span>
+          </dd>
+        </div>
       </dl>
       <p class="muted small">근거 인용이 원문에 없으면 형광펜이 칠해지지 않아요. 그래서 두 숫자가 같아야 해요.</p>
+      <!-- 이용 기록은 모으지 않는다(H1-19 나). 품질은 팀이 직접 재는 점검으로 말한다 -->
+      <p class="muted small">
+        이용 기록(복사·"면접에서 쓸 것 같아요" 누름)은 모으지 않아요. 품질은 팀 점검으로 재요. 공고 분석 근거가 원문과 맞는지, 질문이
+        공고에 없는 일을 있는 것처럼 말하지 않는지 팀이 직접 확인해요.
+      </p>
     </section>
 
     <section class="block" aria-labelledby="about-sources">
@@ -158,6 +197,19 @@ function goBack(): void {
       </table>
     </section>
 
+    <!-- 기획안과 화면이 다른 곳을 밝힌다(H1-20). 근거는 DECISIONS D-182·D-183·D-191 -->
+    <section class="block" aria-labelledby="about-changes">
+      <h2 id="about-changes" class="section-title">기획안 뒤 달라진 점</h2>
+      <ul class="changes">
+        <li>질문 유형 "충돌 확인"을 "차이 확인"으로 바꿨어요. 회사와 맞서는 말로 읽힐 수 있어서예요.</li>
+        <li>
+          데이터는 출처마다 "실제"와 "모의"로 나눠 보여요. 직업정보는 공고 직종과 같은 응용 소프트웨어 개발자로 맞췄고, 강소기업 수는
+          15,282건 기준이에요.
+        </li>
+        <li>1차 면접 질문만 주던 흐름에 1차 면접 정리와 최종 질문 단계를 더했어요.</li>
+      </ul>
+    </section>
+
     <section class="block" aria-labelledby="about-privacy">
       <h2 id="about-privacy" class="section-title">개인정보</h2>
       <ul class="privacy">
@@ -169,6 +221,12 @@ function goBack(): void {
         <li v-if="isMock">지금 시연은 가짜 응답 모드라 AI에 아무것도 보내지 않아요.</li>
         <li>서버는 경험 한 줄·들은 답·면접 분위기를 저장하거나 기록하지 않아요.</li>
         <li>고른 카드와 질문 결과는 이 브라우저에만 저장되고, 들은 답은 브라우저에도 저장하지 않아요.</li>
+        <!-- 함께 쓰는 PC(H1-22)와 실제로 붙일 때의 계획(H2-05). 공공 서비스의 약속이 아니라 계획으로 적는다 -->
+        <li>함께 쓰는 PC라면 다 본 뒤 "시연 도구"의 시연 초기화로 지워 주세요.</li>
+        <li>
+          고용24에 붙이면 AI 처리 기관을 개인정보 처리방침에 위탁으로 알리고, 보낸 글은 질문을 만든 뒤 남기지 않을 계획이에요. 만든
+          질문은 마이페이지 계정에 저장할 계획이에요.
+        </li>
       </ul>
     </section>
 
@@ -197,6 +255,53 @@ function goBack(): void {
   margin-top: -1.6rem;
   font-size: var(--krds-pc-font-size-body-medium);
   color: var(--krds-light-color-text-basic);
+}
+
+.purpose {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.4rem 2.4rem;
+  max-width: 80rem;
+  margin-top: -1.6rem;
+  padding: 1.6rem 2rem;
+  border: 1px solid var(--rq-accent-border);
+  border-radius: var(--krds-radius-large1);
+  background: var(--rq-accent-subtler);
+}
+
+.purpose-line {
+  grid-column: 1;
+  font-size: var(--krds-pc-font-size-body-medium);
+  font-weight: 700;
+  color: var(--krds-light-color-text-bolder);
+}
+
+.purpose-stat {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: grid;
+  justify-items: end;
+  gap: 0.2rem;
+  text-align: right;
+}
+
+.stat-label {
+  font-size: var(--krds-pc-font-size-label-small);
+  font-weight: 700;
+  color: var(--krds-light-color-text-subtle);
+}
+
+.stat-value {
+  font-size: var(--krds-pc-font-size-heading-medium);
+  line-height: 1.2;
+  color: var(--rq-accent-strong);
+}
+
+.purpose-source {
+  grid-column: 1;
+  font-size: var(--krds-pc-font-size-body-xsmall);
+  color: var(--krds-light-color-text-subtle);
 }
 
 .mock-note {
@@ -269,6 +374,35 @@ function goBack(): void {
   font-size: var(--krds-pc-font-size-body-small);
 }
 
+.plan {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1.6rem 2rem;
+  border-radius: var(--krds-radius-large1);
+  background: var(--krds-light-color-surface-gray-subtler);
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-basic);
+}
+
+.plan-title {
+  font-size: var(--krds-pc-font-size-label-medium);
+  font-weight: 700;
+  color: var(--krds-light-color-text-bolder);
+}
+
+.plan-list,
+.changes {
+  display: grid;
+  gap: 0.4rem;
+  padding-left: 2rem;
+  list-style: disc;
+}
+
+.changes {
+  gap: 0.8rem;
+  font-size: var(--krds-pc-font-size-body-small);
+}
+
 /* ── 점검 숫자 ─────────────────────────────────────── */
 .numbers {
   display: grid;
@@ -301,6 +435,26 @@ function goBack(): void {
   font-size: var(--krds-pc-font-size-heading-medium);
   line-height: 1.2;
   color: var(--krds-light-color-text-bolder);
+}
+
+.number.is-wide {
+  grid-column: 1 / -1;
+}
+
+.number.is-wide strong {
+  margin-left: 0.2rem;
+}
+
+/* 숫자와 단위가 줄에서 떨어지지 않게 */
+.keep {
+  white-space: nowrap;
+}
+
+.measured {
+  display: inline-block;
+  margin-left: 0.8rem;
+  font-size: var(--krds-pc-font-size-body-xsmall);
+  color: var(--krds-light-color-text-subtle);
 }
 
 .small {
@@ -420,8 +574,35 @@ function goBack(): void {
   }
 
   .lead,
-  .mock-note {
+  .mock-note,
+  .purpose {
     margin-top: -0.8rem;
+  }
+
+  /* 휴대폰: 숫자를 문장 아래로 */
+  .purpose {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 1.4rem 1.6rem;
+  }
+
+  .purpose-stat {
+    grid-column: 1;
+    grid-row: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-items: start;
+    gap: 0.2rem 0.8rem;
+    text-align: left;
+  }
+
+  .plan {
+    padding: 1.4rem 1.6rem;
+  }
+
+  .measured {
+    display: block;
+    margin-left: 0;
   }
 
   .mock-note {

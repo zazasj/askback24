@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CARDS, POSTINGS } from '@shared/catalog'
 import { NCS_CARDS, SMALL_GIANTS } from '@/realData'
-import { auditNumbers, sourceRows } from './aboutData'
+import { TEAM_MEASURE, auditNumbers, sourceRows, wageBlankRate } from './aboutData'
 
 describe('/about-ai 점검 숫자', () => {
   it('카드·공고 수와 근거 인용 수를 데이터에서 센다. 원문에 없는 근거는 0건', () => {
@@ -94,5 +94,12 @@ describe('DATA-06 출처 표의 고용24 오픈API 줄', () => {
     const cards = rows.find((r) => r.data === `업무 카드 ${CARDS.length}개`)
     expect(cards?.source).toBe('모의')
     expect(cards?.note).toBe('공공 자료를 참고해 팀이 나눈 업무예요.')
+  })
+})
+
+describe('W-08 팀 실측 칸', () => {
+  it('고용24 "개발자" 공개 공고 50건 중 임금 빈칸·협의 40건 = 80%, 근무시간 빈칸 37건, 2026-10-05', () => {
+    expect(TEAM_MEASURE).toEqual({ query: '개발자', postings: 50, wageBlank: 40, hoursBlank: 37, measuredOn: '2026-10-05' })
+    expect(wageBlankRate()).toBe(80)
   })
 })

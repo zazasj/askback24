@@ -205,6 +205,10 @@ function setMood(m: Mood): void {
             <span class="chip">{{ MOOD_LABELS[m] }}</span>
           </label>
         </div>
+        <!-- 면접에서 직무와 상관없는 개인정보를 요구받았을 때 안내할 곳(H2-13) -->
+        <p class="hint">
+          면접에서 가족·결혼 계획처럼 일과 상관없는 개인정보를 물었다면 고용노동부 고객상담센터(국번 없이 1350)에 상담할 수 있어요.
+        </p>
       </fieldset>
 
       <div class="review-bar">
