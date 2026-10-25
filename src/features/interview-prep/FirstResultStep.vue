@@ -7,16 +7,16 @@
  */
 import { computed, nextTick, onMounted, useTemplateRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { CARD_BOOK, getCard } from '@shared/catalog'
+import { CARD_BOOK, getAnalysis, getCard } from '@shared/catalog'
 import type { Posting, Question } from '@shared/contract'
-import { QUESTION_LIMIT, typeLabel } from '@shared/rules'
+import { QUESTION_LIMIT, pickExplore, typeLabel } from '@shared/rules'
 import { API_MODE } from '@/api/client'
 import MockModeTag from '@/components/ui/MockModeTag.vue'
 import { useCopy } from '@/composables/useCopy'
 import { usePrepStore } from '@/stores/prep'
 import { useQuestionsStore } from '@/stores/questions'
 import GeneratingView from './GeneratingView.vue'
-import { PREFS, countByPref } from './picks'
+import { PREFS, countByPref, toCardPicks } from './picks'
 import QuestionCard from './QuestionCard.vue'
 import { FIRST_TONES, cardMeta, evidenceLabel, firstTypeNote } from './questionView'
 
@@ -72,10 +72,30 @@ const breakdown = computed(() => {
  * 고른 카드 중 질문이 되지 않은 것(5개 한도에서 밀림, A2-13). 선택이 바뀐 뒤(stale)에는 결과와 비교할 수 없어 숨긴다.
  * 어떤 선호·공고 상태든 규칙이 있어(cards.backend.json gap_rules) 빠지는 까닭은 개수 한도뿐이다
  */
+/**
+ * "더 알아볼 질문"(U-03, D-176): 질문 5개에 들지 못한 "모르겠어요" 카드의 탐색 질문(검수 문장) 최대 3개.
+ * 선택이 바뀐 뒤(stale)에는 질문 5개와 맞지 않아 숨긴다. 인쇄 한 장(Q-02)에는 넣지 않는다.
+ */
+const explores = computed(() => {
+  if (stale.value || !questions.value.length) return []
+  const analysis = getAnalysis(props.posting.wantedAuthNo)
+  if (!analysis) return []
+  const made = new Set(questions.value.map((q) => q.card_id))
+  return pickExplore({ picks: toCardPicks(selection.value), experience: selection.value.experience }, analysis)
+    .filter((r) => !made.has(r.card_id))
+    .map((r) => ({ card_id: r.card_id, label: getCard(r.card_id)?.label ?? r.card_id, inPosting: r.state !== 'absent', text: r.template_text }))
+})
+
+const DROPPED_SHOWN = 3
 const dropped = computed(() => {
   if (stale.value || !questions.value.length) return []
-  const made = new Set(questions.value.map((q) => q.card_id))
+  const made = new Set([...questions.value.map((q) => q.card_id), ...explores.value.map((e) => e.card_id)])
   return selection.value.picks.filter((p) => !made.has(p.card_id)).map((p) => getCard(p.card_id)?.label ?? p.card_id)
+})
+const droppedLine = computed(() => {
+  const list = dropped.value
+  const shown = list.slice(0, DROPPED_SHOWN).join(', ')
+  return list.length > DROPPED_SHOWN ? `${shown} 외 ${list.length - DROPPED_SHOWN}개` : shown
 })
 
 function copyAll(): void {
@@ -146,8 +166,28 @@ function printSheet(): void {
           </ol>
           <!-- 5개 한도로 빠진 카드(A2-13). 오른쪽 상자(sticky)에 넣으면 1440×900에서 상자가 화면 아래끝까지 늘어나
                F-02 시험이 아래 고정 바로 읽어 질문 목록 바로 아래에 둔다(휴대폰은 오른쪽 상자 바로 위라 같은 자리) -->
+          <section v-if="explores.length" class="explore-box" aria-labelledby="explore-title" data-print="hide">
+            <h3 id="explore-title" class="explore-title">더 알아볼 질문</h3>
+            <p class="explore-lead">
+              "모르겠어요"로 고른 일 중 이 공고와 가까운 것부터 골랐어요. 모르는 일을 물어보는 건 감점이 아니라 배우려는
+              태도로 보여요.
+            </p>
+            <ul class="explore-list" aria-label="더 알아볼 질문 목록">
+              <li v-for="e in explores" :key="e.card_id" class="explore-item">
+                <p class="explore-meta">
+                  <span class="explore-chip">탐색</span>
+                  <span>{{ e.label }} · 모르겠어요</span>
+                  <span v-if="e.inPosting" class="explore-in">공고에 나온 일</span>
+                </p>
+                <p class="explore-text">{{ e.text }}</p>
+                <button type="button" class="btn btn-tertiary explore-copy" :aria-label="`${e.label} 질문 복사`" @click="copy(e.text)">
+                  복사
+                </button>
+              </li>
+            </ul>
+          </section>
           <p v-if="dropped.length" class="dropped" data-print="hide">
-            질문에서 빠진 것: {{ dropped.join(', ') }} ({{ QUESTION_LIMIT }}개까지만 만들어요)
+            질문에서 빠진 것: {{ droppedLine }} ({{ QUESTION_LIMIT }}개까지만 만들어요)
           </p>
         </div>
 
@@ -311,6 +351,85 @@ function printSheet(): void {
 .dropped {
   font-size: var(--krds-pc-font-size-body-small);
   color: var(--krds-light-color-text-subtle);
+}
+
+/* 더 알아볼 질문(U-03): 질문 5개보다 한 단계 낮은 위계 — 회색 바탕 상자, 문장은 본문 크기 */
+.explore-box {
+  display: grid;
+  gap: 1rem;
+  padding: 1.6rem 2rem;
+  border: 1px solid var(--krds-light-color-border-gray-light);
+  border-radius: var(--krds-radius-large1);
+  background: var(--krds-light-color-surface-gray-subtler);
+}
+
+.explore-title {
+  font-size: var(--krds-pc-font-size-heading-xxsmall);
+  font-weight: 700;
+  color: var(--krds-light-color-text-bolder);
+}
+
+.explore-lead {
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.explore-list {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.explore-item {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1.2rem 1.4rem;
+  border-radius: var(--krds-radius-medium2, var(--krds-radius-large1));
+  background: var(--krds-light-color-surface-white);
+}
+
+.explore-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.8rem;
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.explore-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.2rem;
+  padding: 0 0.8rem;
+  border-radius: var(--krds-radius-max);
+  background: var(--krds-light-color-surface-gray-subtler);
+  font-weight: 700;
+  color: var(--krds-light-color-text-basic);
+}
+
+.explore-in {
+  font-weight: 700;
+  color: var(--rq-accent-strong);
+}
+
+.explore-text {
+  font-size: var(--krds-pc-font-size-body-medium);
+  font-weight: 500;
+  line-height: 1.6;
+  color: var(--krds-light-color-text-bolder);
+}
+
+.explore-copy {
+  justify-self: start;
+}
+
+@media (max-width: 767px) {
+  .explore-box {
+    padding: 1.4rem;
+  }
 }
 
 .side-btn {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { PRESETS, getAnalysis } from './catalog'
 import type { PostingAnalysis } from './contract'
-import { EXPERIENCE_LEAD, anchorText, classify, experienceAnchor, pickTop5, rankPicks, typeLabel } from './rules'
+import { EXPERIENCE_LEAD, anchorText, classify, experienceAnchor, pickExplore, pickTop5, rankPicks, typeLabel } from './rules'
 
 function analysisOf(id: string): PostingAnalysis {
   const a = getAnalysis(id)
@@ -155,5 +155,28 @@ describe('규칙 표(gap_rules)', () => {
   it('17개를 골라도 5개까지만(예시 A는 카드 17개 모두)', () => {
     expect(rankPicks(PRESETS.A, OO)).toHaveLength(17)
     expect(pickTop5(PRESETS.A, OO)).toHaveLength(5)
+  })
+})
+
+describe('U-03 더 알아볼 질문(pickExplore)', () => {
+  const COMMERCE = analysisOf('K-MOCK-0002')
+
+  it('예시 A × (주)OO소프트 = 공고와 관련 있는 모르겠어요 카드부터 3개, 질문 5개와 겹치지 않음', () => {
+    const explore = pickExplore(PRESETS.A, OO)
+    // 공고에 나온 모르겠어요 카드(SQL 우대조건 · 요구사항 협의 유추 · 산출물 작성 명시)가 고른 순서대로
+    expect(explore.map((r) => r.card_id)).toEqual(['BE04', 'BE12', 'BE14'])
+    expect(explore.every((r) => r.type === 'explore' && r.pref === 'unsure')).toBe(true)
+    const top = new Set(pickTop5(PRESETS.A, OO).map((r) => r.card_id))
+    expect(explore.some((r) => top.has(r.card_id))).toBe(false)
+    expect(explore[0]?.template_text.length).toBeGreaterThan(10)
+  })
+
+  it('예시 A × (주)△△커머스 = 공고에 나온 카드(장애 대응·SQL·배포) 먼저', () => {
+    expect(pickExplore(PRESETS.A, COMMERCE).map((r) => r.card_id)).toEqual(['BE08', 'BE04', 'BE09'])
+  })
+
+  it('모르겠어요가 없으면 빈 목록', () => {
+    const picks = PRESETS.A.picks.filter((p) => p.pref !== 'unsure')
+    expect(pickExplore({ picks, experience: '' }, OO)).toEqual([])
   })
 })

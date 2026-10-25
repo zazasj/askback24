@@ -141,3 +141,16 @@ export function rankPicks(input: PickInput, analysis: PostingAnalysis): RankedPi
 export function pickTop5(input: PickInput, analysis: PostingAnalysis, limit = QUESTION_LIMIT): RankedPick[] {
   return rankPicks(input, analysis).slice(0, limit)
 }
+
+export const EXPLORE_LIMIT = 3
+
+/**
+ * "더 알아볼 질문"(U-03, D-176): 질문 5개에 들지 못한 "모르겠어요" 카드의 탐색 질문.
+ * 규칙 순서 그대로라 공고와 관련 있는 카드(탐색 4.5)가 공고에 없는 카드(탐색 예비 5.0)보다 먼저 온다.
+ * 질문 5개는 바꾸지 않는다.
+ */
+export function pickExplore(input: PickInput, analysis: PostingAnalysis, limit = EXPLORE_LIMIT): RankedPick[] {
+  const ranked = rankPicks(input, analysis)
+  const top = new Set(ranked.slice(0, QUESTION_LIMIT).map((r) => r.card_id))
+  return ranked.filter((r) => r.type === 'explore' && !top.has(r.card_id)).slice(0, limit)
+}
