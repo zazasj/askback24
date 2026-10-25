@@ -133,9 +133,9 @@ describe('규칙 표(gap_rules)', () => {
       expect(be01?.template_text, exp).not.toMatch(/(?:다|요|봄), /)
       expect(top.filter((q) => q.has_exp).map((q) => q.card_id)).toEqual(['BE01'])
     }
-    // S4-13 예시 A("…맡아 봤는데")는 그대로
+    // S4-13 예시 A("…맡아 본 경험이 있습니다.")는 맺은 뒤 질문을 다음 문장으로
     const a = pickTop5(PRESETS.A, OO).find((q) => q.card_id === 'BE01')
-    expect(a?.template_text.startsWith(`${PRESETS.A.experience}, 이 팀에서는`)).toBe(true)
+    expect(a?.template_text.startsWith(`${PRESETS.A.experience} 이 팀에서는`), a?.template_text).toBe(true)
   })
 
   it('없는 카드 ID는 건너뛰고, 같은 우선순위면 먼저 고른 것이 위', () => {
@@ -152,8 +152,8 @@ describe('규칙 표(gap_rules)', () => {
     expect(ranked.map((q) => q.card_id)).toEqual(['BE03', 'BE02'])
   })
 
-  it('6개를 골라도 5개까지만', () => {
-    expect(rankPicks(PRESETS.A, OO)).toHaveLength(6)
+  it('17개를 골라도 5개까지만(예시 A는 카드 17개 모두)', () => {
+    expect(rankPicks(PRESETS.A, OO)).toHaveLength(17)
     expect(pickTop5(PRESETS.A, OO)).toHaveLength(5)
   })
 })

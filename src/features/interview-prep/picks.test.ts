@@ -58,10 +58,10 @@ describe('한 줄 입력(textarea, DR-r1-08)', () => {
 describe('S4-12 예시 구직자 A로 채우기', () => {
   const sel = fromPreset(PRESETS.A)
 
-  it('기대 3 · 걱정 2 · 모르겠어요 1, 경험 한 줄, 6개', () => {
-    expect(sel.picks).toHaveLength(6)
-    expect(countByPref(sel.picks)).toEqual({ want: 3, avoid: 2, unsure: 1 })
-    expect(sel.experience).toBe('직업훈련 팀 프로젝트에서 FastAPI로 API를 설계부터 배포까지 맡아 봤는데')
+  it('17개 모두: 기대 3 · 걱정 4 · 모르겠어요 10, 경험 한 줄', () => {
+    expect(sel.picks).toHaveLength(17)
+    expect(countByPref(sel.picks)).toEqual({ want: 3, avoid: 4, unsure: 10 })
+    expect(sel.experience).toBe('직업훈련 팀 프로젝트에서 FastAPI로 API를 설계부터 배포까지 맡아 본 경험이 있습니다.')
     expect(isSelection(sel)).toBe(true)
   })
 

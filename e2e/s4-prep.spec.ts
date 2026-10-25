@@ -262,11 +262,11 @@ test('S4-11 ② "경험 한 줄" 최대 100자, "이력서에서 가져오기" �
   expect(new Set(filled).size, `칩마다 다른 경험 문장: ${filled.join(' / ')}`).toBe(3)
 })
 
-test('S4-12 ② 시연 도구 "예시 구직자 A로 채우기": 기대 3·걱정 2·모르겠어요 1, 경험 한 줄, "6개 골랐어요"', async ({ page }) => {
+test('S4-12 ② 시연 도구 "예시 구직자 A로 채우기": 17개 모두(기대 3·걱정 4·모르겠어요 10), 경험 한 줄, "17개 골랐어요"', async ({ page }) => {
   const base = await openPrep(page, 'oo')
   await goToCardsStep(page, base)
   await demoAction(page, '예시 구직자 A로 채우기')
-  await expect(page.getByText('6개 골랐어요').first()).toBeVisible()
+  await expect(page.getByText('17개 골랐어요').first()).toBeVisible()
   await expectPresetA(page)
 })
 
@@ -370,7 +370,7 @@ test('S4-19 "선택 바꾸기" → ?step=2, 고른 카드·경험이 그대로',
   await expect(page).toHaveURL(STEP_RE(2))
   await expectCurrentStep(page, '내 기대·걱정')
   await expectPresetA(page)
-  await expect(page.getByText('6개 골랐어요').first()).toBeVisible()
+  await expect(page.getByText('17개 골랐어요').first()).toBeVisible()
 })
 
 test('S4-20 ③에서 새로고침해도 같은 질문이 그대로 보인다(브라우저 저장)', async ({ page }) => {

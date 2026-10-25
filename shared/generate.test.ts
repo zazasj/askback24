@@ -205,6 +205,13 @@ describe('가짜 공급자의 경험 문장', () => {
     expect(experienceSentence('운영 서버 장애를 겪은 적이 있는데')).toBe('운영 서버 장애를 겪은 적이 있어요.')
   })
 
+  it('이미 맺은 문장("…경험이 있습니다.", "…봤어요")은 그대로 맺는다(이력서 경험 칩)', () => {
+    expect(experienceSentence('직업훈련 팀 프로젝트에서 FastAPI로 API를 설계부터 배포까지 맡아 본 경험이 있습니다.')).toBe(
+      '직업훈련 팀 프로젝트에서 FastAPI로 API를 설계부터 배포까지 맡아 본 경험이 있습니다.',
+    )
+    expect(experienceSentence('졸업 프로젝트에서 DB 설계를 맡아 봤어요')).toBe('졸업 프로젝트에서 DB 설계를 맡아 봤어요.')
+  })
+
   it('확실히 바꿀 수 없는 끝말은 null(검수 틀의 {anchor} 그대로)', () => {
     expect(experienceSentence('전공이 컴퓨터공학인데')).toBeNull()
     expect(experienceSentence('지금 사이드 프로젝트를 하는데')).toBeNull()
@@ -213,8 +220,8 @@ describe('가짜 공급자의 경험 문장', () => {
 
   it('A2-06 "…다"·"…요"·"…봄"으로 끝난 경험도 문법에 맞는 문장, 검사 통과(source ai), "경험 포함" 그대로', async () => {
     const cases: Array<[string, string]> = [
-      ['카페 아르바이트를 2년 했습니다', '카페 아르바이트를 2년 했습니다. 이 팀에서는'],
-      ['학교에서 팀 프로젝트를 했어요', '학교에서 팀 프로젝트를 했어요. 이 팀에서는'],
+      ['카페 아르바이트를 2년 했습니다', '카페 아르바이트를 2년 했습니다. '],
+      ['학교에서 팀 프로젝트를 했어요', '학교에서 팀 프로젝트를 했어요. '],
       ['Spring으로 게시판 만들어 봄', '제 경험과 이어지는 일이라 여쭤요. 이 팀에서는'],
     ]
     for (const [exp, start] of cases) {

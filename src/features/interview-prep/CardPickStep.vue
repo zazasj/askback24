@@ -137,7 +137,7 @@ const experienceHint = computed(() => {
           rows="2"
           :maxlength="EXPERIENCE_MAX"
           autocomplete="off"
-          placeholder="예: 팀 프로젝트에서 FastAPI로 API를 만들어 봤는데"
+          placeholder="예: 팀 프로젝트에서 FastAPI로 API를 만들어 본 경험이 있습니다."
           aria-describedby="experience-hint experience-count"
           :value="experience"
           @keydown.enter.prevent

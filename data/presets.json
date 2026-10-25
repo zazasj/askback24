@@ -8,9 +8,20 @@
       { "card_id": "BE03", "pref": "want", "has_exp": false },
       { "card_id": "BE07", "pref": "avoid", "has_exp": false },
       { "card_id": "BE15", "pref": "avoid", "has_exp": false },
-      { "card_id": "BE08", "pref": "unsure", "has_exp": false }
+      { "card_id": "BE08", "pref": "unsure", "has_exp": false },
+      { "card_id": "BE04", "pref": "unsure", "has_exp": false },
+      { "card_id": "BE05", "pref": "unsure", "has_exp": false },
+      { "card_id": "BE06", "pref": "avoid", "has_exp": false },
+      { "card_id": "BE09", "pref": "unsure", "has_exp": false },
+      { "card_id": "BE10", "pref": "unsure", "has_exp": false },
+      { "card_id": "BE11", "pref": "unsure", "has_exp": false },
+      { "card_id": "BE12", "pref": "unsure", "has_exp": false },
+      { "card_id": "BE13", "pref": "avoid", "has_exp": false },
+      { "card_id": "BE14", "pref": "unsure", "has_exp": false },
+      { "card_id": "BE16", "pref": "unsure", "has_exp": false },
+      { "card_id": "BE17", "pref": "unsure", "has_exp": false }
     ],
-    "experience": "직업훈련 팀 프로젝트에서 FastAPI로 API를 설계부터 배포까지 맡아 봤는데"
+    "experience": "직업훈련 팀 프로젝트에서 FastAPI로 API를 설계부터 배포까지 맡아 본 경험이 있습니다."
   },
   "B": {
     "label": "예시 구직자 B",
@@ -20,7 +31,19 @@
       { "card_id": "BE04", "pref": "want", "has_exp": false },
       { "card_id": "BE12", "pref": "avoid", "has_exp": false },
       { "card_id": "BE13", "pref": "avoid", "has_exp": false },
-      { "card_id": "BE08", "pref": "unsure", "has_exp": false }
+      { "card_id": "BE08", "pref": "unsure", "has_exp": false },
+      { "card_id": "BE11", "pref": "want", "has_exp": false },
+      { "card_id": "BE05", "pref": "want", "has_exp": false },
+      { "card_id": "BE15", "pref": "avoid", "has_exp": false },
+      { "card_id": "BE17", "pref": "avoid", "has_exp": false },
+      { "card_id": "BE01", "pref": "unsure", "has_exp": false },
+      { "card_id": "BE02", "pref": "unsure", "has_exp": false },
+      { "card_id": "BE03", "pref": "unsure", "has_exp": false },
+      { "card_id": "BE06", "pref": "unsure", "has_exp": false },
+      { "card_id": "BE07", "pref": "unsure", "has_exp": false },
+      { "card_id": "BE10", "pref": "unsure", "has_exp": false },
+      { "card_id": "BE14", "pref": "unsure", "has_exp": false },
+      { "card_id": "BE16", "pref": "unsure", "has_exp": false }
     ],
     "experience": ""
   }

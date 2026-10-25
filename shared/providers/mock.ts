@@ -47,6 +47,8 @@ function iraneun(quote: string): string {
  */
 export function experienceSentence(experience: string): string | null {
   const t = experience.trim().replace(/[,.\s]+$/, '')
+  // 이미 맺은 문장("…경험이 있습니다", "…해 봤어요")은 그대로 맺는다
+  if (/[다요]$/.test(t)) return `${t}.`
   const m = /^(.*)는데$/.exec(t)
   if (!m || !m[1]) return null
   const jong = finalConsonant(m[1].slice(-1))
