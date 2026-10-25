@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import type { FirstQuestionsRequest } from '@shared/contract'
-import { entryStep } from '@/features/interview-prep/steps'
+import { entryMode, entryStep, prepButtonLabel } from '@/features/interview-prep/steps'
 import { MIN_LOADING_MS, useQuestionsStore } from './questions'
 import { usePrepStore } from './prep'
 
@@ -100,5 +100,61 @@ describe('A2-01 S1에서 들어올 때 여는 단계', () => {
     store.ensureFirst(ROW1.apply_id, ROW1.wantedAuthNo)
     await vi.advanceTimersByTimeAsync(MIN_LOADING_MS)
     expect(step(ROW1)).toBe(3)
+  })
+})
+
+describe('H2-04 다시 들어올 때 면접 종류는 내 준비 진행(저장된 결과)으로, 결과가 없을 때만 지원결과로', () => {
+  const none = () => false
+  it('entryMode: 최종 결과 → 최종, 1차 결과만 → 1차, 저장된 결과 없음 → 지원결과(1차 합격 → 최종)', () => {
+    expect(entryMode('서류합격', (m) => m === 'final' || m === 'first')).toBe('final')
+    expect(entryMode('서류합격', (m) => m === 'final')).toBe('final')
+    expect(entryMode('1차 합격', (m) => m === 'first')).toBe('first')
+    expect(entryMode('서류합격', none)).toBe('first')
+    expect(entryMode('1차 합격', none)).toBe('final')
+    expect(entryMode('-', none)).toBe('first')
+  })
+
+  it('entryStep: 들어갈 면접 종류의 결과가 있으면 ③ — 서류합격 건에서 최종을 만들었으면 최종 ③', () => {
+    const saved = (m: string) => m === 'first' || m === 'final'
+    expect(entryStep('서류합격', saved, saved)).toBe(3)
+    expect(entryStep('1차 합격', (m) => m === 'first', (m) => m === 'first')).toBe(3)
+  })
+
+  it('S1 버튼 이름도 같은 규칙(S1-04 시드 상태는 그대로: 1·3행 "면접 역질문 준비", 2행 "최종 면접 준비")', () => {
+    const store = useQuestionsStore()
+    const label = (row: { apply_id: string; result: string }) =>
+      prepButtonLabel(entryMode(row.result, (m) => store.hasSaved(row.apply_id, m)))
+    expect(label(ROW1)).toBe('면접 역질문 준비')
+    expect(label(ROW2)).toBe('최종 면접 준비')
+    expect(label({ apply_id: 'A-0003', result: '-' })).toBe('면접 역질문 준비')
+    // 시드 1차 결과는 "저장된 결과"가 아니다(2행은 지원결과대로 최종)
+    expect(store.hasResult(ROW2.apply_id, 'first')).toBe(true)
+    expect(store.hasSaved(ROW2.apply_id, 'first')).toBe(false)
+  })
+
+  it('1행(서류합격)에서 최종 질문을 만들면 버튼은 "최종 면접 준비", 최종 ③으로 연다', () => {
+    const store = useQuestionsStore()
+    store.finals[ROW1.apply_id] = {
+      response: { mode: 'final', final_questions: [], card_states: [], summary: { confirmed: 0, mismatch: 0, still_unknown: 0, company_signal: 0 } },
+      kept: [],
+      made_at: '2026-10-25T10:00:00.000Z',
+    } as never
+    const saved = (m: 'first' | 'final') => store.hasSaved(ROW1.apply_id, m)
+    expect(prepButtonLabel(entryMode(ROW1.result, saved))).toBe('최종 면접 준비')
+    expect(entryStep(ROW1.result, (m) => store.hasResult(ROW1.apply_id, m), saved)).toBe(3)
+  })
+
+  it('④ 최종 결과를 만든 뒤 1차를 다시 만들면 finalBehindFirst', async () => {
+    const store = useQuestionsStore()
+    usePrepStore().fillPreset(ROW1.apply_id, 'A')
+    store.finals[ROW1.apply_id] = {
+      response: { mode: 'final', final_questions: [], card_states: [], summary: { confirmed: 0, mismatch: 0, still_unknown: 0, company_signal: 0 } },
+      kept: [],
+      made_at: '2000-01-01T00:00:00.000Z',
+    } as never
+    expect(store.finalBehindFirst(ROW1.apply_id)).toBe(false)
+    void store.makeFirst(ROW1.apply_id, ROW1.wantedAuthNo)
+    await vi.advanceTimersByTimeAsync(MIN_LOADING_MS)
+    expect(store.finalBehindFirst(ROW1.apply_id)).toBe(true)
   })
 })

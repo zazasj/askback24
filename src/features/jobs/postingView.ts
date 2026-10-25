@@ -17,6 +17,8 @@ export interface DetailRow {
   suffix?: string
   /** 긴 글 칸: 원문 줄·소제목·목록 기호 그대로 글 블록(PostingText, S4 ①과 같은 부품) */
   block?: boolean
+  /** 이름 뒤에 붙이는 공통코드 칸(모집직종 → 직종코드, 고용24 공통코드 21L01 실제 값, H1-08) */
+  code?: PostingKey
 }
 
 export interface DetailSection {
@@ -31,7 +33,7 @@ export const DETAIL_SECTIONS: readonly DetailSection[] = [
     id: 'recruit',
     title: '모집요강',
     rows: [
-      { label: '모집직종', fields: ['jobsNm'] },
+      { label: '모집직종', fields: ['jobsNm'], code: 'jobsCd' },
       { label: '직무내용', fields: ['jobCont'], block: true },
       { label: '모집인원', fields: ['collectPsncnt'], suffix: '명' },
       { label: '경력', fields: ['enterTpNm'] },
@@ -74,6 +76,12 @@ export function rowText(posting: Posting, row: DetailRow): string {
   // 임금 형태(연봉)와 금액은 띄어 쓰고, 우대조건 두 칸은 쉼표로 잇는다
   const joined = row.fields.includes('salTpNm') ? parts.join(' ') : parts.join(', ')
   return row.suffix ? `${joined}${row.suffix}` : joined
+}
+
+/** 칸 이름 뒤 코드 "(직종코드 133200)". 코드 칸이 없거나 비어 있으면 빈 문자열 */
+export function rowCode(posting: Posting, row: DetailRow): string {
+  const code = row.code ? String(posting[row.code] ?? '').trim() : ''
+  return code ? `(직종코드 ${code})` : ''
 }
 
 /** 목록의 임금 칸: "연봉 3,200만 원 ~ 3,800만 원", 금액이 없으면 빈 문자열 */

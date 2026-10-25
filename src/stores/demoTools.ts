@@ -10,6 +10,8 @@ import { useDemoStore } from './demo'
 export interface DemoToolAction {
   id: string
   label: string
+  /** 버튼 아래 설명 한 줄(예시 구직자 A·B가 어떻게 다른지, H1-28) */
+  description?: string
   run: () => void
 }
 

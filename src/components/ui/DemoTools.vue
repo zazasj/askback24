@@ -80,7 +80,15 @@ async function resetDemo(): Promise<void> {
       <p id="demo-tools-title" class="panel-title">시연용 버튼</p>
       <ul v-if="tools.pageActions.length" class="actions">
         <li v-for="a in tools.pageActions" :key="a.id">
-          <button type="button" class="action" @click="run(a)">{{ a.label }}</button>
+          <button
+            type="button"
+            class="action"
+            :aria-describedby="a.description ? `demo-action-${a.id}-desc` : undefined"
+            @click="run(a)"
+          >
+            {{ a.label }}
+          </button>
+          <p v-if="a.description" :id="`demo-action-${a.id}-desc`" class="action-desc">{{ a.description }}</p>
         </li>
       </ul>
       <ul class="actions is-common">
@@ -186,5 +194,11 @@ async function resetDemo(): Promise<void> {
 
 .action:hover {
   background: var(--krds-light-color-surface-gray-subtler);
+}
+
+.action-desc {
+  padding: 0 0.8rem 0.6rem;
+  font-size: var(--krds-pc-font-size-body-xsmall);
+  color: var(--krds-light-color-text-subtle);
 }
 </style>

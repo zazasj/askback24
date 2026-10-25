@@ -5,6 +5,7 @@
  * 입력은 메모리에만 둔다(review 저장소). "최종 질문 만들기"는 질문 저장소에서 만들기를 시작하고 ③으로 간다.
  */
 import { computed } from 'vue'
+import { useEventListener } from '@vueuse/core'
 import { CARDS } from '@shared/catalog'
 import type { Clarity, Mood, NotAskedReason, Question } from '@shared/contract'
 import { typeLabel } from '@shared/rules'
@@ -12,7 +13,8 @@ import { usePrepStore } from '@/stores/prep'
 import { useQuestionsStore } from '@/stores/questions'
 import { useReviewStore } from '@/stores/review'
 import { oneLine } from './picks'
-import { cardMeta } from './questionView'
+import { FIRST_TONES, cardMeta } from './questionView'
+import TypeChip from './TypeChip.vue'
 import {
   ASKED_LABELS,
   CLARITY_LABELS,
@@ -40,6 +42,18 @@ const item = (cardId: string) => itemOf(draft.value, cardId)
 const done = computed(() => questions.value.filter((q) => isItemDone(item(q.card_id))).length)
 const touched = computed(() => isTouched(draft.value))
 const hasPicks = computed(() => prep.selectionOf(props.applyId).picks.length > 0)
+
+/**
+ * 하나라도 적었으면 떠날 때 확인 창을 띄운다(H2-22). 휴대폰에서 다른 앱에 다녀오면 탭이 다시 열리며 입력이 지워질 수 있다.
+ * 들은 답은 저장하지 않는 약속(R-09)이라 sessionStorage 임시 저장은 하지 않는다.
+ * 아이폰 사파리는 탭을 정리할 때 beforeunload 가 뜨지 않는다(D-205)
+ */
+useEventListener(window, 'beforeunload', (e: BeforeUnloadEvent) => {
+  if (!touched.value) return
+  e.preventDefault()
+  // 옛 브라우저는 returnValue 를 채워야 창을 띄운다
+  e.returnValue = ''
+})
 
 const ASKED: readonly AskedChoice[] = ['asked', 'not_asked']
 const CLARITIES: readonly Clarity[] = ['clear', 'vague']
@@ -96,7 +110,7 @@ function setMood(m: Mood): void {
             <div class="q-head">
               <span class="num" aria-hidden="true">{{ i + 1 }}</span>
               <span class="sr-only">{{ i + 1 }}번 질문</span>
-              <span class="type-chip">{{ typeLabel(q.type) }}</span>
+              <TypeChip :label="typeLabel(q.type)" :tone="FIRST_TONES[q.type]" />
               <span class="q-meta">{{ cardMeta(q.card_id, q.type) }}</span>
             </div>
             <p class="q-text">{{ q.text }}</p>
@@ -291,19 +305,6 @@ function setMood(m: Mood): void {
   font-weight: 700;
 }
 
-.type-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.4rem;
-  padding: 0 0.9rem;
-  border-radius: var(--krds-radius-max);
-  background: var(--krds-light-color-surface-gray-subtle);
-  font-size: var(--krds-pc-font-size-label-xsmall);
-  font-weight: 700;
-  color: var(--krds-light-color-text-basic);
-  white-space: nowrap;
-}
-
 .q-meta {
   font-size: var(--krds-pc-font-size-body-small);
   color: var(--krds-light-color-text-subtle);
@@ -359,18 +360,12 @@ function setMood(m: Mood): void {
   outline-offset: 0.2rem;
 }
 
+/* 고른 표시는 강조색 하나(H2-21 ②). 못 물어봤어요·모호했어요도 같은 색이라 "고른 것"만 뜻한다 */
 .choice input:checked + .chip {
   border-color: var(--rq-accent);
   background: var(--rq-accent);
   color: var(--rq-on-accent);
   font-weight: 700;
-}
-
-.choice.is-not_asked input:checked + .chip,
-.choice.is-vague input:checked + .chip {
-  border-color: var(--krds-light-color-text-subtle);
-  background: var(--krds-light-color-text-subtle);
-  color: var(--krds-light-color-text-basic-inverse);
 }
 
 /* ── 들은 답·못 물은 이유 ─────────────────────────── */

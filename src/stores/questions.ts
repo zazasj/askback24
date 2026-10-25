@@ -156,6 +156,21 @@ export const useQuestionsStore = defineStore('questions', () => {
     return mode === 'first' ? !!firstOf(applyId) : !!finalOf(applyId)
   }
 
+  /** 브라우저에 저장된(내가 만든) 결과가 있는지. 시드는 넣지 않는다. 들어올 때 면접 종류를 정한다(H2-04) */
+  function hasSaved(applyId: string, mode: Mode): boolean {
+    return mode === 'first' ? !!firsts.value[applyId] : !!finals.value[applyId]
+  }
+
+  /**
+   * 최종 결과를 만든 뒤 1차 질문을 다시 만들었는지(H2-04 ④). 최종 질문은 그 전 1차 질문과 정리로 만든 것이라
+   * 화면에 "이전 1차 질문 기준"이라고 알린다
+   */
+  function finalBehindFirst(applyId: string): boolean {
+    const fin = finals.value[applyId]
+    const first = firsts.value[applyId]
+    return !!fin && !!first && first.made_at > fin.made_at
+  }
+
   /**
    * ② "질문 만들기". 지금 선택으로 만든 결과가 이미 있으면 다시 만들지 않는다: 문장이 바뀌면 인쇄해 둔 것과 어긋나고
    * 실제 모드에서는 AI를 한 번 더 부른다. 다시 만들기는 "AI로 다시 만들기"(makeFirst)만 한다. 새로 만들기 시작했으면 true
@@ -246,6 +261,8 @@ export const useQuestionsStore = defineStore('questions', () => {
     hasFailed,
     isCurrent,
     hasResult,
+    hasSaved,
+    finalBehindFirst,
     ensureFirst,
     makeFirst,
     toggleKept,

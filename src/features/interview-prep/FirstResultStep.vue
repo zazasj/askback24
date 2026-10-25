@@ -18,7 +18,8 @@ import { useQuestionsStore } from '@/stores/questions'
 import GeneratingView from './GeneratingView.vue'
 import { PREFS, countByPref, toCardPicks } from './picks'
 import QuestionCard from './QuestionCard.vue'
-import { FIRST_TONES, cardMeta, evidenceLabel, firstTypeNote } from './questionView'
+import { FIRST_TONES, evidenceLabel, firstMetaParts, firstTypeNote } from './questionView'
+import { keptFirst } from './printOrder'
 
 const props = defineProps<{ applyId: string; posting: Posting; apiFail?: boolean }>()
 const emit = defineEmits<{ change: []; review: [] }>()
@@ -62,6 +63,13 @@ function evidenceTo(q: Question) {
 
 const kept = computed(() => new Set(result.value?.kept ?? []))
 
+/** 인쇄·전체 복사 순서: "면접에서 쓸 것 같아요"를 누른 질문이 맨 위, 나머지는 화면 순서(H1-14) */
+const sheetOrder = computed(() => keptFirst(questions.value, (q) => kept.value.has(q.card_id)))
+const printNoOf = (q: Question): number => sheetOrder.value.indexOf(q) + 1
+
+/** 최종 질문을 만든 뒤 1차를 다시 만들었으면 최종 질문은 그 전 1차 기준이다(H2-04 ④) */
+const finalBehind = computed(() => store.finalBehindFirst(props.applyId))
+
 // ── 오른쪽: 내가 고른 것 · 전체 동작 ──────────────────────
 const breakdown = computed(() => {
   const n = countByPref(selection.value.picks)
@@ -98,9 +106,10 @@ const droppedLine = computed(() => {
   return list.length > DROPPED_SHOWN ? `${shown} 외 ${list.length - DROPPED_SHOWN}개` : shown
 })
 
+// 복사 글은 면접장에 들고 가는 메모라 유형 꼬리표("[차이 확인]")를 붙이지 않는다(H2-01 ②)
 function copyAll(): void {
   const head = `${props.posting.corpNm} · ${props.posting.wantedTitle}\n1차·기술 면접 질문`
-  const body = questions.value.map((q, i) => `${i + 1}. [${typeLabel(q.type)}] ${q.text}`).join('\n')
+  const body = sheetOrder.value.map((q, i) => `${i + 1}. ${q.text}`).join('\n')
   void copy(`${head}\n\n${body}`)
 }
 
@@ -139,6 +148,9 @@ function printSheet(): void {
       <p v-if="stale" class="notice" data-print="hide">
         고른 카드나 경험이 바뀌었어요. 바뀐 선택으로 보려면 "AI로 다시 만들기"를 눌러 주세요.
       </p>
+      <p v-if="finalBehind" class="notice" data-print="hide">
+        최종 질문은 이전 1차 질문 기준이에요. 새 1차 질문으로 최종 질문을 만들려면 1차 면접 정리를 다시 해 주세요.
+      </p>
 
       <div class="result-layout">
         <div class="questions-col">
@@ -147,9 +159,11 @@ function printSheet(): void {
               v-for="q in questions"
               :key="q.card_id"
               :rank="q.rank"
+              :print-no="printNoOf(q)"
               :type-label="typeLabel(q.type)"
               :tone="FIRST_TONES[q.type]"
-              :meta="cardMeta(q.card_id, q.type)"
+              :meta-name="firstMetaParts(q.card_id, q.type, !!q.evidence).name"
+              :meta-tail="firstMetaParts(q.card_id, q.type, !!q.evidence).tail"
               :text="q.text"
               :has-exp="q.has_exp"
               :template="q.source === 'template'"
@@ -204,6 +218,11 @@ function printSheet(): void {
             <button type="button" class="btn btn-tertiary side-btn" @click="emit('change')">선택 바꾸기</button>
           </div>
           <div class="side-box">
+            <!-- 실제로는 한두 개만 물을 수 있다는 안내와 꺼낼 순서(H1-14·H2-15 ③) -->
+            <p class="side-line side-tip">
+              면접에서는 보통 한두 개만 물을 수 있어요. 기대되는 일을 묻는 질문부터 꺼내도 좋아요. 꼭 물을 질문에 "면접에서 쓸 것
+              같아요"를 누르면 인쇄·복사 때 맨 위에 와요.
+            </p>
             <button type="button" class="btn btn-tertiary side-btn" @click="printSheet">면접에 들고 갈 한 장 인쇄</button>
             <button type="button" class="btn btn-tertiary side-btn" @click="make">AI로 다시 만들기</button>
             <RouterLink class="about-link tap-target" to="/about-ai">이 질문은 어떻게 만들어지나요</RouterLink>
@@ -221,7 +240,8 @@ function printSheet(): void {
 
       <!-- 아래 고정 바(①②와 같은 모양, F-05): 지금 할 일(전체 복사)과 다음 단계(면접 다녀왔어요). 채운 버튼은 다음 단계 하나 -->
       <div class="result-bar" data-print="hide">
-        <p class="result-bar-note">질문 <strong>{{ questions.length }}개</strong>를 만들었어요</p>
+        <!-- 질문을 만든 바로 그 화면의 채운 버튼이라 잘못 누르지 않게 언제 누르는지 적는다(데스크톱, H2-18 가) -->
+        <p class="result-bar-note"><strong>면접 다녀왔어요</strong>는 면접에 다녀온 뒤 눌러 주세요</p>
         <div class="result-bar-actions">
           <button type="button" class="btn btn-tertiary btn-lg" @click="copyAll">전체 복사</button>
           <button type="button" class="btn btn-accent btn-lg" @click="emit('review')">면접 다녀왔어요</button>
@@ -340,6 +360,10 @@ function printSheet(): void {
 .side-exp {
   color: var(--krds-light-color-text-subtle);
   overflow-wrap: anywhere;
+}
+
+.side-tip {
+  color: var(--krds-light-color-text-subtle);
 }
 
 .questions-col {

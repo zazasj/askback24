@@ -10,14 +10,11 @@ const OTHERS = ['취업지원', '실업급여', '직업 능력 개발', '출산�
     <div class="inner">
       <ul class="menu-list">
         <li>
+          <!-- 펼침 메뉴가 없어 아래 화살표를 두지 않는다(H2-17 ②) -->
           <RouterLink to="/jobs" class="menu-item" active-class="is-active">
             <span>채용정보</span>
-            <svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
-              <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" />
-            </svg>
           </RouterLink>
         </li>
-        <!-- 흐린 메뉴는 펼칠 것이 없어 화살표를 뺀다 -->
         <li v-for="name in OTHERS" :key="name">
           <button v-demo-off type="button" class="menu-item">
             <span>{{ name }}</span>
@@ -82,12 +79,6 @@ const OTHERS = ['취업지원', '실업급여', '직업 능력 개발', '출산�
   font-weight: 500;
 }
 
-.chev {
-  width: 1.2rem;
-  height: 1.2rem;
-  color: var(--krds-light-color-icon-gray-light);
-}
-
 .all-menu {
   display: inline-flex;
   align-items: center;
@@ -132,7 +123,6 @@ const OTHERS = ['취업지원', '실업급여', '직업 능력 개발', '출산�
     outline-offset: -0.3rem;
   }
 
-  .chev,
   .all-menu {
     display: none;
   }

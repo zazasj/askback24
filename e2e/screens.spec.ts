@@ -13,6 +13,7 @@ import {
   S2_TITLE,
   demoToolsButton,
   expectCurrentStep,
+  fillPresetA,
   fillReviewR04,
   goToCardsStep,
   gotoApplications,
@@ -20,10 +21,12 @@ import {
   jobDetailPaths,
   makeFinalQuestions,
   makeFirstQuestions,
+  makeQuestionsButton,
   openPrep,
   questionItems,
   stepText,
   stepUrl,
+  waitFirstResults,
 } from './helpers'
 import { AI_SUMMARY_COUNT, AI_SUMMARY_TITLE, MAIN_MENU_OFF, S2_BUTTONS_OFF, control, keyboardFocus, mainMenuItem, scrollToTop, settleScroll } from './helpers2'
 
@@ -280,5 +283,42 @@ for (const screen of SCREENS_2) {
       }
     }
     await page.screenshot({ path, fullPage: screen.shot !== 'view', animations: 'disabled' })
+  })
+}
+
+// ── 낮은 노트북 화면·브라우저 확대(V-06, 2026-10-25 H1-02·H2-12): 데스크톱만, 첫 화면 그대로 ──────────
+const LOW_SCREENS = [
+  { width: 1366, height: 657 },
+  { width: 1152, height: 720 },
+  { width: 960, height: 600 },
+] as const
+
+for (const size of LOW_SCREENS) {
+  const tag = `3-low-${size.width}x${size.height}`
+  test(`SCREENS ${tag} S1 → ② → ③ 첫 화면`, async ({ page, isMobile }, testInfo) => {
+    test.skip(isMobile, '노트북·확대 폭은 데스크톱 프로젝트에서')
+    const shot = (name: string) =>
+      page.screenshot({ path: join(REPO_ROOT, 'review', 'screens', `${tag}-${name}.png`), animations: 'disabled' })
+    await page.setViewportSize({ width: size.width, height: size.height })
+    try {
+      await gotoApplications(page)
+      await shot('s1')
+      await page.getByRole('button', { name: '바로 해 보기' }).click()
+      await expectCurrentStep(page, '공고 확인')
+      await settleScroll(page)
+      await shot('s4-first-1')
+      await page.getByRole('button', { name: '내 기대·걱정 고르기' }).click()
+      await expectCurrentStep(page, '내 기대·걱정')
+      await settleScroll(page)
+      await shot('s4-first-2')
+      await fillPresetA(page)
+      await makeQuestionsButton(page).click()
+      await waitFirstResults(page)
+      await settleScroll(page)
+      await shot('s4-first-3')
+    } catch (e) {
+      testInfo.annotations.push({ type: 'screen-setup-failed', description: String(e).slice(0, 800) })
+      await shot('failed')
+    }
   })
 }

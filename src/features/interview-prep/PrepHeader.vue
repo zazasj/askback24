@@ -12,7 +12,16 @@ const MODES: readonly Mode[] = ['first', 'final']
 
 <template>
   <div class="prep-head">
-    <h1 class="page-title">면접 역질문 준비 <AiLabel /></h1>
+    <!-- 제목 줄: "AI" 라벨 뒤 AI 이용 안내(/about-ai)로 가는 길을 ①②③ 모두에(H1-08 가). 오른쪽 끝(아래 라디오 바로 위)에
+         "준비할 면접" 안내 한 줄(H2-03 가) — 요약 상자에 넣으면 상자가 두 줄이 되어 첫 화면 카드·질문이 밀린다(F-02·F-03) -->
+    <div class="title-row">
+      <div class="title-main">
+        <h1 class="page-title">면접 역질문 준비 <AiLabel /></h1>
+        <RouterLink class="about-link tap-target" to="/about-ai" data-print="hide">AI 이용 안내</RouterLink>
+      </div>
+      <!-- 방향키로 고르기만 해도 화면이 바뀌므로 미리 알린다(WCAG 3.2.2). 라디오의 aria-describedby -->
+      <p id="prep-mode-hint" class="mode-hint" data-print="hide">"준비할 면접"을 고르면 그 면접 준비 화면으로 바로 바뀌어요</p>
+    </div>
     <div class="summary">
       <p class="target">
         <strong class="corp">{{ corpNm }}</strong>
@@ -36,6 +45,7 @@ const MODES: readonly Mode[] = ['first', 'final']
               class="sr-only"
               :value="m"
               :checked="mode === m"
+              aria-describedby="prep-mode-hint"
               @change="emit('update:mode', m)"
             />
             <span class="chip">{{ MODE_LABELS[m] }}</span>
@@ -48,8 +58,39 @@ const MODES: readonly Mode[] = ['first', 'final']
 
 <style scoped>
 /* 머리는 한 줄짜리 낮은 상자(N4): 첫 화면에 단계 본문(질문·카드)이 더 보이게 위아래 여백과 라디오 높이를 줄인다 */
-.page-title {
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.4rem 1.6rem;
   margin-bottom: 1.2rem;
+}
+
+.title-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 1.2rem;
+}
+
+.page-title {
+  margin-bottom: 0;
+}
+
+.about-link {
+  font-size: var(--krds-pc-font-size-body-small);
+  font-weight: 700;
+  color: var(--krds-light-color-text-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.3rem;
+}
+
+.mode-hint {
+  margin-left: auto;
+  font-size: var(--krds-pc-font-size-body-xsmall);
+  color: var(--krds-light-color-text-subtle);
+  text-align: right;
 }
 
 .summary {
@@ -145,8 +186,18 @@ const MODES: readonly Mode[] = ['first', 'final']
 /* 휴대폰: 머리가 첫 화면을 덜 차지하게 라디오는 2열 세그먼트(DR-r1-02).
    요약은 두 줄: 회사명·지원결과 / 채용제목(지원 조건이 잘리지 않게 두 줄까지, DR-r2-06) */
 @media (max-width: 767px) {
-  .page-title {
+  .title-row {
     margin-bottom: 1rem;
+  }
+
+  .about-link {
+    font-size: var(--krds-pc-font-size-body-xsmall);
+  }
+
+  .mode-hint {
+    flex-basis: 100%;
+    margin-left: 0;
+    text-align: left;
   }
 
   .summary {

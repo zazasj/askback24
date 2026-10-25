@@ -75,10 +75,11 @@ export const router = createRouter({
   routes,
   scrollBehavior: (to, from, saved) => {
     if (saved) return saved
-    // 휴대폰에서 S4 단계·면접 종류(쿼리)만 바뀌면 머리 대신 단계 표시부터 보이게 한다.
-    // 맨 위로 가면 머리가 첫 화면을 거의 다 차지해 만드는 중·결과가 보이지 않는다(DR-r1-02)
+    // 휴대폰이나 낮은 화면(높이 860px 미만: 1366×768 노트북·브라우저 확대)에서 S4 단계·면접 종류(쿼리)만 바뀌면
+    // 머리 대신 단계 표시부터 보이게 한다. 맨 위로 가면 고용24 틀과 머리가 첫 화면을 거의 다 차지해
+    // 만드는 중·카드·질문이 보이지 않는다(DR-r1-02, H1-02 나). 1440×900 같은 높은 화면은 회사 맥락을 남겨 맨 위(D-078)
     const sameScreen = to.name === 'prep' && to.path === from.path
-    if (sameScreen && window.matchMedia('(max-width: 767px)').matches && document.querySelector(PREP_STEPS))
+    if (sameScreen && window.matchMedia('(max-width: 767px), (max-height: 859px)').matches && document.querySelector(PREP_STEPS))
       return { el: PREP_STEPS, top: 8 }
     return { top: 0 }
   },

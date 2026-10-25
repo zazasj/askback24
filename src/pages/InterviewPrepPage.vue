@@ -7,7 +7,7 @@
  */
 import { computed, nextTick, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { getAnalysis, getPosting, getSignals, type PresetKey } from '@shared/catalog'
+import { PRESETS, getAnalysis, getPosting, getSignals, type PresetKey } from '@shared/catalog'
 import type { Mode } from '@shared/contract'
 import NotFoundContent from '@/components/ui/NotFoundContent.vue'
 import { useDemoStore } from '@/stores/demo'
@@ -22,7 +22,7 @@ import PostingStep from '@/features/interview-prep/PostingStep.vue'
 import PrepHeader from '@/features/interview-prep/PrepHeader.vue'
 import ReviewStep from '@/features/interview-prep/ReviewStep.vue'
 import StepNav from '@/features/interview-prep/StepNav.vue'
-import { NEXT_FROM_POSTING, STEP_LABELS, defaultModeFor, type StepNo } from '@/features/interview-prep/steps'
+import { NEXT_FROM_POSTING, STEP_LABELS, entryMode, type StepNo } from '@/features/interview-prep/steps'
 import { usePrepRoute } from '@/features/interview-prep/usePrepRoute'
 
 const route = useRoute()
@@ -36,7 +36,11 @@ const posting = computed(() => (application.value ? getPosting(application.value
 const analysis = computed(() => (posting.value ? getAnalysis(posting.value.wantedAuthNo) : undefined))
 const signals = computed(() => (posting.value ? getSignals(posting.value.wantedAuthNo) : []))
 
-const { step, mode, goStep, setMode } = usePrepRoute(() => defaultModeFor(application.value?.result ?? '-'))
+// 주소에 면접 종류가 없으면 내 준비 진행(저장된 결과)으로, 결과가 없을 때만 지원결과로 정한다(H2-04)
+const { step, mode, goStep, setMode } = usePrepRoute(() => {
+  const app = application.value
+  return entryMode(app?.result ?? '-', (m) => !!app && questions.hasSaved(app.apply_id, m))
+})
 const labels = computed(() => STEP_LABELS[mode.value])
 /** ③ "근거 보기"가 ①로 보낼 때 켤 카드(?card=BE15) */
 const focusCard = computed(() => (typeof route.query.card === 'string' ? route.query.card : null))
@@ -54,6 +58,22 @@ function makeQuestions(): void {
   if (!app || !p) return
   questions.ensureFirst(app.apply_id, p.wantedAuthNo, { apiFail: apiFail.value })
   void goStep(3)
+}
+
+/**
+ * 머리 "준비할 면접" 라디오. 단계 번호는 그대로 두되(D-020), 1차 ③에서 최종으로 바꿨는데 최종 결과가 없으면
+ * 빈 ③ 대신 1차 면접 정리(②)로 간다(H2-03). 1차 질문을 만드는 중이면 ③이 그 진행을 보여 주므로 그대로 둔다
+ */
+function changeMode(m: Mode): void {
+  const app = application.value
+  const toReviewStep =
+    m === 'final' &&
+    mode.value === 'first' &&
+    step.value === 3 &&
+    !!app &&
+    !questions.finalOf(app.apply_id) &&
+    !questions.isGenerating(app.apply_id)
+  void setMode(m, toReviewStep ? 2 : step.value)
 }
 
 /** "면접 다녀왔어요" → 최종 면접·처우 협의의 1차 면접 정리(D-020) */
@@ -96,8 +116,8 @@ const demoActions = computed<DemoToolAction[]>(() => {
   if (!app || step.value !== 2) return []
   if (mode.value === 'first')
     return [
-      { id: 'preset-a', label: '예시 구직자 A로 채우기', run: () => fillPreset('A') },
-      { id: 'preset-b', label: '예시 구직자 B로 채우기', run: () => fillPreset('B') },
+      { id: 'preset-a', label: '예시 구직자 A로 채우기', description: PRESETS.A.summary, run: () => fillPreset('A') },
+      { id: 'preset-b', label: '예시 구직자 B로 채우기', description: PRESETS.B.summary, run: () => fillPreset('B') },
     ]
   return questions.firstOf(app.apply_id) ? [{ id: 'review-example', label: '1차 면접 다녀온 것으로 채우기', run: fillReviewExample }] : []
 })
@@ -140,7 +160,7 @@ onMounted(() => {
       :wanted-title="posting.wantedTitle"
       :result="application.result"
       :mode="mode"
-      @update:mode="setMode"
+      @update:mode="changeMode"
     />
 
     <StepNav class="steps" :labels="labels" :current="step" />

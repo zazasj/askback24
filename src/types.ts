@@ -12,6 +12,12 @@ export interface Application {
   /** null = 아직 열람 안 함 */
   viewed_days_ago: number | null
   result: ApplyResult
+  /**
+   * 지원할 때의 회사명·채용제목(H2-16). 공고 목록에서 공고가 빠져도(마감·데이터 교체) 지원 내역에 행을 남긴다.
+   * 시드와 이전 저장값에는 없을 수 있다
+   */
+  corpNm?: string
+  wantedTitle?: string
   /** 시드만: 이 예시 구직자의 ② 선택과 1차 결과(검수 문장)를 가진 채로 시작한다(R-07) */
   prep_seed?: 'A' | 'B'
 }

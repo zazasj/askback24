@@ -9,7 +9,7 @@ import { useMediaQuery } from '@vueuse/core'
 import { getPosting } from '@shared/catalog'
 import AiLabel from '@/components/ui/AiLabel.vue'
 import { daysBefore, formatDate, parseIsoDate, toIsoDate } from '@/lib/dates'
-import { entryStep } from '@/features/interview-prep/steps'
+import { entryMode, entryStep, prepButtonLabel } from '@/features/interview-prep/steps'
 import { vDemoOff } from '@/lib/demoOff'
 import { useDemoStore } from '@/stores/demo'
 import { useQuestionsStore } from '@/stores/questions'
@@ -21,10 +21,14 @@ interface Row {
   app: Application
   corpNm: string
   title: string
+  /** 공고 목록에 공고가 없다(마감·데이터 교체). 행은 남기고 준비 버튼은 흐리게(H2-16) */
+  closed: boolean
   appliedIso: string
   appliedText: string
   viewedText: string
   prepLabel: string
+  /** 버튼 아래 회색 한 줄 "1차 질문 5개 준비됨"(H1-17). 만든 질문이 없으면 빈 문자열 */
+  prepStatus: string
 }
 
 interface Filter {
@@ -44,24 +48,32 @@ function appliedDate(app: Application, now: Date): Date {
   return (app.applied_on && parseIsoDate(app.applied_on)) || daysBefore(app.applied_days_ago ?? 0, now)
 }
 
+/** 내가 만든(저장된) 결과가 있으면 그 면접 종류로, 없으면 지원결과로(1차 합격 → 최종) 연다(H2-04) */
+const modeOf = (app: Application) => entryMode(app.result, (m) => questions.hasSaved(app.apply_id, m))
+
+function prepStatusOf(app: Application): string {
+  const fin = questions.finalOf(app.apply_id)
+  if (fin) return `최종 질문 ${fin.response.final_questions.length}개 준비됨`
+  const first = questions.firstOf(app.apply_id)
+  return first ? `1차 질문 ${first.response.questions.length}개 준비됨` : ''
+}
+
 const rows = computed<Row[]>(() => {
   const now = new Date()
-  return demo.applications.flatMap((app) => {
+  return demo.applications.map((app) => {
     const posting = getPosting(app.wantedAuthNo)
-    if (!posting) return []
     const applied = appliedDate(app, now)
-    return [
-      {
-        app,
-        corpNm: posting.corpNm,
-        title: posting.wantedTitle,
-        appliedIso: toIsoDate(applied),
-        appliedText: formatDate(applied),
-        viewedText: app.viewed_days_ago === null ? '-' : formatDate(daysBefore(app.viewed_days_ago, now)),
-        // 1차 합격이면 최종·처우 단계로 연다(설계 노트 S1)
-        prepLabel: app.result === '1차 합격' ? '최종 면접 준비' : '면접 역질문 준비',
-      },
-    ]
+    return {
+      app,
+      corpNm: posting?.corpNm ?? app.corpNm ?? '공고 정보 없음',
+      title: posting?.wantedTitle ?? app.wantedTitle ?? '',
+      closed: !posting,
+      appliedIso: toIsoDate(applied),
+      appliedText: formatDate(applied),
+      viewedText: app.viewed_days_ago === null ? '-' : formatDate(daysBefore(app.viewed_days_ago, now)),
+      prepLabel: prepButtonLabel(modeOf(app)),
+      prepStatus: posting ? prepStatusOf(app) : '',
+    }
   })
 })
 
@@ -91,10 +103,23 @@ const VIEWED_OPTIONS: ReadonlyArray<{ value: ViewedFilter; label: string }> = [
   { value: 'unviewed', label: '미열람' },
 ]
 
-// 이미 만든 질문이 있으면 ③으로 바로 연다(A2-01). 1행·3행 처음 상태와 2행(시드는 1차 결과뿐, 최종으로 엶)은 ①
+// 이미 만든 질문이 있으면 ③으로 바로 연다(A2-01). 1행·3행 처음 상태와 2행(시드는 1차 결과뿐, 최종으로 엶)은 ①.
+// 면접 종류는 주소에 넣지 않는다: S4가 같은 규칙(entryMode)으로 정한다(H2-04)
 function openPrep(r: Row): void {
-  const step = entryStep(r.app.result, (mode) => questions.hasResult(r.app.apply_id, mode))
-  void router.push({ name: 'prep', params: { applyId: r.app.apply_id }, query: { step: String(step) } })
+  if (r.closed) return
+  const id = r.app.apply_id
+  const step = entryStep(
+    r.app.result,
+    (mode) => questions.hasResult(id, mode),
+    (mode) => questions.hasSaved(id, mode),
+  )
+  void router.push({ name: 'prep', params: { applyId: id }, query: { step: String(step) } })
+}
+
+/** 안내 띠 "바로 해 보기": 맨 위 지원 건의 면접 준비로(H1-02 가). 낮은 노트북 화면에서 표가 첫 화면 아래로 밀려도 바로 시작한다 */
+const topRow = computed(() => filtered.value.find((r) => !r.closed) ?? rows.value.find((r) => !r.closed))
+function tryNow(): void {
+  if (topRow.value) openPrep(topRow.value)
 }
 
 const hasResult = (result: string) => result !== '-'
@@ -151,8 +176,11 @@ async function closeGuide(): Promise<void> {
           <AiLabel />
           <span><strong>새 기능</strong> 지원한 공고로 면접에서 물어볼 질문을 준비해 보세요</span>
         </p>
-        <p class="guide-text">맨 위 지원 건의 <strong>면접 역질문 준비</strong>를 누르면 1분 안에 질문까지 받아 볼 수 있어요.</p>
+        <!-- 시간 약속 없이 무엇을 차례로 하는지만(H2-17 ①) -->
+        <p class="guide-text">맨 위 지원 건의 <strong>면접 역질문 준비</strong>를 누르면 공고 확인부터 질문 받기까지 차례로 안내해요.</p>
       </div>
+      <!-- 낮은 노트북 화면(1366×768)에서는 표가 첫 화면 아래라 띠에서 바로 시작한다(H1-02 가). 휴대폰은 1행 버튼이 바로 아래라 숨김 -->
+      <button v-if="topRow" type="button" class="btn btn-accent guide-try" @click="tryNow">바로 해 보기</button>
       <button type="button" class="guide-close" aria-label="안내 닫기" @click="closeGuide">
         <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
           <path d="M3 3l10 10M13 3L3 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
@@ -222,7 +250,11 @@ async function closeGuide(): Promise<void> {
               <tr v-for="(r, i) in filtered" :key="r.app.apply_id">
                 <td class="cell-posting">
                   <strong class="corp">{{ r.corpNm }}</strong>
-                  <RouterLink :to="`/jobs/${r.app.wantedAuthNo}`" class="posting tap-target">{{ r.title }}</RouterLink>
+                  <template v-if="r.closed">
+                    <span class="posting">{{ r.title }}</span>
+                    <span class="closed-tag">공고 마감</span>
+                  </template>
+                  <RouterLink v-else :to="`/jobs/${r.app.wantedAuthNo}`" class="posting tap-target">{{ r.title }}</RouterLink>
                 </td>
                 <td>{{ r.appliedText }}</td>
                 <td>{{ r.viewedText }}</td>
@@ -234,10 +266,13 @@ async function closeGuide(): Promise<void> {
                     type="button"
                     class="btn btn-accent btn-sm prep-btn"
                     :class="pulseClass(i)"
+                    :disabled="r.closed"
+                    :aria-describedby="r.prepStatus ? `prep-status-${r.app.apply_id}` : undefined"
                     @click="openPrep(r)"
                   >
                     {{ r.prepLabel }}
                   </button>
+                  <p v-if="r.prepStatus" :id="`prep-status-${r.app.apply_id}`" class="prep-status">{{ r.prepStatus }}</p>
                 </td>
               </tr>
               <tr v-if="!filtered.length">
@@ -251,7 +286,11 @@ async function closeGuide(): Promise<void> {
         <ul class="app-cards" aria-label="알선/입사지원 내역">
           <li v-for="(r, i) in filtered" :key="r.app.apply_id" class="app-card">
             <p class="corp">{{ r.corpNm }}</p>
-            <RouterLink :to="`/jobs/${r.app.wantedAuthNo}`" class="posting tap-target">{{ r.title }}</RouterLink>
+            <p v-if="r.closed" class="posting-closed">
+              <span class="posting">{{ r.title }}</span>
+              <span class="closed-tag">공고 마감</span>
+            </p>
+            <RouterLink v-else :to="`/jobs/${r.app.wantedAuthNo}`" class="posting tap-target">{{ r.title }}</RouterLink>
             <dl class="meta">
               <div>
                 <dt>지원일</dt>
@@ -274,10 +313,13 @@ async function closeGuide(): Promise<void> {
                 type="button"
                 class="btn btn-accent prep-btn"
                 :class="pulseClass(i)"
+                :disabled="r.closed"
+                :aria-describedby="r.prepStatus ? `prep-status-m-${r.app.apply_id}` : undefined"
                 @click="openPrep(r)"
               >
                 {{ r.prepLabel }}
               </button>
+              <p v-if="r.prepStatus" :id="`prep-status-m-${r.app.apply_id}`" class="prep-status">{{ r.prepStatus }}</p>
             </div>
           </li>
           <li v-if="!filtered.length" class="empty">검색 결과가 없어요. 검색어나 날짜를 바꿔 보세요.</li>
@@ -362,6 +404,12 @@ async function closeGuide(): Promise<void> {
   margin-top: 0.4rem;
   font-size: var(--krds-pc-font-size-body-small);
   color: var(--krds-light-color-text-subtle);
+}
+
+.guide-try {
+  flex: none;
+  align-self: center;
+  margin-left: auto;
 }
 
 .guide-close {
@@ -500,6 +548,28 @@ fieldset.search-row > legend {
   color: var(--krds-light-color-text-primary);
 }
 
+/* 공고 목록에서 빠진 지원 건(H2-16) */
+.closed-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.2rem;
+  margin-left: 0.6rem;
+  padding: 0 0.7rem;
+  border: 1px solid var(--krds-light-color-border-gray);
+  border-radius: var(--krds-radius-small2);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  font-weight: 700;
+  color: var(--krds-light-color-text-subtle);
+  vertical-align: middle;
+}
+
+/* 내 준비 상태(H1-17): 버튼 아래 회색 한 줄 */
+.prep-status {
+  margin-top: 0.4rem;
+  font-size: var(--krds-pc-font-size-body-xsmall);
+  color: var(--krds-light-color-text-subtle);
+}
+
 .gov-table th.col-prep {
   background: var(--rq-accent-subtle);
   color: var(--rq-accent-strong);
@@ -565,6 +635,11 @@ fieldset.search-row > legend {
 
   .guide-title :deep(.ai-label) {
     margin-right: 0.6rem;
+  }
+
+  /* 휴대폰은 1행 버튼이 바로 아래 보여 "바로 해 보기"를 두지 않는다(첫 화면에 1행 버튼, Q-04) */
+  .guide-try {
+    display: none;
   }
 
   /* 휴대폰은 1행 버튼이 바로 아래 보이고 깜빡여 가리키므로 둘째 문장은 화면낭독기에만 남긴다(DA-07) */
@@ -634,8 +709,9 @@ fieldset.search-row > legend {
   /* 이름표와 버튼을 한 줄에(DA-07: 1행 버튼이 첫 화면에 들게) */
   .card-prep {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 1.2rem;
+    gap: 0 1.2rem;
     margin-top: 1.4rem;
     padding: 1rem 1rem 1rem 1.2rem;
     border-radius: var(--krds-radius-medium3);
@@ -655,6 +731,11 @@ fieldset.search-row > legend {
   .card-prep .prep-btn {
     flex: 1;
     min-width: 0;
+  }
+
+  .card-prep .prep-status {
+    flex-basis: 100%;
+    text-align: right;
   }
 
   .app-cards .empty {

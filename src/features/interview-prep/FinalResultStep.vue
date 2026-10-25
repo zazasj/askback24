@@ -16,7 +16,8 @@ import { useReviewStore } from '@/stores/review'
 import GeneratingView from './GeneratingView.vue'
 import { prefOf } from './picks'
 import QuestionCard from './QuestionCard.vue'
-import { FINAL_TONES, evidenceLabel, finalMeta, finalTypeLabel, finalTypeNote, offerMeta } from './questionView'
+import { keptFirst } from './printOrder'
+import { FINAL_TONES, evidenceLabel, finalMetaParts, finalTypeLabel, finalTypeNote, type MetaParts } from './questionView'
 import { MOOD_LABELS, STATE_LABELS, isTouched, ruleJudgedAskedCount } from './review'
 
 const props = defineProps<{ applyId: string; posting: Posting }>()
@@ -85,14 +86,47 @@ const stateLabelOf = (cardId: string) => {
   const s = result.value?.response.card_states.find((c) => c.card_id === cardId)?.state
   return s ? STATE_LABELS[s] : undefined
 }
-const offerLabelOf = (q: FinalQuestion) => {
-  const blank = analysis.value?.blanks.find((b) => b.topic === q.topic)
-  return blank ? offerMeta(blank) : undefined
+function metaOf(q: FinalQuestion): MetaParts {
+  const blank = q.card_id ? undefined : analysis.value?.blanks.find((b) => b.topic === q.topic)
+  return finalMetaParts(q, q.card_id ? prefOf(picks.value, q.card_id) : null, q.card_id ? stateLabelOf(q.card_id) : undefined, blank)
 }
 
-function metaOf(q: FinalQuestion): string {
-  return finalMeta(q, q.card_id ? prefOf(picks.value, q.card_id) : null, q.card_id ? stateLabelOf(q.card_id) : undefined, offerLabelOf(q))
+// ── 소제목 두 묶음(H1-12) ────────────────────────────────
+// 처우 질문까지 한 목록에 같은 무게로 있으면 임원 면접에서 다 물을 것처럼 읽힌다. 순서 규칙(API-07)은 그대로 두고
+// 화면에서만 "최종 면접에서 물을 것"과 "처우 협의 때 물을 것"으로 나눈다(묶음 안 순서는 규칙 순서, 번호는 보이는 순서)
+interface QuestionGroup {
+  key: 'interview' | 'offer'
+  title: string
+  note: string
+  items: Array<{ q: FinalQuestion; no: number }>
 }
+
+const groups = computed<QuestionGroup[]>(() => {
+  const asks = questions.value.filter((q) => q.type !== 'offer')
+  const offers = questions.value.filter((q) => q.type === 'offer')
+  const out: QuestionGroup[] = [
+    { key: 'interview', title: '최종 면접에서 물을 것', note: '최종 면접에서는 보통 한두 개만 물을 수 있어요. 꼭 물을 질문부터 골라 두세요.', items: [] },
+    { key: 'offer', title: '처우 협의 때 물을 것', note: '근로조건은 합격 뒤 처우 협의 자리에서 물어도 돼요.', items: [] },
+  ]
+  let no = 0
+  for (const q of asks) out[0]?.items.push({ q, no: ++no })
+  for (const q of offers) out[1]?.items.push({ q, no: ++no })
+  return out.filter((g) => g.items.length > 0)
+})
+
+/** 인쇄·전체 복사 순서: 묶음마다 "면접에서 쓸 것 같아요"를 누른 질문이 맨 위(H1-14) */
+const sheetGroups = computed(() =>
+  groups.value.map((g) => ({ ...g, items: keptFirst(g.items, (it) => kept.value.has(finalKey(it.q))) })),
+)
+const printNoOf = computed(() => {
+  const map = new Map<string, number>()
+  let n = 0
+  for (const g of sheetGroups.value) for (const it of g.items) map.set(finalKey(it.q), ++n)
+  return map
+})
+
+/** 최종 질문을 만든 뒤 1차를 다시 만들었으면 최종 질문은 그 전 1차 기준이다(H2-04 ④) */
+const finalBehind = computed(() => store.finalBehindFirst(props.applyId))
 
 /** ① 형광펜은 카드 근거에만 있다(D-033). 처우 질문 근거는 링크 없이 글로만 */
 function evidenceTo(q: FinalQuestion) {
@@ -110,9 +144,11 @@ const moodNote = computed(() => {
   return ''
 })
 
+// 복사 글에는 유형 꼬리표("[처우 확인]")를 붙이지 않고 소제목만 둔다(H2-01 ②·H1-12)
 function copyAll(): void {
   const head = `${props.posting.corpNm} · ${props.posting.wantedTitle}\n최종 면접·처우 질문`
-  const body = questions.value.map((q, i) => `${i + 1}. [${finalTypeLabel(q.type)}] ${q.text}`).join('\n')
+  let n = 0
+  const body = sheetGroups.value.map((g) => [g.title, ...g.items.map((it) => `${++n}. ${it.q.text}`)].join('\n')).join('\n\n')
   void copy(`${head}\n\n${body}`)
 }
 
@@ -177,29 +213,43 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
         카드 {{ ruleAskedCount }}개는 단순 규칙으로 판정했어요. "기대와 다름"은 AI가 답을 읽어야 나와요.
       </p>
 
+      <p v-if="finalBehind" class="notice" data-print="hide">
+        최종 질문은 이전 1차 질문 기준이에요. 새 1차 질문으로 바꾸려면 "1차 면접 정리 고치기"에서 다시 정리해 주세요.
+      </p>
+
       <div class="result-layout">
-        <ol class="questions" aria-label="최종 면접·처우 질문 목록">
-          <QuestionCard
-            v-for="q in questions"
-            :key="finalKey(q)"
-            :rank="q.rank"
-            :type-label="finalTypeLabel(q.type)"
-            :tone="FINAL_TONES[q.type]"
-            :meta="metaOf(q)"
-            :text="q.text"
-            :has-exp="false"
-            :template="q.source === 'template'"
-            :kept="kept.has(finalKey(q))"
-            :basis="q.basis"
-            :evidence-label="evidenceLabel(q.evidence)"
-            :evidence-to="evidenceTo(q)"
-            :watch-out="q.watch_out"
-            :good-sign="q.good_sign"
-            :type-note="finalTypeNote(q.type)"
-            @copy="copy(q.text)"
-            @keep="store.toggleFinalKept(applyId, finalKey(q))"
-          />
-        </ol>
+        <div class="question-groups">
+          <section v-for="g in groups" :key="g.key" class="q-group" :aria-labelledby="`final-group-${g.key}`">
+            <div class="group-head">
+              <h3 :id="`final-group-${g.key}`" class="group-title">{{ g.title }}</h3>
+              <p class="group-note" data-print="hide">{{ g.note }}</p>
+            </div>
+            <ol class="questions" :aria-label="`${g.title} 목록`">
+              <QuestionCard
+                v-for="it in g.items"
+                :key="finalKey(it.q)"
+                :rank="it.no"
+                :print-no="printNoOf.get(finalKey(it.q))"
+                :type-label="finalTypeLabel(it.q.type)"
+                :tone="FINAL_TONES[it.q.type]"
+                :meta-name="metaOf(it.q).name"
+                :meta-tail="metaOf(it.q).tail"
+                :text="it.q.text"
+                :has-exp="false"
+                :template="it.q.source === 'template'"
+                :kept="kept.has(finalKey(it.q))"
+                :basis="it.q.basis"
+                :evidence-label="evidenceLabel(it.q.evidence)"
+                :evidence-to="evidenceTo(it.q)"
+                :watch-out="it.q.watch_out"
+                :good-sign="it.q.good_sign"
+                :type-note="finalTypeNote(it.q.type)"
+                @copy="copy(it.q.text)"
+                @keep="store.toggleFinalKept(applyId, finalKey(it.q))"
+              />
+            </ol>
+          </section>
+        </div>
 
         <aside class="result-side" aria-labelledby="final-side-title" data-print="hide">
           <div class="side-box">
@@ -210,11 +260,19 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
             <button v-if="canRemake" type="button" class="btn btn-tertiary side-btn" @click="emit('remake')">AI로 다시 만들기</button>
           </div>
           <div class="side-box">
-            <button type="button" class="btn btn-accent-outline side-btn" @click="copyAll">전체 복사</button>
-            <button type="button" class="btn btn-tertiary side-btn" @click="printSheet">면접에 들고 갈 한 장 인쇄</button>
+            <p class="side-line">꼭 물을 질문에 "면접에서 쓸 것 같아요"를 누르면 인쇄·복사 때 맨 위에 와요.</p>
             <RouterLink class="about-link tap-target" to="/about-ai">이 질문은 어떻게 만들어지나요</RouterLink>
           </div>
         </aside>
+      </div>
+
+      <!-- 아래 고정 바(1차 ③ .result-bar와 같은 모양, H2-08 나): "전체 복사"는 1차와 같은 자리, 채운 버튼은 면접에 들고 갈 한 장 -->
+      <div class="result-bar" data-print="hide">
+        <p class="result-bar-note">최종 질문 <strong>{{ questions.length }}개</strong>를 만들었어요</p>
+        <div class="result-bar-actions">
+          <button type="button" class="btn btn-tertiary btn-lg" @click="copyAll">전체 복사</button>
+          <button type="button" class="btn btn-accent btn-lg" @click="printSheet">면접에 들고 갈 한 장 인쇄</button>
+        </div>
       </div>
     </template>
 
@@ -427,6 +485,68 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
   gap: 1.2rem;
 }
 
+.question-groups {
+  display: grid;
+  gap: 2rem;
+  min-width: 0;
+}
+
+.q-group {
+  display: grid;
+  gap: 1rem;
+}
+
+.group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 1.2rem;
+}
+
+.group-title {
+  font-size: var(--krds-pc-font-size-heading-xxsmall);
+  font-weight: 700;
+  color: var(--krds-light-color-text-bolder);
+}
+
+.group-note {
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-subtle);
+}
+
+/* ── 아래 고정 바(1차 ③ .result-bar와 같은 모양) ───────── */
+.result-bar {
+  position: sticky;
+  bottom: 0.8rem;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  padding: 1.2rem 1.6rem 1.2rem 2rem;
+  border: 1px solid var(--rq-accent-border);
+  border-radius: var(--krds-radius-large1);
+  background: var(--krds-light-color-surface-white);
+  box-shadow: var(--rq-shadow-pop);
+}
+
+.result-bar-note {
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.result-bar-note strong {
+  color: var(--rq-accent-strong);
+}
+
+.result-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-left: auto;
+}
+
 .result-side {
   position: sticky;
   top: 1.6rem;
@@ -533,11 +653,45 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
   .side-btn {
     min-height: var(--rq-touch);
   }
+
+  /* 휴대폰: 바가 화면을 덜 가리게 버튼 두 개만 한 줄로(1차 ③과 같음) */
+  .result-bar {
+    padding: 1rem;
+  }
+
+  .result-bar-note {
+    display: none;
+  }
+
+  .result-bar-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .result-bar-actions .btn {
+    min-height: var(--rq-touch);
+    padding: 0 0.8rem;
+    font-size: var(--krds-pc-font-size-label-small);
+  }
 }
 
 @media print {
   .final-step {
     gap: 0.8rem;
+  }
+
+  .question-groups {
+    gap: 0.6rem;
+  }
+
+  .q-group {
+    gap: 0.4rem;
+  }
+
+  .group-title {
+    font-size: 10pt;
   }
 
   /* 인쇄물에서는 질문 수 안내 문장보다 질문이 먼저 */

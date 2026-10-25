@@ -564,12 +564,14 @@ test('R-05 R-04 뒤 "최종 질문 만들기" → 요약 2·1·2·1, 첫 질문 
   }
 })
 
-test('R-05 최종 질문 유형 순서가 API-07 규칙과 같다: 다시 확인 → 신호 확인 → 범위 확인 → 처우 확인들 → 다시 확인', async ({ page }) => {
+// 2026-10-25 H1-12(세진 승인): 화면은 "최종 면접에서 물을 것"·"처우 협의 때 물을 것" 두 묶음으로 나눠 보인다.
+// 규칙 순서(API-07: 다시 확인 → 신호 확인 → 범위 확인 → 처우 확인들 → 다시 확인)는 그대로라, 묶음마다 그 순서를 지킨다
+test('R-05 최종 질문 유형 순서가 API-07 규칙과 같다: 처우 확인을 뺀 묶음은 다시 확인 → 신호 확인 → 범위 확인 → 다시 확인, 처우 묶음은 처우 확인들', async ({ page }) => {
   await makeFinalQuestions(page)
   const types = await itemTypes(questionItems(page), FINAL_TYPES)
   const pay = types.filter((t) => t === '처우 확인').length
   expect(pay).toBeGreaterThanOrEqual(3)
-  expect(types).toEqual(['다시 확인', '신호 확인', '범위 확인', ...Array.from({ length: pay }, () => '처우 확인'), '다시 확인'])
+  expect(types).toEqual(['다시 확인', '신호 확인', '범위 확인', '다시 확인', ...Array.from({ length: pay }, () => '처우 확인')])
 })
 
 test('R-06 최종 질문에 1차 면접관 인용 표현이 없고, 분위기 "압박"이라 완충 문장("여쭤도 될까요")이 1개 이상', async ({ page }) => {

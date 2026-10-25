@@ -78,6 +78,11 @@ function useChip(chip: (typeof CHIPS)[number]): void {
   prep.setExperience(props.applyId, chip.text, chip.card_id)
 }
 
+/** 아래 바의 "경험 한 줄 붙이기(선택)" → 입력칸으로(초점 이동이 스크롤도 한다, 바 위에서 멈춤은 scroll-padding) */
+function jumpToExperience(): void {
+  document.getElementById('experience-input')?.focus()
+}
+
 // 경험 한 줄은 AI에 보내므로 사람·학교·회사를 알아볼 말을 빼 달라고 늘 같이 적는다(개인정보, A1-07)
 const EXPERIENCE_PRIVACY = '이름·학교·회사 이름은 빼고 적어 주세요.'
 // 붙이는 규칙을 그대로 적는다(picks.ts experienceTarget). 관련 있는 질문을 고르는 장치는 없다(A2-07)
@@ -98,19 +103,23 @@ const experienceHint = computed(() => {
     <!-- "내 기대·걱정"은 바로 위 단계 표시의 현재 단계와 같은 말이라 화면낭독기에만 남긴다(N4) -->
     <h2 id="pick-step-title" class="sr-only" tabindex="-1">내 기대·걱정</h2>
     <div class="intro">
-      <!-- 안내는 한 줄(N4): 고르는 법 + 시연 단서를 한 줄에, 그 아래 직업정보 한 줄 -->
+      <!-- 안내는 두 줄(N4): 고르는 법 + 꼬리표·"모르겠어요" 뜻(H1-15, 휴대폰은 넘치면 다음 줄) / 직업정보 + 시연 단서.
+           첫 화면 카드 4개(F-03)를 지키려고 줄 수를 늘리지 않는다 -->
+      <p class="lead">
+        백엔드 업무 17가지 중 아는 만큼만 골라요. 고른 것을 다시 누르면 풀려요.
+        <span class="lead-tip">꼬리표는 AI가 찾은 확인할 점 · "모르겠어요"는 더 알고 싶은 일</span>
+      </p>
       <div class="intro-row">
-        <p class="lead">백엔드 업무 17가지 중 아는 만큼만 골라요. 고른 것을 다시 누르면 풀려요.</p>
+        <!-- 카드가 어떤 직업의 일인지 공공 자료로 받친다(고용24 직업정보 직무 개요, data/real/job-info.json) -->
+        <p v-if="JOB_INFO.summary_short" class="job-info">
+          <span class="job-info-text">{{ JOB_INFO.summary_short }}</span>
+          <span class="job-info-src">고용24 직업정보 · {{ JOB_INFO.job_name }} 직무 개요</span>
+        </p>
         <p v-if="showDemoHint" class="demo-hint">
-          <span>시연: 예시 구직자로 채울 수 있어요</span>
+          <span>시연: 예시 구직자로 채우려면</span>
           <button type="button" class="btn btn-tertiary btn-sm" @click="openDemoTools">시연 도구 열기</button>
         </p>
       </div>
-      <!-- 카드가 어떤 직업의 일인지 공공 자료로 받친다(고용24 직업정보 직무 개요, data/real/job-info.json) -->
-      <p v-if="JOB_INFO.summary_short" class="job-info">
-        <span class="job-info-text">{{ JOB_INFO.summary_short }}</span>
-        <span class="job-info-src">고용24 직업정보 · {{ JOB_INFO.job_name }} 직무 개요</span>
-      </p>
     </div>
 
     <ul class="card-grid">
@@ -164,11 +173,15 @@ const experienceHint = computed(() => {
     </section>
 
     <div class="pick-bar">
-      <p class="counter" aria-live="polite">
-        <strong class="count">{{ total }}개 골랐어요</strong>
-        <span class="count-detail">({{ breakdown }})</span>
-        <span v-if="total > 0 && total < 3" class="count-tip">3개 이상이면 더 정확해요</span>
-      </p>
+      <div class="counter-wrap">
+        <p class="counter" aria-live="polite">
+          <strong class="count">{{ total }}개 골랐어요</strong>
+          <span class="count-detail">({{ breakdown }})</span>
+          <span v-if="total > 0 && total < 3" class="count-tip">3개 이상이면 더 정확해요</span>
+        </p>
+        <!-- 카드 17개 아래 맨 끝의 "경험 한 줄"을 직접 고르는 사람도 보게(H2-20). 경험이 비어 있을 때만 -->
+        <button v-if="!experience.trim()" type="button" class="exp-jump tap-target" @click="jumpToExperience">경험 한 줄 붙이기(선택)</button>
+      </div>
       <button type="button" class="btn btn-accent btn-lg make" :disabled="total === 0" @click="emit('make')">
         질문 만들기
       </button>
@@ -350,11 +363,38 @@ const experienceHint = computed(() => {
   box-shadow: var(--rq-shadow-pop);
 }
 
+.counter-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 1.6rem;
+  min-width: 0;
+}
+
 .counter {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0.2rem 0.8rem;
+}
+
+/* 링크 모양 버튼(같은 화면 안 입력칸으로 간다) */
+.exp-jump {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: var(--krds-pc-font-size-body-small);
+  font-weight: 700;
+  color: var(--krds-light-color-text-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.3rem;
+  cursor: pointer;
+}
+
+.lead-tip {
+  white-space: nowrap;
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-subtle);
 }
 
 .count {
@@ -427,6 +467,24 @@ const experienceHint = computed(() => {
   .count-detail,
   .count-tip {
     display: none;
+  }
+
+  /* 개수 아래 줄에 작게(버튼과 한 줄을 지키려고) */
+  .counter-wrap {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+
+  .exp-jump {
+    min-height: 2.4rem;
+    font-size: var(--krds-pc-font-size-body-xsmall);
+  }
+
+  .lead-tip {
+    display: block;
+    white-space: normal;
+    font-size: var(--krds-pc-font-size-body-xsmall);
   }
 
   .pick-bar .make {

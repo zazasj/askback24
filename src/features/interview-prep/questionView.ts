@@ -59,13 +59,30 @@ export function offerMeta(blank: OfferBlank): string {
   return `${blank.label} · ${BLANK_TAGS[blank.status]}`
 }
 
-/** 최종 질문 칩 옆 설명: "고객사 상주 개발 · 걱정돼요 · 아직 모름". 처우 질문은 offerMeta */
-export function finalMeta(q: FinalQuestion, pref: Pref | null, stateLabel: string | undefined, offerLabel: string | undefined): string {
-  if (!q.card_id) return offerLabel ?? ''
-  const parts = [getCard(q.card_id)?.label ?? q.card_id]
-  if (pref) parts.push(CARD_BOOK.preference_options[pref])
-  if (stateLabel) parts.push(stateLabel)
-  return parts.join(' · ')
+/**
+ * 질문 칩 옆 설명을 이름과 꼬리로 나눈 것. 인쇄물에는 이름만 남기고 내 선택·판정·공고 상태 꼬리는 화면에만 둔다(H2-01).
+ * 공고에 근거가 없는 카드 질문은 꼬리에 "공고에 없음"을 더해 펼치지 않아도 보이게 한다(H1-16)
+ */
+export interface MetaParts {
+  name: string
+  tail: string
+}
+
+/** 공고 근거가 없는 질문의 꼬리(① 확인할 점의 근로조건 "공고에 없음"과 같은 말) */
+export const NO_EVIDENCE_TAG = BLANK_TAGS.missing
+
+export function firstMetaParts(cardId: string, type: QType, hasEvidence: boolean): MetaParts {
+  const pref = prefOfType(type)
+  const tail = [pref ? CARD_BOOK.preference_options[pref] : null, hasEvidence ? null : NO_EVIDENCE_TAG].filter((t): t is string => !!t)
+  return { name: getCard(cardId)?.label ?? cardId, tail: tail.join(' · ') }
+}
+
+export function finalMetaParts(q: FinalQuestion, pref: Pref | null, stateLabel: string | undefined, blank: OfferBlank | undefined): MetaParts {
+  if (!q.card_id) return blank ? { name: blank.label, tail: BLANK_TAGS[blank.status] } : { name: '', tail: '' }
+  const tail = [pref ? CARD_BOOK.preference_options[pref] : null, stateLabel ?? null, q.evidence ? null : NO_EVIDENCE_TAG].filter(
+    (t): t is string => !!t,
+  )
+  return { name: getCard(q.card_id)?.label ?? q.card_id, tail: tail.join(' · ') }
 }
 
 export function finalTypeLabel(type: FinalQType): string {

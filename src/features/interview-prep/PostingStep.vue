@@ -262,7 +262,11 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
         <li v-for="(l, i) in looks" :key="l.key" class="look">
           <span class="look-no" aria-hidden="true">{{ i + 1 }}</span>
           <span class="look-body">
-            <button type="button" class="look-quote tap-target" data-bubble-keep @click="goToCard(l.cardId, true)">‘{{ l.quote }}’</button>
+            <!-- 이름에 "공고에서 보기"가 들어가 화면낭독기에서도 무엇을 하는 버튼인지 안다(H1-29, H2-21과 같은 말) -->
+            <button type="button" class="look-quote tap-target" data-bubble-keep @click="goToCard(l.cardId, true)">
+              <span class="look-mark">‘{{ l.quote }}’</span>
+              <span class="look-go">공고에서 보기<span aria-hidden="true"> ›</span></span>
+            </button>
             <span class="look-reason">{{ l.reason }}</span>
           </span>
         </li>
@@ -298,7 +302,7 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
             <col />
           </colgroup>
           <tbody>
-            <tr v-for="row in rows" :key="row.key">
+            <tr v-for="row in rows" :key="row.key" :class="{ 'is-block': row.block }">
               <th scope="row">{{ row.label }}</th>
               <td>
                 <template v-if="row.parts.length && row.block">
@@ -353,6 +357,8 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
                 <span class="tag">{{ p.tag }}</span>
                 <span class="check-title">{{ p.title }}</span>
                 <span class="check-detail">{{ p.detail }}</span>
+                <!-- 누를 수 있는 항목만 끝에 보이는 글(H2-21 ①). 이 글이 버튼 이름에 들어간다 -->
+                <span class="check-go">공고에서 보기<span aria-hidden="true"> ›</span></span>
               </button>
               <div v-else class="check-item">
                 <span class="tag" :class="{ 'is-blank': p.tag === '공고에 없음' }">{{ p.tag }}</span>
@@ -489,30 +495,54 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
   min-width: 0;
 }
 
-/* 인용은 공고 형광펜과 같은 노란 바탕(누르면 그 형광펜으로 간다) */
+/* 인용은 공고 형광펜과 같은 노란 바탕(누르면 그 형광펜으로 간다). 뒤의 "공고에서 보기 ›"는 링크 글자 */
 .look-quote {
-  padding: 0.1rem 0.4rem;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.6rem;
+  padding: 0;
   border: 0;
+  background: none;
+  text-align: left;
+}
+
+.look-mark {
+  padding: 0.1rem 0.4rem;
   border-radius: var(--krds-radius-small1);
   background: var(--rq-mark);
   font-weight: 700;
   color: var(--krds-light-color-text-bolder);
-  text-align: left;
   text-decoration: underline dotted;
   text-decoration-color: var(--krds-light-color-text-subtle);
   text-underline-offset: 0.4rem;
 }
 
-.look-quote:hover {
+.look-quote:hover .look-mark {
   background: var(--rq-mark-active);
+}
+
+.look-go,
+.check-go {
+  font-size: var(--krds-pc-font-size-body-small);
+  font-weight: 700;
+  color: var(--krds-light-color-text-primary);
+  white-space: nowrap;
+}
+
+.look-quote:hover .look-go,
+.check-item.is-link:hover .check-go {
+  text-decoration: underline;
+  text-underline-offset: 0.3rem;
 }
 
 .look-reason {
   color: var(--krds-light-color-text-basic);
 }
 
+/* AI 판단 문장·도움말은 13px로 가장 작았다(H1-26): 본문 작은 글(15px)로 */
 .ai-summary-help {
-  font-size: var(--krds-pc-font-size-body-xsmall);
+  font-size: var(--krds-pc-font-size-body-small);
   color: var(--krds-light-color-text-subtle);
 }
 
@@ -764,14 +794,25 @@ mark[data-active='true'] {
   border-color: var(--rq-accent);
 }
 
+/* 누를 수 없는 항목(공고에 형광펜이 없는 근로조건 등)은 회색 바탕으로 누를 수 있는 것과 구분한다(H2-21 ①) */
+.check-item:not(.is-link) {
+  border-color: var(--krds-light-color-border-gray-light);
+  background: var(--krds-light-color-surface-gray-subtler);
+}
+
 .check-title {
   font-weight: 700;
   color: var(--krds-light-color-text-bolder);
 }
 
+/* AI 판단 문장(H1-26: 13px → 15px) */
 .check-detail {
-  font-size: var(--krds-pc-font-size-body-xsmall);
-  color: var(--krds-light-color-text-subtle);
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-basic);
+}
+
+.check-go {
+  justify-self: end;
 }
 
 .tag {
@@ -948,8 +989,34 @@ mark[data-active='true'] {
     padding: 1rem 1rem;
   }
 
-  .posting-table .col-head {
-    width: 8.4rem;
+  /* 휴대폰: 긴 글 칸(직무내용)은 항목 이름을 위, 내용을 아래 한 줄 전체로 쌓는다(H1-25).
+     오른쪽 259px 칸에 갇혀 한 줄 21자였다. 표·칸 순서(마크업)는 그대로 두고 화면 배치만 바꾼다 */
+  .posting-table,
+  .posting-table tbody {
+    display: block;
+  }
+
+  .posting-table colgroup {
+    display: none;
+  }
+
+  .posting-table tr {
+    display: grid;
+    grid-template-columns: 8.4rem minmax(0, 1fr);
+    border-bottom: 1px solid var(--krds-light-color-divider-gray-light);
+  }
+
+  .posting-table th,
+  .posting-table td {
+    border-bottom: 0;
+  }
+
+  .posting-table tr.is-block {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .posting-table tr.is-block th {
+    padding: 0.6rem 1rem;
   }
 
   .side-box {

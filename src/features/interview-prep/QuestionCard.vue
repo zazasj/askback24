@@ -3,15 +3,22 @@
  * 질문 한 장(1차·최종 공용). 질문 문장이 가장 크고, 근거·주의할 답·좋은 신호는 "왜 이 질문인가요"에 접어 둔다.
  * 검수 문장(source: template)은 감추지 않고 라벨을 단다.
  */
+import { useId } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import type { ChipTone } from './questionView'
+import TypeChip from './TypeChip.vue'
 
 defineProps<{
+  /** 화면에 보이는 번호 */
   rank: number
+  /** 인쇄할 때의 번호와 자리("면접에서 쓸 것 같아요"를 누른 질문이 맨 위, H1-14). 없으면 화면과 같다 */
+  printNo?: number
   typeLabel: string
   tone: ChipTone
-  /** "고객사 상주 개발 · 걱정돼요" */
-  meta?: string
+  /** 카드(근로조건) 이름 "고객사 상주 개발" — 인쇄에도 남는다 */
+  metaName?: string
+  /** 내 선택·판정·공고 상태 꼬리 "걱정돼요 · 아직 모름" — 화면에만(H2-01) */
+  metaTail?: string
   text: string
   hasExp: boolean
   template: boolean
@@ -28,24 +35,36 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{ copy: []; keep: [] }>()
+
+// 질문마다 같은 이름인 버튼(복사·면접에서 쓸 것 같아요·근거 보기)이 몇 번 질문 것인지 화면낭독기에 알린다(H2-19)
+const noId = `q-no-${useId()}`
 </script>
 
 <template>
-  <li class="question" :class="{ 'is-template': template }">
+  <li
+    class="question"
+    :class="{ 'is-template': template, 'has-print-no': printNo !== undefined }"
+    :style="printNo !== undefined ? { '--print-order': printNo } : undefined"
+  >
+    <!-- 인쇄물(면접장에 들고 가는 종이)에는 번호·카드 이름·질문·"들은 답" 칸만. 유형 칩·내 선택·판정 꼬리는 화면에만(H2-01) -->
     <div class="q-head">
       <span class="num" aria-hidden="true">{{ rank }}</span>
-      <span class="sr-only">{{ rank }}번 질문</span>
-      <span class="type-chip" :class="`is-${tone}`">{{ typeLabel }}</span>
-      <span v-if="meta" class="q-meta">{{ meta }}</span>
-      <span v-if="hasExp" class="tag exp-tag">경험 포함</span>
-      <span v-if="template" class="tag template-tag">검수 문장</span>
+      <span v-if="printNo !== undefined" class="num print-num" aria-hidden="true">{{ printNo }}</span>
+      <span :id="noId" class="sr-only">{{ rank }}번 질문</span>
+      <TypeChip :label="typeLabel" :tone="tone" data-print="hide" />
+      <span v-if="metaName || metaTail" class="q-meta">
+        <span v-if="metaName" class="q-meta-name">{{ metaName }}</span>
+        <span v-if="metaTail" class="q-meta-tail" data-print="hide"><template v-if="metaName"> · </template>{{ metaTail }}</span>
+      </span>
+      <span v-if="hasExp" class="tag exp-tag" data-print="hide">경험 포함</span>
+      <span v-if="template" class="tag template-tag" data-print="hide">검수 문장</span>
     </div>
 
     <p class="q-text">{{ text }}</p>
 
     <div class="q-actions" data-print="hide">
-      <button type="button" class="btn btn-tertiary btn-sm" @click="emit('copy')">복사</button>
-      <button type="button" class="btn btn-sm keep" :aria-pressed="kept" @click="emit('keep')">
+      <button type="button" class="btn btn-tertiary btn-sm" :aria-describedby="noId" @click="emit('copy')">복사</button>
+      <button type="button" class="btn btn-sm keep" :aria-pressed="kept" :aria-describedby="noId" @click="emit('keep')">
         <svg class="keep-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
           <path
             d="M6 9v8H3V9h3Zm2 8V9.2l3.6-5.9a1.4 1.4 0 0 1 2.6.9L13.6 8H17a1.5 1.5 0 0 1 1.5 1.8l-1.3 5.9A1.8 1.8 0 0 1 15.4 17H8Z"
@@ -65,14 +84,15 @@ const emit = defineEmits<{ copy: []; keep: [] }>()
             <span v-if="evidenceLabel" class="evidence">{{ evidenceLabel }}</span>
             <span v-else class="evidence is-none">공고에 근거 없음 · 직접 확인</span>
             <span class="basis">{{ basis }}</span>
-            <RouterLink v-if="evidenceTo" class="evidence-link tap-target" :to="evidenceTo">근거 보기</RouterLink>
+            <RouterLink v-if="evidenceTo" class="evidence-link tap-target" :to="evidenceTo" :aria-describedby="noId">근거 보기</RouterLink>
           </dd>
         </div>
         <div class="why-row">
           <dt>주의할 답</dt>
           <dd>
             {{ watchOut }}
-            <span class="why-note">'주의할 답'은 회사의 흠이 아니라 내 기대와 다를 수 있는 답이에요.</span>
+            <!-- 누구의 답인지 밝힌다(H2-15 ①): 주의할 답은 회사가 하는 답이다 -->
+            <span class="why-note">회사가 이렇게 답하면 내 기대와 다를 수 있어요. 회사의 흠은 아니에요.</span>
           </dd>
         </div>
         <div class="why-row">
@@ -118,7 +138,6 @@ const emit = defineEmits<{ copy: []; keep: [] }>()
   font-weight: 700;
 }
 
-.type-chip,
 .tag {
   display: inline-flex;
   align-items: center;
@@ -130,35 +149,8 @@ const emit = defineEmits<{ copy: []; keep: [] }>()
   white-space: nowrap;
 }
 
-.type-chip {
-  background: var(--krds-light-color-surface-gray-subtle);
-  color: var(--krds-light-color-text-basic);
-}
-
-/* 충돌은 오류가 아니라 확인할 차이라 빨강 대신 주황(DR-r2-02) */
-.type-chip.is-conflict {
-  background: var(--rq-tone-orange-subtle);
-  color: var(--rq-tone-orange);
-}
-
-.type-chip.is-opportunity {
-  background: var(--krds-light-color-surface-success-subtler);
-  color: var(--krds-light-color-text-success);
-}
-
-.type-chip.is-depth {
-  background: var(--krds-light-color-surface-information-subtler);
-  color: var(--krds-light-color-text-information);
-}
-
-.type-chip.is-warning {
-  background: var(--krds-light-color-surface-warning-subtler);
-  color: var(--krds-light-color-text-warning);
-}
-
-.type-chip.is-offer {
-  background: var(--rq-accent-subtle);
-  color: var(--rq-accent-strong);
+.print-num {
+  display: none;
 }
 
 .exp-tag {
@@ -355,9 +347,23 @@ const emit = defineEmits<{ copy: []; keep: [] }>()
 
 @media print {
   .question {
+    order: var(--print-order, 0);
     gap: 0.6rem;
     padding: 1rem 1.2rem;
     break-inside: avoid;
+  }
+
+  .question.has-print-no .num:not(.print-num) {
+    display: none;
+  }
+
+  .question.has-print-no .print-num {
+    display: inline-flex;
+  }
+
+  /* 종이에는 카드 이름만 남는다(유형 칩·꼬리는 data-print="hide") */
+  .q-meta {
+    font-size: 9pt;
   }
 
   .q-text {

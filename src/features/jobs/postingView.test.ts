@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { POSTINGS, getPosting } from '@shared/catalog'
-import { DETAIL_SECTIONS, EMPTY_TEXT, listOrder, matchesQuery, rowText, salaryChunks, salaryText } from './postingView'
+import { DETAIL_SECTIONS, EMPTY_TEXT, listOrder, matchesQuery, rowCode, rowText, salaryChunks, salaryText } from './postingView'
 
 const OO = getPosting('K-MOCK-0001')!
 const COMMERCE = getPosting('K-MOCK-0002')!
@@ -70,5 +70,13 @@ describe('Q-04 (DA-06) 임금 글 조각', () => {
 
   it('목록의 모든 공고 임금 조각을 이으면 원래 글과 같다', () => {
     for (const p of POSTINGS) expect(salaryChunks(salaryText(p)).join(' ')).toBe(salaryText(p))
+  })
+})
+
+describe('H1-08 S3 상세 모집직종 칸에 공통코드(직종코드)', () => {
+  it('모집직종 뒤에 "(직종코드 133200)", 코드 칸이 없는 줄은 빈 문자열', () => {
+    expect(rowText(OO, row('모집요강', '모집직종'))).toBe('응용 소프트웨어 개발자')
+    expect(rowCode(OO, row('모집요강', '모집직종'))).toBe('(직종코드 133200)')
+    expect(rowCode(OO, row('모집요강', '경력'))).toBe('')
   })
 })
