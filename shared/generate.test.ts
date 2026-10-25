@@ -199,10 +199,11 @@ describe('요청 정리', () => {
 })
 
 describe('가짜 공급자의 경험 문장', () => {
-  it('과거·있다 + "는데"는 맺는 문장으로 바꾼다', () => {
-    expect(experienceSentence('인턴 때 FastAPI로 API를 설계부터 배포까지 맡아 봤는데')).toBe('인턴 때 FastAPI로 API를 설계부터 배포까지 맡아 봤어요.')
-    expect(experienceSentence('졸업 프로젝트에서 DB를 직접 설계했는데,')).toBe('졸업 프로젝트에서 DB를 직접 설계했어요.')
-    expect(experienceSentence('운영 서버 장애를 겪은 적이 있는데')).toBe('운영 서버 장애를 겪은 적이 있어요.')
+  it('과거·있다 + "는데"는 맺는 문장(비즈니스체 "…습니다")으로 바꾼다(D-179)', () => {
+    expect(experienceSentence('인턴 때 FastAPI로 API를 설계부터 배포까지 맡아 봤는데')).toBe('인턴 때 FastAPI로 API를 설계부터 배포까지 맡아 봤습니다.')
+    expect(experienceSentence('졸업 프로젝트에서 DB를 직접 설계했는데,')).toBe('졸업 프로젝트에서 DB를 직접 설계했습니다.')
+    expect(experienceSentence('운영 서버 장애를 겪은 적이 있는데')).toBe('운영 서버 장애를 겪은 적이 있습니다.')
+    expect(experienceSentence('실무 경험은 없는데')).toBe('실무 경험은 없습니다.')
   })
 
   it('이미 맺은 문장("…경험이 있습니다.", "…봤어요")은 그대로 맺는다(이력서 경험 칩)', () => {
@@ -222,7 +223,7 @@ describe('가짜 공급자의 경험 문장', () => {
     const cases: Array<[string, string]> = [
       ['카페 아르바이트를 2년 했습니다', '카페 아르바이트를 2년 했습니다. '],
       ['학교에서 팀 프로젝트를 했어요', '학교에서 팀 프로젝트를 했어요. '],
-      ['Spring으로 게시판 만들어 봄', '제 경험과 이어지는 일이라 여쭤요. 이 팀에서는'],
+      ['Spring으로 게시판 만들어 봄', '제 경험과 이어지는 업무라 여쭙겠습니다. 이 팀에서는'],
     ]
     for (const [exp, start] of cases) {
       for (const variant of [0, 1]) {
@@ -241,5 +242,39 @@ describe('가짜 공급자의 경험 문장', () => {
     const res = await generateFirst({ ...reqA(), experience: '전공이 컴퓨터공학인데' }, { provider: createMockProvider() })
     expect(res.questions[4]?.text.startsWith('전공이 컴퓨터공학인데, ')).toBe(true)
     expect(res.questions[4]?.source).toBe('ai')
+  })
+})
+
+describe('D-179 가짜 공급자 문장은 면접 비즈니스체', () => {
+  const HAEYO_STATEMENT = /요\.?$/
+  it('예시 A·B × 두 공고, 변형 0·1: 어느 문장도 해요체 서술("…요.")로 끝나지 않는다', async () => {
+    for (const key of ['A', 'B'] as const) {
+      for (const posting of ['K-MOCK-0001', 'K-MOCK-0002']) {
+        for (const variant of [0, 1]) {
+          const res = await generateFirst(
+            { mode: 'first', wantedAuthNo: posting, picks: PRESETS[key].picks, experience: PRESETS[key].experience },
+            { provider: createMockProvider({ variant }) },
+          )
+          for (const q of res.questions) {
+            for (const s of q.text.split(/(?<=[.?!])\s+/)) expect(s.trim(), `${key} ${posting} v${variant}: ${q.text}`).not.toMatch(HAEYO_STATEMENT)
+          }
+        }
+      }
+    }
+  })
+
+  it('한 결과 안에서 같은 앞말(따옴표 인용만 다른 것 포함)이 되풀이되지 않는다', async () => {
+    for (const key of ['A', 'B'] as const) {
+      for (const posting of ['K-MOCK-0001', 'K-MOCK-0002']) {
+        for (const variant of [0, 1]) {
+          const res = await generateFirst(
+            { mode: 'first', wantedAuthNo: posting, picks: PRESETS[key].picks, experience: PRESETS[key].experience },
+            { provider: createMockProvider({ variant }) },
+          )
+          const leads = res.questions.filter((q) => !q.has_exp).map((q) => (q.text.split(/(?<=[.?!])\s+/)[0] ?? '').replace(/'[^']*'/g, "''"))
+          expect(new Set(leads).size, `${key} ${posting} v${variant}: ${leads.join(' / ')}`).toBe(leads.length)
+        }
+      }
+    }
   })
 })

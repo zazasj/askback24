@@ -256,14 +256,14 @@ describe('Q-01 다시 확인은 1차 질문을 이어 받는다(DA-02)', () => {
     const be15 = getCard('BE15')!
     const ev: Evidence = { field: 'pfCond', quote: '고객사 상주 가능자' }
     expect(finalCardTemplate(be15, 'recheck', 'avoid', 'explicit', 'asked', ev)).toBe(
-      `지난 면접에 이어 공고의 '고객사 상주 가능자' 부분을 조금 더 구체적으로 알고 싶어요. ${be15.questions.conflict}`,
+      `지난 면접에 이어 공고의 '고객사 상주 가능자' 부분을 조금 더 구체적으로 여쭙겠습니다. ${be15.questions.conflict}`,
     )
     expect(finalCardTemplate(be15, 'recheck', 'avoid', 'explicit', 'not_asked', ev)).toBe(
-      `공고의 '고객사 상주 가능자' 부분을 보고 꼭 확인하고 싶었어요. ${be15.questions.conflict}`,
+      `공고의 '고객사 상주 가능자' 부분과 관련해 꼭 확인하고 싶은 점이 있습니다. ${be15.questions.conflict}`,
     )
     // 공고에 없던 카드는 1차에도 "…경우도 있나요?"(충돌 예방)로 물었으니 그 틀을 이어 쓴다
     expect(finalCardTemplate(be15, 'recheck', 'avoid', 'absent', 'asked')).toBe(
-      `지난 면접에 이어 고객사 상주 개발 부분을 조금 더 구체적으로 알고 싶어요. ${be15.questions.prevent}`,
+      `지난 면접에 이어 고객사 상주 개발 부분을 조금 더 구체적으로 여쭙겠습니다. ${be15.questions.prevent}`,
     )
     expect(finalCardTemplate(be15, 'recheck', 'avoid', 'absent', 'not_asked')).toBe(be15.questions.prevent)
   })
@@ -383,6 +383,22 @@ describe('검수 문장 전수 검사', () => {
         expect(res.final_questions.every((q) => q.source === 'ai'), `${a.wantedAuthNo} ${preset.label}`).toBe(true)
         expect(res.final_questions.length).toBeLessThanOrEqual(8)
         for (const q of res.final_questions) expect(q.basis, `${a.wantedAuthNo} ${q.card_id ?? q.topic}`).toBeTruthy()
+      }
+    }
+  })
+})
+
+describe('D-179 최종 질문 문장도 면접 비즈니스체', () => {
+  const HAEYO_STATEMENT = /요\.?$/
+  it('R-04 예시 세트 × 두 공고 × 분위기 3가지, 변형 0·1: 어느 문장도 해요체 서술("…요.")로 끝나지 않는다', async () => {
+    for (const posting of [OO, COMMERCE]) {
+      for (const mood of ['relaxed', 'normal', 'pressured'] as const) {
+        for (const variant of [0, 1]) {
+          const res = await generateFinal(reqR04({ ...r04Review(), impression: { mood } }, posting), { provider: createMockProvider({ variant }) })
+          for (const q of res.final_questions) {
+            for (const s of q.text.split(/(?<=[.?!])\s+/)) expect(s.trim(), `${posting} ${mood} v${variant}: ${q.text}`).not.toMatch(HAEYO_STATEMENT)
+          }
+        }
       }
     }
   })

@@ -118,16 +118,30 @@ describe('검수 틀은 검사를 모두 통과한다(대체 문장이 다시 �
   })
 })
 
-/** 화면의 다른 글은 모두 해요체라 질문·주의할 답·좋은 신호에 합쇼체·한다체가 섞이면 내부 메모처럼 읽힌다 */
-describe('문체: 질문 틀·주의할 답·좋은 신호는 해요체(DR-r1-10·11)', () => {
-  const FORMAL = /니다|니까/
+/**
+ * 문체(D-179, DR-r1-10을 대체): 질문 문장은 구직자가 면접장에서 그대로 말하는 글이라 공손한 비즈니스체로 쓴다 —
+ * 서술은 "…습니다", 질문은 "…인가요?·…될까요?". "…궁금해요."처럼 해요체 서술로 끝나는 문장은 두지 않는다.
+ * 주의할 답·좋은 신호는 서비스가 구직자에게 하는 설명이라 화면의 다른 글처럼 해요체다(DR-r1-11 그대로).
+ */
+describe('문체: 질문 문장은 면접 비즈니스체, 주의할 답·좋은 신호는 해요체(D-179·DR-r1-11)', () => {
   const ENDS_HAEYO = /요[.!?]?$/
+  /** 해요체 서술로 끝나는 문장("…요." · "…요" 끝). 질문("…요?")은 공손한 질문형이라 괜찮다 */
+  const HAEYO_STATEMENT = /요\.?$/
+  const sentences = (text: string) =>
+    text
+      .replace(/\{anchor\}/g, '')
+      .split(/(?<=[.?!])\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean)
 
-  it('DR-r1-10 질문 틀(카드·최종·처우 재료)에 "…습니다/합니다"가 없다', () => {
-    for (const c of CARDS) for (const [t, text] of Object.entries(c.questions)) expect(text, `${c.id}.${t}`).not.toMatch(FORMAL)
+  it('D-179 질문 틀(카드·최종·처우 재료)에 해요체 서술로 끝나는 문장이 없다', () => {
+    const check = (text: string, where: string) => {
+      for (const s of sentences(text)) expect(s, `${where}: ${s}`).not.toMatch(HAEYO_STATEMENT)
+    }
+    for (const c of CARDS) for (const [t, text] of Object.entries(c.questions)) check(text, `${c.id}.${t}`)
     const T = FINAL_BOOK.templates
-    for (const text of [...Object.values(T.recheck_lead), T.scope.avoid, T.scope.want, T.signal_lead, ...FINAL_BOOK.cushions]) expect(text).not.toMatch(FORMAL)
-    for (const a of ANALYSES) for (const b of a.blanks) expect(b.question, `${a.wantedAuthNo} ${b.topic}`).not.toMatch(FORMAL)
+    for (const text of [...Object.values(T.recheck_lead), T.scope.avoid, T.scope.want, T.signal_lead, ...FINAL_BOOK.cushions]) check(text, 'final')
+    for (const a of ANALYSES) for (const b of a.blanks) check(b.question, `${a.wantedAuthNo} ${b.topic}`)
   })
 
   it('DR-r1-11 주의할 답·좋은 신호는 모두 "…요"로 끝난다(한다체·명사형 끝 없음)', () => {

@@ -29,7 +29,7 @@ export function classify(
 }
 
 /** 경험 글을 그대로 이으면 틀린 문장이 될 때 쓰는 앞말(경험 글은 옮기지 않는다) */
-export const EXPERIENCE_LEAD = '제 경험과 이어지는 일이라 여쭤요. '
+export const EXPERIENCE_LEAD = '제 경험과 이어지는 업무라 여쭙겠습니다. '
 
 export interface ExperienceAnchor {
   /** 질문 틀의 {anchor} 자리에 넣을 말 */
