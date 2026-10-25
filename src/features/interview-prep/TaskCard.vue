@@ -26,13 +26,16 @@ const descId = computed(() => `card-${props.card.id}-desc`)
 // 고용24 직무정보에서 찾은 능력단위명(못 찾은 카드는 팀이 정리한 값) — data/real/ncs-cards.json
 const basis = computed(() => ncsLine(props.card))
 
-// "예를 들면"(U-01·02, D-175): 처음엔 접고, "모르겠어요"를 새로 고르면 펼친다 — 뜻을 몰라 고른 경우 다시 생각할 거리
+// "예를 들면"(U-01·02·06, D-175·178): 아직 안 고른 카드와 "모르겠어요" 카드에만 둔다. 처음엔 접고,
+// "모르겠어요"를 새로 고르면 펼친다. "기대돼요"·"걱정돼요"는 이미 이해하고 고른 것이라 버튼을 숨기고 닫는다
 const terms = computed(() => cardTerms(props.card))
+const showMore = computed(() => props.pref === null || props.pref === 'unsure')
 const open = ref(false)
 watch(
   () => props.pref,
   (p, before) => {
     if (p === 'unsure' && before !== 'unsure') open.value = true
+    else if (p === 'want' || p === 'avoid') open.value = false
   },
 )
 const moreId = computed(() => `card-${props.card.id}-more`)
@@ -47,12 +50,19 @@ const moreId = computed(() => `card-${props.card.id}-more`)
     <p :id="descId" class="plain">{{ card.plain }}</p>
     <!-- "예를 들면"은 줄 왼쪽에 고정, NCS는 같은 줄 오른쪽. 펼친 내용은 이 줄 아래(버튼 자리가 움직이지 않게, 카드 높이 F-03 유지) -->
     <div class="meta-row">
-      <button type="button" class="more-toggle" :aria-expanded="open" :aria-controls="moreId" @click="open = !open">
+      <button
+        v-if="showMore"
+        type="button"
+        class="more-toggle"
+        :aria-expanded="open"
+        :aria-controls="moreId"
+        @click="open = !open"
+      >
         예를 들면
       </button>
       <p class="basis">{{ basis }}</p>
     </div>
-    <div v-show="open" :id="moreId" class="more-panel">
+    <div v-show="open && showMore" :id="moreId" class="more-panel">
       <ul class="examples">
         <li v-for="ex in card.examples" :key="ex">{{ ex }}</li>
       </ul>

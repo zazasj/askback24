@@ -4,7 +4,9 @@
  */
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import {
+  PRESET_A,
   cardGroup,
+  fillPresetA,
   goToCardsStep,
   heading,
   makeFirstQuestions,
@@ -13,6 +15,7 @@ import {
   pickRadio,
   questionItems,
   readClipboard,
+  showAllCards,
   waitFirstResults,
 } from './helpers'
 
@@ -87,4 +90,33 @@ test('U-05 ③ 더 알아볼 질문의 "복사" → 그 질문 문장이 클립�
   await page.evaluate(() => navigator.clipboard.writeText(''))
   await item.getByRole('button', { name: 'SQL 작성·쿼리 개선 질문 복사' }).click()
   await expect.poll(() => readClipboard(page)).toBe(text)
+})
+
+/** 카드 하나(카드 이름 제목과 그 카드 radiogroup을 함께 가진 가장 안쪽 상자) — "예를 들면"이 없는 카드도 찾는다 */
+function cardByName(page: Page, name: string): Locator {
+  return page
+    .locator('div')
+    .filter({ has: page.getByRole('heading', { name, exact: true }) })
+    .filter({ has: page.getByRole('radiogroup', { name, exact: true }) })
+    .last()
+}
+
+test('U-06 ② "기대돼요"·"걱정돼요" 카드에는 "예를 들면"이 없고, 옆 카드가 펼쳐져도 높이가 늘지 않는다', async ({ page }) => {
+  const base = await openPrep(page, 'oo')
+  await goToCardsStep(page, base)
+  await showAllCards(page)
+  const chosen = [...PRESET_A.expect, ...PRESET_A.worry]
+  const before = new Map<string, number>()
+  for (const name of chosen) before.set(name, (await cardByName(page, name).boundingBox())?.height ?? 0)
+
+  await fillPresetA(page)
+  for (const name of chosen) {
+    const card = cardByName(page, name)
+    await expect(card.getByRole('button', { name: '예를 들면' }), `${name}: 예를 들면 없음`).toHaveCount(0)
+    const h = (await card.boundingBox())?.height ?? 0
+    expect(h, `${name}: 처음 ${before.get(name)}px → ${h}px`).toBeLessThanOrEqual((before.get(name) ?? 0) + 2)
+  }
+  // 모르겠어요 카드는 펼쳐져 있다(U-02)
+  const unsure = cardByName(page, PRESET_A.unknown[0])
+  await expect(unsure.getByRole('button', { name: '예를 들면' })).toHaveAttribute('aria-expanded', 'true')
 })

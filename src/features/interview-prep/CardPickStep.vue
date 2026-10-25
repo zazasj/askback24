@@ -230,9 +230,11 @@ const experienceHint = computed(() => {
   color: var(--krds-light-color-text-basic);
 }
 
+/* 카드는 제 내용 높이만 쓴다(start). stretch면 옆 카드의 "예를 들면"이 펼쳐질 때 같은 줄 카드가 빈 채로 늘어난다(D-178) */
 .card-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 1.2rem;
 }
 
