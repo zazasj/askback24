@@ -35,9 +35,7 @@ watch(
     if (p === 'unsure' && before !== 'unsure') open.value = true
   },
 )
-function onToggle(e: Event): void {
-  open.value = (e.target as HTMLDetailsElement).open
-}
+const moreId = computed(() => `card-${props.card.id}-more`)
 </script>
 
 <template>
@@ -47,11 +45,14 @@ function onToggle(e: Event): void {
       <span v-if="tag" class="posting-tag">{{ tag }}</span>
     </div>
     <p :id="descId" class="plain">{{ card.plain }}</p>
-    <!-- NCS 줄과 "예를 들면"을 한 줄에 둬 카드 높이를 늘리지 않는다(F-03). 펼치면 줄 전체 폭으로 내려간다 -->
+    <!-- "예를 들면"은 줄 왼쪽에 고정, NCS는 같은 줄 오른쪽. 펼친 내용은 이 줄 아래(버튼 자리가 움직이지 않게, 카드 높이 F-03 유지) -->
     <div class="meta-row">
-    <p class="basis">{{ basis }}</p>
-    <details class="more" :open="open" @toggle="onToggle">
-      <summary class="more-summary">예를 들면</summary>
+      <button type="button" class="more-toggle" :aria-expanded="open" :aria-controls="moreId" @click="open = !open">
+        예를 들면
+      </button>
+      <p class="basis">{{ basis }}</p>
+    </div>
+    <div v-show="open" :id="moreId" class="more-panel">
       <ul class="examples">
         <li v-for="ex in card.examples" :key="ex">{{ ex }}</li>
       </ul>
@@ -61,7 +62,6 @@ function onToggle(e: Event): void {
           <dd>{{ t.def }}</dd>
         </div>
       </dl>
-    </details>
     </div>
     <div role="radiogroup" class="choices" :aria-labelledby="nameId" :aria-describedby="descId">
       <label v-for="p in PREFS" :key="p" class="choice" :class="`is-${p}`">
@@ -159,51 +159,52 @@ function onToggle(e: Event): void {
 
 .meta-row {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 0.2rem 0.8rem;
+  gap: 0.2rem 1.2rem;
 }
 
-.more {
+.meta-row .basis {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+}
+
+/* "예를 들면": 줄 왼쪽 고정. 접힌 상태는 NCS 줄과 같은 높이라 첫 화면 카드 수(F-03)를 지킨다 */
+.more-toggle {
+  display: inline-flex;
   flex: none;
-}
-
-.more[open] {
-  flex-basis: 100%;
-}
-
-/* "예를 들면": 접힌 상태는 NCS 줄 오른쪽 한 단어만 써서 첫 화면 카드 수(F-03)를 지킨다 */
-.more-summary {
-  /* inline-flex면 details 줄 높이(본문 1.6)를 따라 27px가 돼 카드가 커진다 — 블록 flex로 */
-  display: flex;
   align-items: center;
   gap: 0.4rem;
-  line-height: 1.4;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
   font-size: var(--krds-pc-font-size-body-xsmall);
   font-weight: 700;
+  line-height: 1.4;
   color: var(--krds-light-color-text-primary);
   cursor: pointer;
-  list-style: none;
 }
 
-.more-summary::-webkit-details-marker {
-  display: none;
-}
-
-.more-summary::before {
+.more-toggle::before {
   content: '›';
   display: inline-block;
   transition: transform 0.15s ease;
 }
 
-.more[open] > .more-summary::before {
+.more-toggle[aria-expanded='true']::before {
   transform: rotate(90deg);
 }
 
-.more-summary:focus-visible {
+.more-toggle:focus-visible {
   outline: 0.3rem solid var(--krds-light-color-border-primary);
   outline-offset: 0.2rem;
+}
+
+.more-panel {
+  display: grid;
+  gap: 0.2rem;
 }
 
 .examples {
@@ -317,7 +318,7 @@ function onToggle(e: Event): void {
     padding: 1.4rem;
   }
 
-  .more-summary {
+  .more-toggle {
     min-height: var(--rq-touch);
   }
 
