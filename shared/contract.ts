@@ -8,7 +8,7 @@
 export type Pref = 'want' | 'avoid' | 'unsure'
 /** 공고가 이 업무를 어떻게 다루는지(면접 전) */
 export type PostingState = 'explicit' | 'inferred' | 'vague' | 'absent'
-/** 1차·기술 면접 질문 유형: 충돌 확인 · 기회 확인 · 깊이 확인 · 충돌 예방 · 탐색 */
+/** 1차·기술 면접 질문 유형: 차이 확인(conflict) · 기회 확인 · 깊이 확인 · 미리 확인(prevent) · 탐색 */
 export type QType = 'conflict' | 'opportunity' | 'depth' | 'prevent' | 'explore'
 /** 최종 면접·처우 질문 유형: 다시 확인 · 신호 확인 · 범위 확인 · 처우 확인 · 기회 확인 */
 export type FinalQType = 'recheck' | 'signal' | 'scope' | 'offer' | 'opportunity'
@@ -76,6 +76,11 @@ export interface AnalysisCard {
   evidence?: Evidence
   /** 화면 설명 말풍선·근거 문장 */
   reason: string
+  /**
+   * 이 공고에서만 카드 질문 틀을 덮어쓴다(H1-11). 카드 틀이 이 공고 근거와 맞지 않을 때만 둔다
+   * (예: "물류센터 현장 지원"을 고객사 상주·파견 비율로 묻지 않게)
+   */
+  questions?: Partial<Record<QType, string>>
 }
 
 export type BlankTopic = 'sal' | 'workHours' | 'probation' | 'onsite'
@@ -103,6 +108,10 @@ export interface CompanySignal {
   text: string
   source: '실제' | '모의'
   source_name: string
+  /** 신호를 그대로 말하지 않고 돌려 묻는 질문 한 줄(H1-04 나) */
+  ask?: string
+  /** 기준 시점·해석 한계(H1-04 라, 국민연금) */
+  caveat?: string
 }
 
 // ── 업무 카드 (data/cards.backend.json) ────────────────────────
@@ -121,6 +130,13 @@ export interface CardDef {
   posting_signals: { explicit: string[]; implicit: string[] }
   /** 질문 틀. {anchor} 자리에 경험 한 줄이 붙는다 */
   questions: Partial<Record<QType, string>> & Record<'conflict' | 'opportunity' | 'depth' | 'explore', string>
+  /**
+   * 공고에 그 업무가 적혀 있을 때(explicit) 쓰는 질문 틀(H2-02). 있는지를 묻는 틀("…별도 담당이 있나요?")이
+   * 공고에 적힌 것을 다시 묻지 않게, 나눔·비중을 묻는다
+   */
+  questions_explicit?: Partial<Record<QType, string>>
+  /** 최종 "다시 확인"에서 1차 답이 모호했을 때 묻는 구체적인 예 질문(H1-13) */
+  example_question?: string
   interpretation: { mismatch_if_want: string; mismatch_if_avoid: string; good_if: string }
 }
 
@@ -167,6 +183,8 @@ export interface FinalBook {
   limits: { total: number; cards: number; offers: number }
   basis: {
     asked_clear: string
+    /** 걱정돼요 카드에 구체적인 답(H1-06): 구체적이어도 걱정이 풀렸는지는 알 수 없어 아직 모름 */
+    asked_clear_avoid: string
     asked_vague: string
     asked_unmarked: string
     not_asked: Record<NotAskedReason | 'unmarked', string>
@@ -177,6 +195,8 @@ export interface FinalBook {
   templates: {
     /** 다시 확인 질문의 앞말(1차 질문을 이어 받음). {label} 카드 이름 · {quote} 공고 근거 인용 */
     recheck_lead: { asked: string; asked_evidence: string; not_asked_evidence: string }
+    /** 1차 답이 모호했을 때 카드에 예 질문(example_question)이 없으면 쓰는 틀. {label} 카드 이름 */
+    recheck_example: string
     scope: { avoid: string; want: string }
     signal_lead: string
   }
@@ -261,7 +281,7 @@ export interface CardState {
   state: ReviewState
   /** 판정 근거. 비어 있으면 화면에 내보내지 않는다. 들은 답을 그대로 옮기지 않는다 */
   basis: string
-  /** ai = 공급자가 들은 답을 읽고 판정 · rule = 단순 규칙(구체적 → 확인됨, 모호·못 물음 → 아직 모름) */
+  /** ai = 공급자가 들은 답을 읽고 판정 · rule = 단순 규칙(구체적 → 확인됨 · 걱정한 카드는 아직 모름, 모호·못 물음 → 아직 모름) */
   source: 'ai' | 'rule'
   /** 최종 질문으로 이어 갔는지(확인됨이거나 개수 한도로 빠지면 false) */
   carry: boolean

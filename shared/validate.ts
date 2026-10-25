@@ -3,6 +3,7 @@
  * 기획안 "근거 없는 전제 0건" 지표를 지키는 마지막 관문이라 규칙을 넓게 잡지 않고 확실한 것만 본다.
  */
 import type { Evidence, Posting, PostingState } from './contract.js'
+import { CARDS } from './catalog.js'
 
 export type Issue =
   | 'empty'
@@ -10,6 +11,8 @@ export type Issue =
   | 'too_long'
   /** 근거 인용이 그 필드 원문에 글자 그대로 없음 */
   | 'evidence_not_in_posting'
+  /** 질문 문장 속 '…' 인용이 공고 원문에 글자 그대로 없음(카드 이름 인용은 예외, H2-06) */
+  | 'quote_not_in_posting'
   /** 공고에 없는 업무를 공고에 있는 것처럼 물음("공고에 … 있던데") */
   | 'absent_presupposition'
   /** 채용 질문에 넣지 않을 개인 사항·회사를 평가하는 말 */
@@ -43,6 +46,24 @@ export function quoteInPosting(posting: Posting, evidence: Evidence): boolean {
   return typeof value === 'string' && evidence.quote.trim() !== '' && value.includes(evidence.quote)
 }
 
+/** 질문 문장 속 따옴표 인용('…'·‘…’) */
+export function quotesIn(text: string): string[] {
+  return [...text.matchAll(/['‘]([^'‘’\n]+)['’]/g)].map((m) => (m[1] ?? '').trim()).filter(Boolean)
+}
+
+const CARD_LABELS: ReadonlySet<string> = new Set(CARDS.map((c) => c.label))
+
+/**
+ * 질문 문장에서 인용한 말이 공고 원문(어느 칸이든)에 글자 그대로 없는 것. 카드 이름("'고객사 상주 개발' 업무")은 공고 인용이 아니라 뺀다.
+ * D-075는 인용 검사를 단위 시험에만 두었지만, 실제 LLM이 지어낸 인용을 막으려고 validate에 넣는다(H2-06 ①)
+ */
+export function quotesNotInPosting(text: string, posting: Posting): string[] {
+  const source = Object.values(posting)
+    .filter((v): v is string => typeof v === 'string')
+    .join('\n')
+  return quotesIn(text).filter((q) => !CARD_LABELS.has(q) && !source.includes(q))
+}
+
 export function hasForbiddenWord(text: string): boolean {
   return FORBIDDEN_PATTERNS.some((re) => re.test(text))
 }
@@ -54,6 +75,7 @@ function commonIssues(text: string, evidence: Evidence | undefined, posting: Pos
   if (t.length < TEXT_MIN) issues.push('too_short')
   if (t.length > TEXT_MAX) issues.push('too_long')
   if (evidence && !quoteInPosting(posting, evidence)) issues.push('evidence_not_in_posting')
+  if (quotesNotInPosting(t, posting).length) issues.push('quote_not_in_posting')
   if (hasForbiddenWord(t)) issues.push('forbidden_word')
   return issues
 }

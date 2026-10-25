@@ -106,7 +106,7 @@ const experienceHint = computed(() => {
           <button type="button" class="btn btn-tertiary btn-sm" @click="openDemoTools">시연 도구 열기</button>
         </p>
       </div>
-      <!-- 카드가 어떤 직업의 일인지 공공 자료로 받친다(고용24 직업정보 직무 개요, data/real/job-webdev.json) -->
+      <!-- 카드가 어떤 직업의 일인지 공공 자료로 받친다(고용24 직업정보 직무 개요, data/real/job-info.json) -->
       <p v-if="JOB_INFO.summary_short" class="job-info">
         <span class="job-info-text">{{ JOB_INFO.summary_short }}</span>
         <span class="job-info-src">고용24 직업정보 · {{ JOB_INFO.job_name }} 직무 개요</span>
@@ -397,6 +397,16 @@ const experienceHint = computed(() => {
 
   .demo-hint .btn {
     flex: none;
+  }
+
+  /* 직업정보 개요는 휴대폰에서 두 줄까지만(카드가 덜 밀리게, H1-10) */
+  .job-info-text {
+    display: -webkit-box;
+    flex: 1 1 100%;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
 
   .experience {

@@ -6,7 +6,7 @@ import { createMockProvider, experienceSentence } from './providers/mock'
 import { createEnnoiaProvider } from './providers/ennoia'
 import type { Draft, FirstDraftInput, LlmProvider } from './providers/types'
 import { pickTop5 } from './rules'
-import { getAnalysis } from './catalog'
+import { ANALYSES, getAnalysis, getCard } from './catalog'
 
 const OO = 'K-MOCK-0001'
 const COMMERCE = 'K-MOCK-0002'
@@ -63,9 +63,12 @@ describe('API-04 가짜 공급자 → 응답 형식 그대로', () => {
     expect(v0.questions.map((q) => q.text)).not.toEqual(v1.questions.map((q) => q.text))
   })
 
-  it('S4-16 (주)△△커머스: 상주 질문은 충돌 예방이고 "공고에 고객사 상주" 전제가 없다', async () => {
+  // H2-07 ③(세진 승인 2026-10-25): 예시 A 그대로면 공고에 적힌 모르겠어요 카드(배포·테스트)가 앞서 상주 질문이 5개에 들지 않아
+  // 그 두 카드를 뺀 선택으로 본다(ACCEPTANCE S4-16)
+  it('S4-16 (주)△△커머스: 상주 질문은 미리 확인이고 "공고에 고객사 상주" 전제가 없다', async () => {
+    const picks = PRESETS.A.picks.filter((p) => !['BE09', 'BE11'].includes(p.card_id))
     for (const variant of [0, 1, 2]) {
-      const res = await generateFirst(reqA(COMMERCE), { provider: createMockProvider({ variant }) })
+      const res = await generateFirst({ ...reqA(COMMERCE), picks }, { provider: createMockProvider({ variant }) })
       expect(res.questions.every((q) => q.source === 'ai')).toBe(true)
       for (const q of res.questions) expect(q.text).not.toMatch(/공고에\s*고객사\s*상주/)
       const onsite = res.questions.filter((q) => q.text.includes('상주'))
@@ -276,5 +279,45 @@ describe('D-179 가짜 공급자 문장은 면접 비즈니스체', () => {
         }
       }
     }
+  })
+})
+
+describe('보류 의견 결정(2026-10-25) — 공고별 질문 틀·인용 검사', () => {
+  const run = (wantedAuthNo: string, key: 'A' | 'B', variant = 0) =>
+    generateFirst(
+      { mode: 'first', wantedAuthNo, picks: PRESETS[key].picks, experience: PRESETS[key].experience },
+      { provider: createMockProvider({ variant }) },
+    )
+
+  it('H2-06 ① 가짜 공급자 문장은 예시 A·B × 공고 7건 × variant 0·1에서 인용 검사에 걸리지 않는다(모두 AI 문장)', async () => {
+    for (const a of ANALYSES) {
+      for (const key of ['A', 'B'] as const) {
+        for (const variant of [0, 1]) {
+          const res = await run(a.wantedAuthNo, key, variant)
+          expect(res.questions.map((q) => q.source), `${key} ${a.wantedAuthNo} v${variant}`).toEqual(res.questions.map(() => 'ai'))
+        }
+      }
+    }
+  })
+
+  it('H2-02 (나) (주)◎◎헬스케어 × 예시 B: 공고에 적힌 화면 개발 겸업은 맡는지가 아니라 비중을 묻는다', async () => {
+    const res = await run('K-MOCK-0006', 'B')
+    const be13 = res.questions.find((q) => q.card_id === 'BE13')!
+    expect(be13.type).toBe('conflict')
+    expect(be13.text).toContain(getCard('BE13')!.questions_explicit!.conflict!)
+    expect(be13.text).not.toContain('별도 담당이 있나요')
+  })
+
+  it('H1-11 ① (주)◁◁로지스 고객사 상주(걱정돼요 × 모호)는 공고마다 덮어쓴 틀로 묻는다', async () => {
+    const res = await run('K-MOCK-0007', 'A')
+    const be15 = res.questions.find((q) => q.card_id === 'BE15')!
+    const own = getAnalysis('K-MOCK-0007')!.cards.find((c) => c.card_id === 'BE15')!.questions!.conflict!
+    expect(be15.text.endsWith(own), be15.text).toBe(true)
+    expect(be15.text).not.toMatch(/파견/)
+    const fallback = await generateFirst(
+      { mode: 'first', wantedAuthNo: 'K-MOCK-0007', picks: PRESETS.A.picks, experience: PRESETS.A.experience },
+      { provider: createMockProvider({ fail: true }) },
+    )
+    expect(fallback.questions.find((q) => q.card_id === 'BE15')?.text).toBe(own)
   })
 })

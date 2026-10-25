@@ -170,6 +170,13 @@ const NCS_LIMIT = '10'
  */
 const NCS_TRIES = 2
 const NCS_FIRST_UNIT: Record<string, number> = { BE08: 1 }
+/**
+ * 응답에 같은 이름이 있어도 뜻이 달라 팀 값을 쓰는 카드(찾지 않는다). BE09 는 응답의 "제품소프트웨어 패키징"이
+ * 배포용 설치 파일을 만드는 일이라 카드(배포·서버 운영)와 뜻이 달라 카드 능력단위에서도 뺐다(REVIEW-HOLD H2-11 ①)
+ */
+const NCS_TEAM_ONLY: Record<string, string> = {
+  BE09: "응답 2위 '제품소프트웨어 패키징'은 이름은 같지만 배포용 설치 파일을 만드는 일이라 카드(배포·서버 운영)와 뜻이 달라 쓰지 않고, 카드 능력단위에서도 뺀 팀 값을 씀(REVIEW-HOLD H2-11 ①)",
+}
 const spaceless = (s: string): string => s.replace(/\([^)]*\)/g, '').replace(/\s+/g, '')
 
 function ncsQueries(c: CardIn): string[] {
@@ -196,6 +203,11 @@ async function sectionNcs(): Promise<void> {
   const entries = []
   let matched = 0
   for (const c of cards) {
+    const teamOnly = NCS_TEAM_ONLY[c.id]
+    if (teamOnly) {
+      entries.push({ card_id: c.id, label: c.label, matched: false, basis: { how: teamOnly }, existing: c.ncs })
+      continue
+    }
     const existing = c.ncs.map((n) => n.unit)
     const tried: Array<{ query: string; response_count: number; top: string[] }> = []
     let hit: { query: string; field: string; pick: NonNullable<ReturnType<typeof pickNcs>> } | null = null
@@ -250,8 +262,9 @@ async function sectionNcs(): Promise<void> {
   })
 }
 
-// ── 직업정보(212D01) → job-webdev.json ────────────────────────────
-const JOB_CD = 'K000001106'
+// ── 직업정보(212D01) → job-info.json ─────────────────────────────
+// 공고 직종(133200 응용 소프트웨어 개발자)에 맞춘 직업. 코드는 웹개발자(K000001106) 상세 응답의 관련 직업(relJobList)에서 확인(H1-10)
+const JOB_CD = 'K000001176'
 
 async function sectionJob(): Promise<void> {
   const req: Req = { svc: '212D01', hint: `${JOB_CD}-dtl1`, params: { returnType: 'XML', target: 'JOBDTL', jobGb: '1', jobCd: JOB_CD, dtlGb: '1' } }
@@ -263,7 +276,7 @@ async function sectionJob(): Promise<void> {
   const sum = flat.jobSum ?? ''
   if (!sum) throw new Error('212D01 응답에 jobSum(직무 개요)이 없음')
   const pick = (k: string): string => flat[k] ?? ''
-  writeOut('job-webdev.json', {
+  writeOut('job-info.json', {
     source: '고용24 오픈API 직업정보(212D01, 직업 상세 dtlGb=1 요약)',
     fetched_on: fetchedOn,
     jobCd: pick('jobCd') || JOB_CD,
@@ -444,7 +457,7 @@ async function sectionGiants(): Promise<void> {
 // /about-ai 출처 표가 받은 날짜만 읽게(공통코드 파일은 커서 화면에 싣지 않는다)
 const SOURCE_FILES = [
   { id: 'duty', label: '직무정보', api: '215L01', file: 'ncs-cards.json' },
-  { id: 'job', label: '직업정보', api: '212D01', file: 'job-webdev.json' },
+  { id: 'job', label: '직업정보', api: '212D01', file: 'job-info.json' },
   { id: 'codes', label: '공통코드', api: '21L01', file: 'common-codes.json' },
   { id: 'giants', label: '강소기업', api: '216L01', file: 'small-giants-summary.json' },
 ] as const

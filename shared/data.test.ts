@@ -23,11 +23,32 @@ describe('업무 카드', () => {
   })
 
   it('QA-R1-01 질문 틀은 공고 내용을 말하지 않는다(어느 공고에나 쓰여서, 공고 인용은 앞말 몫)', () => {
-    for (const c of CARDS) for (const [t, text] of Object.entries(c.questions)) expect(text, `${c.id}.${t}`).not.toMatch(/공고/)
+    for (const c of CARDS) {
+      const all = { ...c.questions, ...Object.fromEntries(Object.entries(c.questions_explicit ?? {}).map(([t, v]) => [`explicit.${t}`, v])), example: c.example_question ?? '' }
+      for (const [t, text] of Object.entries(all)) expect(text, `${c.id}.${t}`).not.toMatch(/공고/)
+    }
+  })
+
+  it('H2-02 (나) 공고에 적힌 업무용 틀은 있는지가 아니라 나눔·비중을 묻는다(◎◎헬스케어 화면 개발 겸업 포함)', () => {
+    const be13 = getCard('BE13')!
+    expect(be13.questions_explicit?.conflict).toMatch(/비중|나뉘|나눠/)
+    expect(be13.questions_explicit?.conflict).not.toMatch(/별도 담당이 있나요/)
+    for (const c of CARDS) for (const [t, text] of Object.entries(c.questions_explicit ?? {})) expect(text, `${c.id}.${t}`).not.toMatch(/있나요\?$/)
+  })
+
+  it('H1-13 카드마다 최종 "다시 확인"에서 쓸 구체적인 예 질문이 있다', () => {
+    for (const c of CARDS) expect(c.example_question, c.id).toMatch(/예를 들어|예로|예가 있다면/)
+    expect(getCard('BE15')?.example_question).toMatch(/상주/)
+    expect(getCard('BE15')?.example_question).toMatch(/기간/)
+  })
+
+  it('H2-14 ② 고객사 상주 틀에 공고에 없는 법적 용어 "파견"을 쓰지 않는다', () => {
+    for (const [t, text] of Object.entries(getCard('BE15')!.questions)) expect(text, t).not.toContain('파견')
+    expect(getCard('BE15')?.questions.conflict).toContain('상주')
   })
 
   it('유형 라벨 5종', () => {
-    expect(Object.values(CARD_BOOK.type_labels)).toEqual(['충돌 확인', '기회 확인', '깊이 확인', '충돌 예방', '탐색'])
+    expect(Object.values(CARD_BOOK.type_labels)).toEqual(['차이 확인', '기회 확인', '깊이 확인', '미리 확인', '탐색'])
   })
 
   it('유형마다 뜻 한 줄(1차·최종): 해요체, 1차 뜻에는 처우 말이 없고 회사를 평가하는 말이 없다', () => {
@@ -103,6 +124,54 @@ describe('공고·분석·신호', () => {
         expect(c.reason, where).not.toMatch(LOCATION_ONLY)
         expect(c.reason, where).toMatch(/요(?:\([^)]*\))?\.?$/)
         expect(c.reason, where).not.toMatch(/팀이 작|나쁜|위험|블랙|악덕/)
+      }
+    }
+  })
+
+  it('H2-07 ② 분석 설명은 "…를 유추했어요"처럼 과정만 말하지 않고 확인해 볼 이유를 말한다', () => {
+    for (const a of ANALYSES) for (const c of a.cards) expect(c.reason, `${a.wantedAuthNo} ${c.card_id}`).not.toMatch(/유추했어요$/)
+  })
+
+  it('H2-02 (가) (주)△△커머스 분석에 "혼자 맡는 백엔드"(BE17) 연결이 없다("백엔드 개발자 2명"은 혼자가 아님)', () => {
+    expect(ANALYSES.find((a) => a.wantedAuthNo === 'K-MOCK-0002')?.cards.map((c) => c.card_id)).not.toContain('BE17')
+  })
+
+  it('H1-11 (주)◁◁로지스 고객사 상주는 근거(물류센터 현장 지원)에 맞춘 질문 틀, (주)☆☆페이 보안은 "전자금융 관련 보안 지식 보유자" 근거', () => {
+    const logis = ANALYSES.find((a) => a.wantedAuthNo === 'K-MOCK-0007')!
+    const be15 = logis.cards.find((c) => c.card_id === 'BE15')!
+    expect(be15.questions?.conflict).toContain('물류센터 현장 지원')
+    expect(be15.questions?.conflict).not.toMatch(/상주|파견/)
+    expect(logis.cards.find((c) => c.card_id === 'BE08')?.reason).toContain('주말 근무에 시스템 대응도 들어가는지 확인해 볼 만해요')
+    const pay = ANALYSES.find((a) => a.wantedAuthNo === 'K-MOCK-0004')!
+    expect(pay.cards.find((c) => c.card_id === 'BE16')?.evidence?.quote).toBe('전자금융 관련 보안 지식 보유자')
+  })
+
+  it('H2-09 임금을 숫자 범위로 적은 공고는 "모호한 표현"이 아니라 "확인 필요"', () => {
+    for (const a of ANALYSES) {
+      const sal = getPosting(a.wantedAuthNo)!.sal
+      const blank = a.blanks.find((b) => b.topic === 'sal')
+      if (/\d/.test(sal)) expect(blank?.status, a.wantedAuthNo).toBe('check')
+    }
+  })
+
+  it('H2-10 ① 근무 시간이 공고에 없으면 처우 질문이 바쁜 시기·연장근로를 전제하지 않고 출퇴근·주 근로시간부터 묻는다', () => {
+    for (const a of ANALYSES) {
+      const b = a.blanks.find((x) => x.topic === 'workHours' && x.status === 'missing')
+      if (!b) continue
+      expect(b.question, a.wantedAuthNo).toMatch(/^근무 시간이 공고에 적혀 있지 않은데/)
+      expect(b.question, a.wantedAuthNo).toContain('출퇴근 시간과 주 근로시간')
+      expect(b.question, a.wantedAuthNo).not.toMatch(/바쁜 시기|마감 전/)
+    }
+  })
+
+  it('H1-04 회사 참고 정보마다 돌려 묻는 질문 한 줄, 국민연금 줄에는 기준 시점과 해석 한계', () => {
+    for (const p of POSTINGS) {
+      for (const sig of getSignals(p.wantedAuthNo)) {
+        expect(sig.ask, `${p.wantedAuthNo} ${sig.text}`).toMatch(/\?$/)
+        if (sig.source_name === '국민연금 사업장 가입자 현황') {
+          expect(sig.caveat).toMatch(/\d{4}년 \d{1,2}월.*기준/)
+          expect(sig.caveat).toContain('가입자 수 기준이라 실제와 다를 수 있어요')
+        }
       }
     }
   })

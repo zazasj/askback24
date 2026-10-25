@@ -23,7 +23,7 @@ defineProps<{
   evidenceTo?: RouteLocationRaw
   watchOut: string
   goodSign: string
-  /** 유형 칩의 뜻 "충돌 확인: 걱정한 일이 …" — 펼침 첫 줄 */
+  /** 유형 칩의 뜻 "차이 확인: 걱정한 일이 …" — 펼침 첫 줄 */
   typeNote?: string
 }>()
 

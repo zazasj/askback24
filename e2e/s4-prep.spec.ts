@@ -64,6 +64,7 @@ import {
   stepList,
   stepText,
   stepUrl,
+  switchMode,
   toast,
   waitFirstResults,
 } from './helpers'
@@ -324,8 +325,20 @@ test('S4-15 1차 결과에는 처우 질문·"처우 확인" 칩이 없고 "1차
   await expect(page.getByRole('button', { name: '면접 다녀왔어요' })).toBeVisible()
 })
 
-test('S4-16 (주)△△커머스 + "1차·기술 면접" + 예시 A: "공고에 고객사 상주" 문구 없음, 상주 질문 유형은 "충돌 예방"', async ({ page }) => {
-  await makeFirstQuestions(page, 'commerce')
+// H1-18·H2-07 ③(세진 승인 2026-10-25): 칩 이름 "미리 확인". 예시 A 그대로면 공고에 적힌 "모르겠어요" 업무(배포·테스트, 탐색 3.5)가
+// 공고에 없는 걱정(미리 확인 4)보다 앞서 상주 질문이 5개에 들지 않으므로, 그 두 카드의 선택을 풀고 만든다
+test('S4-16 (주)△△커머스 + "1차·기술 면접" + 예시 A(공고에 적힌 모르겠어요 카드 둘 풀기): "공고에 고객사 상주" 문구 없음, 상주 질문 유형은 "미리 확인"', async ({ page }) => {
+  const base = await openPrep(page, 'commerce')
+  await switchMode(page, MODE_FIRST)
+  await goToCardsStep(page, base)
+  await fillPresetA(page)
+  await showAllCards(page)
+  for (const name of ['배포·서버 운영', '테스트·품질 검증']) {
+    await pickRadio(cardGroup(page, name), '모르겠어요')
+    for (const c of CHOICES) await expect(cardGroup(page, name).getByRole('radio', { name: c }), `${name} 선택 풀림`).not.toBeChecked()
+  }
+  await makeQuestionsButton(page).click()
+  await waitFirstResults(page)
   await expect(modeRadio(page, MODE_FIRST)).toBeChecked()
   const items = questionItems(page)
   await expect(items).toHaveCount(5)
@@ -336,7 +349,7 @@ test('S4-16 (주)△△커머스 + "1차·기술 면접" + 예시 A: "공고에 
   const types = await itemTypes(items, FIRST_TYPES)
   const onsite = sentences.map((s, i) => (s.includes('상주') ? i : -1)).filter((i) => i >= 0)
   expect(onsite.length, `상주 질문이 있어야 한다: ${sentences.join(' / ')}`).toBeGreaterThan(0)
-  for (const i of onsite) expect(types[i], `${i + 1}번(상주) 질문 유형`).toBe('충돌 예방')
+  for (const i of onsite) expect(types[i], `${i + 1}번(상주) 질문 유형`).toBe('미리 확인')
 })
 
 test('S4-17 ?apiFail=1 → "미리 검수한 문장" 안내, 질문 5개마다 "검수 문장" 라벨, 유형 순서는 S4-13과 같다', async ({ page }) => {

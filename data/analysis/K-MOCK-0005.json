@@ -29,7 +29,7 @@
       "card_id": "BE13",
       "state": "inferred",
       "evidence": { "field": "pfCond", "quote": "Java·JSP 개발 가능자" },
-      "reason": "우대조건 'Java·JSP 개발 가능자'에서 화면(JSP) 개발도 함께 맡는다고 유추했어요"
+      "reason": "우대조건에 JSP 개발이 있어, 화면(JSP) 개발도 함께 맡는지와 그 비중을 확인해 볼 만해요"
     }
   ],
   "blanks": [
@@ -46,7 +46,7 @@
       "status": "missing",
       "label": "근로시간",
       "basis": "공고에 근무 시간이 없어요",
-      "question": "프로젝트 마감 전에는 근무 시간이 어떻게 되고, 연장근로는 월 평균 어느 정도인가요?"
+      "question": "근무 시간이 공고에 적혀 있지 않은데, 출퇴근 시간과 주 근로시간은 어떻게 되고 연장근로가 있다면 월 평균 어느 정도인가요?"
     },
     {
       "topic": "onsite",

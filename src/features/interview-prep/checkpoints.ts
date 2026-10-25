@@ -97,6 +97,7 @@ export function shortReason(title: string, detail: string, quote: string): strin
 
 /**
  * 먼저 볼 곳: 확인할 점 순서(모호한 업무 → 근무 방식·환경 → …)에서 공고 형광펜으로 갈 수 있는 앞의 n개.
+ * 공고에 적힌 것(모호한 표현·공고에 있음)을 먼저 쓰고, 공고에서 유추한 항목은 모자랄 때만 쓴다(H2-07 ①).
  * spotOf 는 카드 → 화면에 칠한 형광펜(겹친 인용은 앞의 것만 칠해지므로 화면 기준으로 찾는다).
  */
 export function firstLooks(
@@ -105,7 +106,9 @@ export function firstLooks(
   n = 2,
 ): FirstLook[] {
   const out: FirstLook[] = []
-  for (const p of points) {
+  const inferred = POSTING_TAGS.inferred
+  const ordered = [...points.filter((p) => p.tag !== inferred), ...points.filter((p) => p.tag === inferred)]
+  for (const p of ordered) {
     if (out.length >= n) break
     if (!p.hasMark || !p.cardId) continue
     const spot = spotOf(p.cardId)

@@ -2,7 +2,7 @@
   "source": "고용24 오픈API 직무정보(215L01, 표준직무기술서)",
   "fetched_on": "2026-10-25",
   "method": "카드에 팀이 붙여 둔 NCS 능력단위명에서 띄어쓰기를 뺀 말을 jobCont 로 넣어 상위 10개를 받고(설명 문장은 띄어쓰기 때문에 빈 응답), 기존 능력단위명과 같거나 가장 가까운 것을 고름. 카드마다 능력단위 2개까지 차례로 찾음. unit 은 응답 값 그대로(묶음 칸 지식·기술·태도는 뺌). 못 찾으면 matched: false 이고 existing(팀이 정리한 값)을 씀",
-  "matched_count": 6,
+  "matched_count": 5,
   "cards": [
     {
       "card_id": "BE01",
@@ -226,28 +226,20 @@
     {
       "card_id": "BE09",
       "label": "배포·서버 운영",
-      "matched": true,
-      "query": "제품소프트웨어패키징",
+      "matched": false,
       "basis": {
-        "rank": 2,
-        "name": "제품소프트웨어 패키징",
-        "compared_with": "제품소프트웨어 패키징",
-        "how": "기존 능력단위명과 같은 이름"
+        "how": "응답 2위 '제품소프트웨어 패키징'은 이름은 같지만 배포용 설치 파일을 만드는 일이라 카드(배포·서버 운영)와 뜻이 달라 쓰지 않고, 카드 능력단위에서도 뺀 팀 값을 씀(REVIEW-HOLD H2-11 ①)"
       },
-      "unit": {
-        "ablt_def": "제품소프트웨어 패키징이란 개발이 완료된 제품소프트웨어를 고객에게 전달하기 위한 형태로 패키징하고, 설치와 사용에 필요한 제반 절차 및 환경등 전체 내용을 포함하는 매뉴얼을 작성하며, 제품소프트웨어에 대한 패치 개발과 업그레이드를 위해 버전관리를 수행하는 능력이다.",
-        "job_scfn": "정보기술개발",
-        "job_mcn": "정보기술",
-        "centerLabel": "제품소프트웨어 패키징",
-        "centerURL": "http://lod.work.go.kr/task/업무/_2001020209",
-        "job_mlsf_cd": "http://lod.work.go.kr/task/중분류/_2001",
-        "job_sdvn": "응용SW엔지니어링",
-        "job_scla_cd": "http://lod.work.go.kr/task/소분류/_200102",
-        "job_lrcl_cd": "http://lod.work.go.kr/task/대분류/_20",
-        "job_lcfn": "정보통신",
-        "job_sdvn_cd": "http://lod.work.go.kr/task/직무/_20010202",
-        "ablt_unit": "2001020209"
-      }
+      "existing": [
+        {
+          "subcategory": "응용SW엔지니어링",
+          "unit": "정보시스템 이행"
+        },
+        {
+          "subcategory": "IT시스템관리",
+          "unit": "응용SW 운영관리"
+        }
+      ]
     },
     {
       "card_id": "BE10",

@@ -64,7 +64,8 @@ test('U-03 ③ 예시 A × OO소프트: 질문 5개 아래 "더 알아볼 질문
   const list = page.getByRole('list', { name: '더 알아볼 질문 목록' })
   const items = list.getByRole('listitem')
   await expect(items).toHaveCount(3)
-  const expected = ['SQL 작성·쿼리 개선', '요구사항 협의', '개발 문서·산출물 작성']
+  // H2-07 ③(세진 승인 2026-10-25): 공고에 적힌 카드(산출물 작성)가 유추한 카드(SQL·요구사항 협의)보다 먼저
+  const expected = ['개발 문서·산출물 작성', 'SQL 작성·쿼리 개선', '요구사항 협의']
   for (const [i, name] of expected.entries()) {
     await expect(items.nth(i)).toContainText(name)
     await expect(items.nth(i)).toContainText('탐색')
@@ -88,7 +89,7 @@ test('U-05 ③ 더 알아볼 질문의 "복사" → 그 질문 문장이 클립�
   const item = page.getByRole('list', { name: '더 알아볼 질문 목록' }).getByRole('listitem').first()
   const text = (await item.locator('p').nth(1).innerText()).trim()
   await page.evaluate(() => navigator.clipboard.writeText(''))
-  await item.getByRole('button', { name: 'SQL 작성·쿼리 개선 질문 복사' }).click()
+  await item.getByRole('button', { name: '개발 문서·산출물 작성 질문 복사' }).click()
   await expect.poll(() => readClipboard(page)).toBe(text)
 })
 

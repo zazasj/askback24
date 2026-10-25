@@ -45,10 +45,10 @@ export const FINAL_STEPS = ['공고 확인', '1차 면접 정리', '최종 질�
 export const LOADING_TEXTS = ['공고 근거 확인', '질문 순서 정하기', 'AI가 문장 쓰는 중'] as const
 
 export const CHOICES = ['기대돼요', '걱정돼요', '모르겠어요'] as const
-export const FIRST_TYPES = ['충돌 확인', '기회 확인', '깊이 확인', '충돌 예방', '탐색'] as const
+export const FIRST_TYPES = ['차이 확인', '기회 확인', '깊이 확인', '미리 확인', '탐색'] as const
 export const FINAL_TYPES = ['다시 확인', '신호 확인', '범위 확인', '처우 확인', '기회 확인'] as const
 /** S4-13·S4-17: 예시 구직자 A × (주)OO소프트 1차 질문 유형 순서 */
-export const FIRST_ORDER_A_OO = ['충돌 확인', '충돌 확인', '기회 확인', '기회 확인', '깊이 확인']
+export const FIRST_ORDER_A_OO = ['차이 확인', '차이 확인', '기회 확인', '기회 확인', '깊이 확인']
 
 export const PRESET_A = {
   expect: ['신규 API 개발', '서비스 구조 설계', 'DB 테이블 설계'],

@@ -28,8 +28,8 @@
     {
       "card_id": "BE16",
       "state": "inferred",
-      "evidence": { "field": "pfCond", "quote": "금융권 프로젝트 경험자" },
-      "reason": "우대조건 '금융권 프로젝트 경험자'에서 보안 점검 업무를 유추했어요"
+      "evidence": { "field": "jobCont", "quote": "전자금융 관련 보안 지식 보유자" },
+      "reason": "우대사항에 전자금융 보안 지식이 있어, 보안 점검이나 취약점 조치를 개발자가 얼마나 맡는지 확인해 볼 만해요"
     }
   ],
   "blanks": [

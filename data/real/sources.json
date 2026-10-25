@@ -12,7 +12,7 @@
       "id": "job",
       "label": "직업정보",
       "api": "212D01",
-      "file": "job-webdev.json",
+      "file": "job-info.json",
       "fetched_on": "2026-10-25"
     },
     {

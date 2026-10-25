@@ -36,19 +36,19 @@ describe('DATA-01 업무 카드 NCS(직무정보 215L01)', () => {
     }
   })
 
-  it('② 카드의 NCS 줄: 찾은 카드는 응답 이름, 못 찾은 카드는 팀이 정리한 값 + "(팀 정리)", NCS 없는 카드는 근무 방식 카드', () => {
+  it('② 카드의 NCS 줄: 찾은 카드는 "NCS · 응답 이름", 못 찾은 카드는 "NCS 참고 · 팀이 고른 값"(H2-11 ④), NCS 없는 카드는 근무 방식 카드', () => {
     for (const c of CARDS) {
       const e = NCS_CARDS.cards.find((x) => x.card_id === c.id)
       if (!e) expect(ncsLine(c), c.id).toBe('근무 방식·환경 카드')
       else if (e.matched) expect(ncsLine(c), c.id).toBe(`NCS · ${e.unit.centerLabel}`)
-      else expect(ncsLine(c), c.id).toBe(`NCS · ${e.existing.map((n) => n.unit).join(', ')} (팀 정리)`)
+      else expect(ncsLine(c), c.id).toBe(`NCS 참고 · ${e.existing.map((n) => n.unit).join(', ')}`)
     }
   })
 })
 
-describe('DATA-02 웹개발자 직무 개요(직업정보 212D01)', () => {
+describe('DATA-02 응용소프트웨어개발자 직무 개요(직업정보 212D01, H1-10)', () => {
   it('짧은 개요는 받은 개요의 앞부분 그대로다', () => {
-    expect(JOB_INFO.jobCd).toBe('K000001106')
+    expect(JOB_INFO.jobCd).toBe('K000001176')
     expect(JOB_INFO.summary_short.length).toBeGreaterThanOrEqual(10)
     expect(JOB_INFO.summary.replace(/\s+/g, ' ').startsWith(JOB_INFO.summary_short)).toBe(true)
   })

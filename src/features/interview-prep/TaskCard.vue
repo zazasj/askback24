@@ -6,7 +6,7 @@
 import { computed, ref, watch } from 'vue'
 import { CARD_BOOK } from '@shared/catalog'
 import type { CardDef, Pref } from '@shared/contract'
-import { ncsLine } from '@/realData'
+import { ncsDefinition, ncsLine } from '@/realData'
 import { cardTerms } from './glossary'
 import { PREFS } from './picks'
 
@@ -25,6 +25,8 @@ const nameId = computed(() => `card-${props.card.id}-name`)
 const descId = computed(() => `card-${props.card.id}-desc`)
 // 고용24 직무정보에서 찾은 능력단위명(못 찾은 카드는 팀이 정리한 값) — data/real/ncs-cards.json
 const basis = computed(() => ncsLine(props.card))
+// 응답에서 찾은 능력단위의 정의 한 문장(H2-11 ②). 첫 화면 카드 수(F-03)를 지키려고 "예를 들면" 안에 작게 둔다
+const definition = computed(() => ncsDefinition(props.card))
 
 // "예를 들면"(U-01·02·06, D-175·178): 아직 안 고른 카드와 "모르겠어요" 카드에만 둔다. 처음엔 접고,
 // "모르겠어요"를 새로 고르면 펼친다. "기대돼요"·"걱정돼요"는 이미 이해하고 고른 것이라 버튼을 숨기고 닫는다
@@ -72,6 +74,7 @@ const moreId = computed(() => `card-${props.card.id}-more`)
           <dd>{{ t.def }}</dd>
         </div>
       </dl>
+      <p v-if="definition" class="ncs-def">능력단위 정의(고용24 직무정보) · {{ definition }}</p>
     </div>
     <div role="radiogroup" class="choices" :aria-labelledby="nameId" :aria-describedby="descId">
       <label v-for="p in PREFS" :key="p" class="choice" :class="`is-${p}`">
@@ -249,6 +252,13 @@ const moreId = computed(() => `card-${props.card.id}-more`)
 
 .term dd {
   margin: 0;
+  color: var(--krds-light-color-text-subtle);
+}
+
+.ncs-def {
+  margin-top: 0.4rem;
+  font-size: var(--krds-pc-font-size-body-xsmall);
+  line-height: 1.5;
   color: var(--krds-light-color-text-subtle);
 }
 

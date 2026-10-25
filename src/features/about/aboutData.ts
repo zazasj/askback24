@@ -5,7 +5,7 @@
 import { ANALYSES, CARDS, POSTINGS, getPosting, getSignals } from '@shared/catalog'
 import type { CompanySignal } from '@shared/contract'
 import { quoteInPosting } from '@shared/validate'
-import { NCS_CARDS, SMALL_GIANTS, TEAM_NCS_MARK, apiOf, fetchedOn, type RealSourceId } from '@/realData'
+import { NCS_CARDS, SMALL_GIANTS, TEAM_NCS_LABEL, apiOf, fetchedOn, type RealSourceId } from '@/realData'
 
 export interface AuditNumbers {
   cards: number
@@ -63,7 +63,7 @@ export function giantsNote(): string {
   const years = [...new Set(g.by_year.map((y) => y.year))].join('·')
   return (
     `전국 ${num(g.counted)}건(응답 ${num(g.total)}건 중 겹친 ${num(g.total - g.counted)}건 뺌, 회사 ${num(g.counted_companies)}곳, ${years}년 선정) ` +
-    `중 ${g.ict.label} ${num(g.ict.count)}건, 인증 종류 ${g.by_brand.length}가지. 시연 회사는 가상이라 회사별로는 쓰지 않아요.`
+    `중 ${g.ict.label} ${num(g.ict.count)}건, 강소기업 구분(인증·선정 등) ${g.by_brand.length}가지. 시연 회사는 가상이라 회사별로는 쓰지 않아요.`
   )
 }
 
@@ -77,11 +77,12 @@ function realApiRows(): SourceRow[] {
       origin: openApi('duty', '직무정보'),
       source: '실제',
       // 파일 경로는 화면에서 열 수 없어 README에만 둔다. API가 카드를 이어 준 것이 아니라 팀이 고른 이름으로 찾은 것이다(A2-12)
-      note: `NCS 카드 ${ncsCards}개마다 팀이 고른 능력단위명으로 직무정보 API를 찾아, 같은 이름이 나온 ${matched}개는 응답 값을 그대로 보여요. 나머지 ${ncsCards - matched}개는 같은 이름이 나오지 않아 팀이 정리한 값이라 카드에 "${TEAM_NCS_MARK.trim()}"를 붙였어요.`,
+      // 응답 값과 팀 값을 한 줄 "실제"로 묶지 않고 나눈다(H1-09 ①). 팀 값 줄은 teamNcsRow
+      note: `NCS 카드 ${ncsCards}개마다 팀이 고른 능력단위명으로 직무정보 API를 찾아, 같은 이름이 나온 ${matched}개는 응답 값을 그대로 보여요. 능력단위 정의는 카드의 "예를 들면"에 있어요.`,
       fetched: fetchedOn('duty'),
     },
     {
-      data: '웹개발자 직무 개요',
+      data: '응용 소프트웨어 개발자 직무 개요',
       origin: openApi('job', '직업정보'),
       source: '실제',
       note: '"내 기대·걱정" 단계 맨 위 한 줄이에요.',
@@ -105,14 +106,26 @@ function realApiRows(): SourceRow[] {
   return rows.filter((r) => r.fetched)
 }
 
-/** 데이터 출처 표: 업무 카드 · 고용24 오픈API 4종 · 공고 · 회사 신호(출처별 한 줄, "실제" 먼저) · 김00 이력서 */
+/** 직무정보 응답에서 같은 이름이 나오지 않았거나 뜻이 달라(H2-11 ①) 팀이 고른 NCS 값 — "모의"(H1-09 ①) */
+function teamNcsRow(): SourceRow {
+  const team = NCS_CARDS.cards.filter((c) => !c.matched).length
+  return {
+    data: '업무 카드 NCS 참고 표시',
+    origin: 'NCS 국가직무능력표준 능력단위(팀이 고른 이름)',
+    source: '모의',
+    note: `나머지 ${team}개는 응답에서 같은 이름이 나오지 않았거나 뜻이 달라 팀이 고른 값이라 카드에 "${TEAM_NCS_LABEL}"로 보여요.`,
+    fetched: '',
+  }
+}
+
+/** 데이터 출처 표: 업무 카드 · 고용24 오픈API 4종 · NCS 팀 값 · 공고 · 회사 참고 정보(출처별 한 줄, "실제" 먼저) · 김00 이력서 */
 export function sourceRows(): SourceRow[] {
   const signals = new Map<string, CompanySignal['source']>()
   for (const p of POSTINGS) for (const s of getSignals(p.wantedAuthNo)) if (!signals.has(s.source_name)) signals.set(s.source_name, s.source)
   const signalRows = [...signals]
     .sort((a, b) => (a[1] === b[1] ? 0 : a[1] === '실제' ? -1 : 1))
     .map(([origin, source]) => ({
-      data: '회사 신호',
+      data: '회사 참고 정보',
       origin,
       source,
       note: SIGNAL_NOTES[origin] ?? (source === '실제' ? REAL_SIGNAL_NOTE : MOCK_SIGNAL_NOTE),
@@ -122,11 +135,13 @@ export function sourceRows(): SourceRow[] {
     {
       data: `업무 카드 ${CARDS.length}개`,
       origin: 'NCS 국가직무능력표준 능력단위, 한국직업사전(웹프로그래머)',
-      source: '실제',
-      note: '공공 자료를 바탕으로 팀이 백엔드 업무를 나눠 정리했어요.',
+      // 업무를 나눈 것은 팀이라 "모의"(H1-09 ②)
+      source: '모의',
+      note: '공공 자료를 참고해 팀이 나눈 업무예요.',
       fetched: '',
     },
     ...realApiRows(),
+    teamNcsRow(),
     {
       data: '채용 공고',
       origin: '고용24 채용정보 항목 이름(직무내용·우대조건·임금·근무시간 등)',

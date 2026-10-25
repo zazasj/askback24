@@ -23,18 +23,12 @@
       "card_id": "BE04",
       "state": "inferred",
       "evidence": { "field": "pfCond", "quote": "주문 데이터 처리 경험" },
-      "reason": "우대조건 '주문 데이터 처리 경험'에서 쿼리 작성 업무를 유추했어요"
+      "reason": "우대조건에 주문 데이터 처리 경험이 있어, 주문 데이터를 다루는 쿼리 작업을 신입이 얼마나 맡는지 확인해 볼 만해요"
     },
     {
       "card_id": "BE08",
       "state": "inferred",
       "reason": "공고에 장애 대응 이야기는 없어요. 쇼핑몰은 밤에도 주문을 받아 장애 대응을 맡게 될 수 있어요(업종에서 유추)"
-    },
-    {
-      "card_id": "BE17",
-      "state": "inferred",
-      "evidence": { "field": "jobCont", "quote": "현재 백엔드 개발자 2명" },
-      "reason": "백엔드 개발자가 2명이라, 둘이 어떻게 나눠 맡고 신입은 누구에게 배우는지 확인해 볼 만해요"
     }
   ],
   "blanks": [

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { ANALYSES, CARDS, FINAL_BOOK, getPosting } from './catalog'
+import { ANALYSES, CARDS, FINAL_BOOK, POSTINGS, getPosting, getSignals } from './catalog'
 import type { Posting, PostingState, QType } from './contract'
 import { classify, questionTemplate } from './rules'
-import { TEXT_MAX, checkFinalQuestion, checkFirstQuestion, hasForbiddenWord, quoteInPosting } from './validate'
+import { TEXT_MAX, checkFinalQuestion, checkFirstQuestion, hasForbiddenWord, quoteInPosting, quotesNotInPosting } from './validate'
 
 function postingOf(id: string): Posting {
   const p = getPosting(id)
@@ -36,6 +36,25 @@ describe('API-03 근거 인용', () => {
       for (const c of a.cards) if (c.evidence) expect(quoteInPosting(p, c.evidence), `${a.wantedAuthNo} ${c.card_id}`).toBe(true)
       for (const b of a.blanks) if (b.evidence) expect(quoteInPosting(p, b.evidence), `${a.wantedAuthNo} ${b.topic}`).toBe(true)
     }
+  })
+})
+
+// H2-06 ①(세진 승인 2026-10-25): D-075는 인용 검사를 단위 시험에만 두었지만 실제 LLM이 지어낸 인용을 막으려고 validate에 넣는다
+describe('API-03 질문 문장 속 따옴표 인용(H2-06 ①)', () => {
+  it("API-03 문장 속 '…' 인용이 공고 원문에 글자 그대로 없으면 탈락(1차·최종 모두)", () => {
+    const made = "공고에 '야간 당직 필수'라는 조건이 있어 여쭙겠습니다. 당번은 한 달에 몇 번인가요?"
+    expect(quotesNotInPosting(made, OO)).toEqual(['야간 당직 필수'])
+    expect(checkFirstQuestion({ text: made, state: 'explicit' }, OO)).toContain('quote_not_in_posting')
+    expect(checkFinalQuestion({ text: made }, OO)).toContain('quote_not_in_posting')
+    // 한 글자만 달라도 탈락
+    expect(checkFirstQuestion({ text: "공고의 '기타 업무지원' 범위가 궁금합니다. 어디까지 포함되나요?", state: 'vague' }, OO)).toContain('quote_not_in_posting')
+  })
+
+  it('원문에 있는 인용(어느 칸이든)과 카드 이름 인용은 통과', () => {
+    expect(checkFirstQuestion({ text: "공고에 적힌 '기타 업무 지원'에 어떤 업무까지 포함되는지 여쭙고 싶습니다.", state: 'vague' }, OO)).toEqual([])
+    expect(checkFirstQuestion({ text: "공고에 '고객사 상주 가능자'라는 조건이 있어 여쭙겠습니다. 비율은 어느 정도인가요?", state: 'explicit' }, OO)).toEqual([])
+    expect(checkFinalQuestion({ text: "혹시 함께하게 된다면 '장애 대응·온콜' 업무도 맡게 될 수 있는지 여쭙고 싶습니다." }, OO)).toEqual([])
+    expect(quotesNotInPosting('따옴표가 없는 질문은 그대로 통과합니다. 비중은 어느 정도인가요?', OO)).toEqual([])
   })
 })
 
@@ -103,18 +122,33 @@ describe('검수 틀은 검사를 모두 통과한다(대체 문장이 다시 �
   const STATES: PostingState[] = ['explicit', 'inferred', 'vague', 'absent']
   const anchor = '인턴 때 FastAPI로 API를 설계부터 배포까지 맡아 봤는데, '
 
-  it('카드 17개 × 쓰일 수 있는 모든 (선호 × 공고 상태) 조합', () => {
+  it('카드 17개 × 쓰일 수 있는 모든 (선호 × 공고 상태) 조합(공고에 적힌 업무용 틀 포함, H2-02)', () => {
     for (const card of CARDS) {
       for (const pref of ['want', 'avoid', 'unsure'] as const) {
         for (const state of STATES) {
           const hit = classify(pref, state, false)
           if (!hit) continue
           const type: QType = hit.type
-          const text = questionTemplate(card, type).replace('{anchor}', pref === 'want' ? anchor : '')
+          const text = questionTemplate(card, type, { state }).replace('{anchor}', pref === 'want' ? anchor : '')
           expect(checkFirstQuestion({ text, state }, OO), `${card.id} ${pref} × ${state} = ${type}`).toEqual([])
         }
       }
     }
+  })
+
+  it('공고마다 덮어쓴 틀(H1-11)과 최종 예 질문(H1-13)도 그 공고에서 검사를 통과한다', () => {
+    let seen = 0
+    for (const a of ANALYSES) {
+      const p = postingOf(a.wantedAuthNo)
+      for (const c of a.cards) {
+        for (const text of Object.values(c.questions ?? {})) {
+          seen++
+          expect(checkFirstQuestion({ text, state: c.state }, p), `${a.wantedAuthNo} ${c.card_id}`).toEqual([])
+        }
+      }
+    }
+    expect(seen).toBeGreaterThan(0)
+    for (const card of CARDS) expect(checkFinalQuestion({ text: card.example_question ?? '' }, OO), card.id).toEqual([])
   })
 })
 
@@ -138,7 +172,14 @@ describe('문체: 질문 문장은 면접 비즈니스체, 주의할 답·좋은
     const check = (text: string, where: string) => {
       for (const s of sentences(text)) expect(s, `${where}: ${s}`).not.toMatch(HAEYO_STATEMENT)
     }
-    for (const c of CARDS) for (const [t, text] of Object.entries(c.questions)) check(text, `${c.id}.${t}`)
+    for (const c of CARDS) {
+      for (const [t, text] of Object.entries(c.questions)) check(text, `${c.id}.${t}`)
+      for (const [t, text] of Object.entries(c.questions_explicit ?? {})) check(text, `${c.id}.explicit.${t}`)
+      check(c.example_question ?? '', `${c.id}.example_question`)
+    }
+    for (const a of ANALYSES) for (const c of a.cards) for (const [t, text] of Object.entries(c.questions ?? {})) check(text, `${a.wantedAuthNo} ${c.card_id}.${t}`)
+    check(FINAL_BOOK.templates.recheck_example, 'final.recheck_example')
+    for (const p of POSTINGS) for (const s of getSignals(p.wantedAuthNo)) check(s.ask ?? '', `${p.wantedAuthNo} 신호 질문`)
     const T = FINAL_BOOK.templates
     for (const text of [...Object.values(T.recheck_lead), T.scope.avoid, T.scope.want, T.signal_lead, ...FINAL_BOOK.cushions]) check(text, 'final')
     for (const a of ANALYSES) for (const b of a.blanks) check(b.question, `${a.wantedAuthNo} ${b.topic}`)

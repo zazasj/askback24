@@ -375,7 +375,8 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
         </section>
 
         <section v-if="signals.length" class="side-box signals" aria-labelledby="signals-title">
-          <h3 id="signals-title" class="side-title">회사 신호</h3>
+          <!-- "신호"가 신호 확인·좋은 신호와 뜻이 겹쳐 상자 제목은 "참고 정보"로(H2-14 ①) -->
+          <h3 id="signals-title" class="side-title">회사 참고 정보</h3>
           <p class="side-sub">회사를 평가하지 않아요. 면접에서 확인할 근거로만 보여 드려요.</p>
           <ul class="signal-list">
             <li v-for="s in signals" :key="s.text" class="signal">
@@ -383,13 +384,19 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
               <span class="signal-body">
                 <span class="signal-text">{{ s.text }}</span>
                 <span class="signal-from">{{ s.source_name }} · 값은 예시</span>
+                <span v-if="s.caveat" class="signal-from">{{ s.caveat }}</span>
+                <!-- 신호를 그대로 말하지 않고 돌려 묻는 한 줄(H1-04 나) -->
+                <span v-if="s.ask" class="signal-ask">
+                  <span class="signal-ask-label">면접에서 이렇게 물어볼 수 있어요</span>
+                  <span>{{ s.ask }}</span>
+                </span>
               </span>
             </li>
           </ul>
           <p class="signal-help">
             "실제"는 실제 서비스에서 공공데이터로 채울 항목이에요. 시연 회사는 가상이라 값은 예시예요. "모의"는 시연용으로 만든 항목이에요.
           </p>
-          <p class="signal-help">신호는 면접에서 그대로 말하지 말고, '신입이 자리 잡도록 어떤 도움을 주시나요?'처럼 돌려 물어보세요.</p>
+          <p class="signal-help">참고 정보는 면접에서 그대로 말하지 말고, 항목마다 적은 질문처럼 돌려 물어보세요.</p>
         </section>
       </div>
     </div>
@@ -805,6 +812,21 @@ mark[data-active='true'] {
 
 .signal-from {
   font-size: var(--krds-pc-font-size-body-xsmall);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.signal-ask {
+  display: grid;
+  gap: 0.2rem;
+  margin-top: 0.4rem;
+  padding-left: 0.8rem;
+  border-left: 0.2rem solid var(--rq-accent-border);
+  color: var(--krds-light-color-text-basic);
+}
+
+.signal-ask-label {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  font-weight: 700;
   color: var(--krds-light-color-text-subtle);
 }
 

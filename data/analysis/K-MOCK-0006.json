@@ -29,7 +29,7 @@
       "card_id": "BE02",
       "state": "inferred",
       "evidence": { "field": "jobCont", "quote": "백엔드 업무 전반" },
-      "reason": "직무내용 '백엔드 업무 전반'에서 서비스 구조 설계도 맡는다고 유추했어요"
+      "reason": "직무내용에 백엔드 업무 전반이 있어, 서비스 구조 설계까지 맡게 되는지 확인해 볼 만해요"
     }
   ],
   "blanks": [

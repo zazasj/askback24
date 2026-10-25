@@ -62,7 +62,7 @@ const quoteOf = (item: DraftItem) => item.evidence?.quote ?? ''
 
 /**
  * 유형별 앞말. 문장 끝에 공백을 둔다. 공고를 인용하는 앞말은 그 업무가 공고에 적힌(explicit) 카드와
- * 충돌 확인의 모호한 표현(vague)에만 쓴다. 유추한(inferred) 카드의 근거 문구는 질문 내용과 직접 이어지지 않아
+ * 차이 확인(conflict)의 모호한 표현(vague)에만 쓴다. 유추한(inferred) 카드의 근거 문구는 질문 내용과 직접 이어지지 않아
  * ("고객사 상주 가능자" → 요구사항 협의) 인용하면 엉뚱해지고, 공고에 없는 카드(absent)는 공고를 말하지 않는다.
  */
 /*
@@ -112,7 +112,7 @@ const leadKey = (lead: string) => lead.replace(/'[^']*'/g, "''")
 
 /**
  * 순번(variant + 순위)의 앞말을 고르되, 한 결과 안에서 이미 쓴 앞말(used)이면 다음 것을 쓴다.
- * 같은 유형이 두 번 나와도(예: 1·3순위 둘 다 충돌 확인) 같은 앞말이 되풀이되지 않게 한다. 다 썼으면 순번 그대로.
+ * 같은 유형이 두 번 나와도(예: 1·3순위 둘 다 차이 확인) 같은 앞말이 되풀이되지 않게 한다. 다 썼으면 순번 그대로.
  */
 function pickLead(leads: readonly string[], n: number, used?: Set<string>): string {
   for (let i = 0; i < leads.length; i++) {

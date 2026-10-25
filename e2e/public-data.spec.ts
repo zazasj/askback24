@@ -63,7 +63,7 @@ test.use({ actionTimeout: 10_000 })
 
 const FILE_ONCE = '파일 검사는 데스크톱 프로젝트에서 한 번'
 const NCS = 'data/real/ncs-cards.json'
-const JOB = 'data/real/job-webdev.json'
+const JOB = 'data/real/job-info.json'
 const CODES = 'data/real/common-codes.json'
 const GIANTS = 'data/real/small-giants-summary.json'
 const CARD_ID = /^BE\d{2}$/
@@ -184,11 +184,11 @@ function summarySentences(file: Json): string[] {
   return [...new Set(long.flatMap((s) => s.split(/(?<=[.!?。])\s+/)).map(normalize).filter((s) => s.length >= 10))]
 }
 
-test('DATA-02 job-webdev.json: 직업정보(212D01) 웹개발자 K000001106 직무 개요 문장과 출처·받은 날짜', async ({ isMobile }) => {
+test('DATA-02 job-info.json: 직업정보(212D01) 응용소프트웨어개발자 K000001176 직무 개요 문장과 출처·받은 날짜', async ({ isMobile }) => {
   test.skip(isMobile, FILE_ONCE)
   const file = expectFile(JOB)
   const text = JSON.stringify(file)
-  expect(text, '직업 코드 K000001106(웹개발자)').toContain('K000001106')
+  expect(text, '직업 코드 K000001176(응용소프트웨어개발자, 공고 직종 133200)').toContain('K000001176')
   expect(text, '출처(고용24)').toMatch(/고용24|work24/i)
   expect(text, '출처(직업정보 API 212D01)').toMatch(/212D01|직업\s*정보/)
   expect(datesIn(text).length, '받은 날짜(YYYY-MM-DD)').toBeGreaterThan(0)
@@ -210,7 +210,7 @@ test('DATA-02 ② 카드 고르기 위에 직무 개요 문장과 "고용24 직�
   await expect(source, `출처 "${JOB_INFO_SOURCE}"`).toBeVisible()
   const body = normalize(await bodyText(page))
   const shown = sentences.filter((s) => body.includes(s))
-  expect(shown.length, `job-webdev.json 직무 개요 문장 중 하나가 보여야 한다(예: ${sentences.slice(0, 2).join(' / ')})`).toBeGreaterThan(0)
+  expect(shown.length, `job-info.json 직무 개요 문장 중 하나가 보여야 한다(예: ${sentences.slice(0, 2).join(' / ')})`).toBeGreaterThan(0)
   const firstCard = cardGroups(page).first()
   expect(await precedes(source, firstCard), '"고용24 직업정보" 출처가 카드보다 위에').toBe(true)
   const sentence = page.getByText(shown[0]?.slice(0, 30) ?? '').filter({ visible: true }).first()

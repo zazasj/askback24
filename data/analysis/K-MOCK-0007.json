@@ -17,25 +17,28 @@
       "card_id": "BE15",
       "state": "vague",
       "evidence": { "field": "jobCont", "quote": "물류센터 현장 지원 등 기타 업무" },
-      "reason": "'물류센터 현장 지원 등 기타 업무'는 범위가 모호해 현장 근무가 포함될 수 있어요"
+      "reason": "'물류센터 현장 지원 등 기타 업무'는 범위가 모호해 현장 근무가 포함될 수 있어요",
+      "questions": {
+        "conflict": "물류센터 현장 지원에 개발자가 나가는 일이 있다면, 얼마나 자주 나가고 가서는 어떤 일을 맡게 되나요?"
+      }
     },
     {
       "card_id": "BE04",
       "state": "inferred",
       "evidence": { "field": "pfCond", "quote": "Oracle·SQL 활용 가능자" },
-      "reason": "우대조건 'Oracle·SQL 활용 가능자'에서 쿼리 작성 업무를 유추했어요"
+      "reason": "우대조건에 Oracle·SQL 활용이 있어, 쿼리 작성과 데이터 조회 요청을 신입이 얼마나 맡는지 확인해 볼 만해요"
     },
     {
       "card_id": "BE08",
       "state": "inferred",
       "evidence": { "field": "workdayWorkhrCont", "quote": "물류센터 성수기(11~12월) 주말 근무 있음" },
-      "reason": "근무시간에 성수기 주말 근무가 적혀 있어 장애 대응이 있을 수 있어요"
+      "reason": "근무시간에 성수기 주말 근무가 적혀 있어, 주말 근무에 시스템 대응도 들어가는지 확인해 볼 만해요"
     }
   ],
   "blanks": [
     {
       "topic": "sal",
-      "status": "vague",
+      "status": "check",
       "label": "임금 구성",
       "basis": "연봉 범위만 있고 구성이 없어요",
       "evidence": { "field": "sal", "quote": "3,000만 원 ~ 3,400만 원" },

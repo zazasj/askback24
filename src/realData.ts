@@ -3,7 +3,7 @@
  * 화면은 API를 부르지 않고 이 파일만 읽는다. 공통코드(common-codes.json)는 커서 화면에 싣지 않고 단위 시험만 읽는다.
  */
 import ncsJson from '@data/real/ncs-cards.json'
-import jobJson from '@data/real/job-webdev.json'
+import jobJson from '@data/real/job-info.json'
 import giantsJson from '@data/real/small-giants-summary.json'
 import sourcesJson from '@data/real/sources.json'
 import type { CardDef } from '@shared/contract'
@@ -31,16 +31,27 @@ export function ncsEntry(cardId: string): NcsEntry | undefined {
   return ncsByCard.get(cardId)
 }
 
-/** 응답에서 같은 이름을 못 찾아 팀이 정리한 NCS 값에 붙이는 표시 */
-export const TEAM_NCS_MARK = ' (팀 정리)'
+/**
+ * 응답에서 같은 이름을 못 찾았거나 뜻이 달라 팀이 고른 NCS 값의 머리말. "(팀 정리)"는 구직자가 알아보기 어려워
+ * "NCS 참고"로 바꿨다(H2-11 ④)
+ */
+export const TEAM_NCS_LABEL = 'NCS 참고'
 
-/** ② 카드의 "NCS" 줄: 응답에서 찾은 능력단위명, 못 찾았으면 팀이 정리한 값 + "(팀 정리)" — 응답 값과 구별되게 */
+/** ② 카드의 "NCS" 줄: 응답에서 찾은 능력단위명은 "NCS · …", 팀이 고른 값은 "NCS 참고 · …" — 응답 값과 구별되게 */
 export function ncsLine(card: CardDef): string {
   const e = ncsEntry(card.id)
   if (e?.matched) return `NCS · ${e.unit.centerLabel}`
   const units = e && !e.matched ? e.existing : card.ncs
   if (!units.length) return '근무 방식·환경 카드'
-  return `NCS · ${units.map((n) => n.unit).join(', ')}${e && !e.matched ? TEAM_NCS_MARK : ''}`
+  return `${e && !e.matched ? TEAM_NCS_LABEL : 'NCS'} · ${units.map((n) => n.unit).join(', ')}`
+}
+
+/** 응답에서 찾은 능력단위 정의의 첫 문장(H2-11 ②). 팀이 고른 값은 받은 정의가 없어 빈 문자열 */
+export function ncsDefinition(card: CardDef): string {
+  const e = ncsEntry(card.id)
+  if (!e?.matched) return ''
+  const def = e.unit.ablt_def.replace(/\s+/g, ' ').trim()
+  return /^.*?[.。](?=\s|$)/.exec(def)?.[0] ?? def
 }
 
 export const JOB_INFO = jobJson as { fetched_on: string; jobCd: string; job_name: string; summary: string; summary_short: string }

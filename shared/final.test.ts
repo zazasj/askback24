@@ -77,13 +77,23 @@ describe('API-07 최종 질문 순서 규칙', () => {
     expect(FINAL_BOOK.offer_priority).toBe(2.0)
   })
 
-  it('API-07 공급자가 없거나 실패하면 단순 규칙 판정(구체적 → 확인됨)과 검수 문장, 순서 규칙은 같다', async () => {
+  // H1-06(세진 승인 2026-10-25): 걱정돼요 카드(BE07)는 구체적인 답이어도 단순 규칙에서 "확인됨"으로 빠지지 않고 아직 모름
+  it('API-07 공급자가 없거나 실패하면 단순 규칙 판정(구체적 → 확인됨, 걱정돼요 카드는 아직 모름)과 검수 문장, 순서 규칙은 같다', async () => {
     for (const provider of [undefined, createMockProvider({ fail: true }), createEnnoiaProvider({})]) {
       const res = await generateFinal(reqR04(), provider ? { provider } : {})
-      expect(res.summary).toEqual({ confirmed: 3, mismatch: 0, still_unknown: 2, company_signal: 1 })
+      expect(res.summary).toEqual({ confirmed: 2, mismatch: 0, still_unknown: 3, company_signal: 1 })
+      expect(res.card_states.find((s) => s.card_id === 'BE07')?.basis).toBe(FINAL_BOOK.basis.asked_clear_avoid)
       expect(res.card_states.every((s) => s.source === 'rule')).toBe(true)
       expect(res.final_questions.every((q) => q.source === 'template')).toBe(true)
-      expect(res.final_questions.map((q) => q.type)).toEqual(['recheck', 'signal', 'offer', 'offer', 'offer', 'recheck'])
+      expect(res.final_questions.map((q) => `${q.card_id ?? 'offer'}/${q.type}`)).toEqual([
+        'BE15/recheck',
+        'BE07/recheck',
+        'BE08/signal',
+        'offer/offer',
+        'offer/offer',
+        'offer/offer',
+        'BE03/recheck',
+      ])
     }
   })
 })
@@ -107,14 +117,22 @@ describe('R 판정·표현 단계', () => {
     }
   })
 
-  it('R-06 "편했어요"면 완충 없이 바로 묻고(앞말도 없음), "보통이었어요"면 완충 없음', async () => {
+  it('R-06 "편했어요"면 완충 없이 바로 묻고(앞말도 없음, 첫 처우 질문만 짧은 앞말 하나 — H2-10 ②), "보통이었어요"면 완충 없음', async () => {
     const relaxed = await generateFinal(reqR04({ ...r04Review(), impression: { mood: 'relaxed' } }), { provider: createMockProvider() })
     expect(relaxed.final_questions.some((q) => q.text.includes('여쭤도 될까요'))).toBe(false)
     // 가짜 판정(BE07 기대와 다름)과 같은 판정으로 순서를 세우면 "직접" 단계 문장 = 검수 문장
-    const judged = ruleJudgements(r04Review()).map((j) => (j.card_id === 'BE07' ? { ...j, state: 'mismatch' as const } : j))
+    const judged = ruleJudgements(r04Review(), PRESETS.A.picks).map((j) => (j.card_id === 'BE07' ? { ...j, state: 'mismatch' as const } : j))
     const template = rankFinal({ picks: PRESETS.A.picks, judged, mood: 'relaxed', analysis: ANALYSES[0]! })
-    expect(template.every((r) => r.tone === 'direct')).toBe(true)
-    expect(relaxed.final_questions.map((q) => q.text)).toEqual(template.map((r) => r.template_text))
+    const firstOffer = template.findIndex((r) => r.type === 'offer')
+    expect(firstOffer).toBeGreaterThan(0)
+    template.forEach((r, i) => expect(r.tone, `${i + 1}번`).toBe(i === firstOffer ? 'basic' : 'direct'))
+    relaxed.final_questions.forEach((q, i) => {
+      const r = template[i]!
+      if (i === firstOffer) {
+        expect(q.text.endsWith(r.template_text), q.text).toBe(true)
+        expect(q.text.length, '첫 처우 질문 앞에 짧은 앞말').toBeGreaterThan(r.template_text.length)
+      } else expect(q.text).toBe(r.template_text)
+    })
     const normal = await generateFinal(reqR04({ ...r04Review(), impression: { mood: 'normal' } }), { provider: createMockProvider() })
     expect(normal.final_questions.some((q) => q.text.includes('여쭤도 될까요'))).toBe(false)
   })
@@ -207,7 +225,26 @@ describe('R 판정·표현 단계', () => {
     review.asked = review.asked.map((a) => (a.card_id === 'BE07' ? { ...a, heard: '유지보수와 신규 개발이 반반이에요' } : a))
     const res = await generateFinal(reqR04(review), { provider: createMockProvider() })
     expect(res.summary.mismatch).toBe(0)
-    expect(res.card_states.find((s) => s.card_id === 'BE07')?.state).toBe('confirmed')
+    // BE07은 걱정돼요 카드라 구체적인 답이어도 단순 규칙에서 아직 모름(H1-06)
+    expect(res.card_states.find((s) => s.card_id === 'BE07')?.state).toBe('still_unknown')
+  })
+
+  it('H1-06 걱정돼요 카드에 구체적인 답 → 단순 규칙은 아직 모름(최종 다시 확인으로 남음), 기대돼요·모르겠어요 카드는 확인됨', () => {
+    const review: InterviewReview = {
+      asked: [
+        { question_id: 'q1', card_id: 'BE07', heard: '유지보수가 대부분이에요', clarity: 'clear' },
+        { question_id: 'q2', card_id: 'BE01', heard: '수습 끝나면 맡아요', clarity: 'clear' },
+        { question_id: 'q3', card_id: 'BE08', heard: '당번은 없어요', clarity: 'clear' },
+      ],
+      not_asked: [],
+      received: [],
+      impression: { mood: 'normal' },
+    }
+    const judged = ruleJudgements(review, PRESETS.A.picks)
+    expect(judged.map((j) => `${j.card_id}/${j.state}`)).toEqual(['BE07/still_unknown', 'BE01/confirmed', 'BE08/confirmed'])
+    expect(judged[0]?.basis).toBe(FINAL_BOOK.basis.asked_clear_avoid)
+    const ranked = rankFinal({ picks: PRESETS.A.picks, judged, mood: 'normal', analysis: ANALYSES[0]! })
+    expect(ranked[0]).toMatchObject({ card_id: 'BE07', type: 'recheck' })
   })
 
   it('예시 세트에 없는 들은 답은 가짜 판정이 내지 않아 카드 source가 rule로 남고, 예시 세트 그대로면 물어본 카드는 모두 ai', async () => {
@@ -217,8 +254,9 @@ describe('R 판정·표현 단계', () => {
     )
     const res = await generateFinal(reqR04(review), { provider: createMockProvider() })
     const states = Object.fromEntries(res.card_states.map((s) => [s.card_id, `${s.state}/${s.source}`]))
-    expect(states.BE07).toBe('confirmed/rule')
-    expect(states.BE15).toBe('confirmed/rule')
+    // 둘 다 걱정돼요 카드라 단순 규칙은 아직 모름(H1-06)
+    expect(states.BE07).toBe('still_unknown/rule')
+    expect(states.BE15).toBe('still_unknown/rule')
     expect(states.BE02).toBe('confirmed/ai')
     expect(states.BE01).toBe('confirmed/ai')
 
@@ -239,15 +277,18 @@ describe('Q-01 다시 확인은 1차 질문을 이어 받는다(DA-02)', () => {
   const ASK_FROM_SCRATCH = /투입되는 경우도 있나요/
   const CUSHIONS = /^(?:[^?]*여쭤도 될까요\? )+/
 
-  it('Q-01 (주)OO소프트 + R-04 최종 1번: 공고 인용으로 이어 받고 "상주"·"비율"·"기간"을 다시 묻는다(가짜 공급자·검수 문장)', async () => {
+  // H1-13(세진 승인 2026-10-25): 1차 답이 모호했으면 1차 본문을 되풀이하지 않고 구체적인 예를 묻는다. "상주"+"기간"은 지킴
+  it('Q-01 (주)OO소프트 + R-04 최종 1번: 공고 인용으로 이어 받고 "상주"·"기간"을 구체적인 예로 묻는다(가짜 공급자·검수 문장)', async () => {
     for (const options of [{ provider: createMockProvider() }, {}]) {
       const res = await generateFinal(reqR04(), options)
       const first = res.final_questions[0]!
       expect(first.type).toBe('recheck')
       const body = first.text.replace(CUSHIONS, '')
       expect(body, first.text).toMatch(/^지난 면접에 이어 공고의 '고객사 상주 가능자' 부분을/)
-      for (const word of ['상주', '비율', '기간']) expect(first.text).toContain(word)
+      for (const word of ['상주', '기간', '예를']) expect(first.text).toContain(word)
       expect(first.text).not.toMatch(ASK_FROM_SCRATCH)
+      // 1차에 가져간 차이 확인 틀을 그대로 되풀이하지 않는다
+      expect(first.text).not.toContain(getCard('BE15')!.questions.conflict)
       for (const q of res.final_questions) expect(q.text).not.toMatch(QUOTE_WORDS)
     }
   })
@@ -314,7 +355,8 @@ describe('API-05·검사: 들은 답은 응답에 남지 않는다', () => {
     const reports: Array<{ judged?: number; issues: string[] }> = []
     const res = await generateFinal(reqR04(), { provider: judging, onReport: (r) => reports.push(r) })
     const states = Object.fromEntries(res.card_states.map((s) => [s.card_id, `${s.state}/${s.source}`]))
-    expect(states.BE07).toBe('confirmed/rule')
+    // BE07은 걱정돼요 카드라 단순 규칙이 아직 모름(H1-06)
+    expect(states.BE07).toBe('still_unknown/rule')
     expect(states.BE02).toBe('confirmed/rule')
     expect(states.BE01).toBe('mismatch/ai')
     expect(reports[0]?.judged).toBe(2)

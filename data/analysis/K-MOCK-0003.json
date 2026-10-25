@@ -23,13 +23,13 @@
       "card_id": "BE04",
       "state": "inferred",
       "evidence": { "field": "pfCond", "quote": "SQL 활용 능력 우수자" },
-      "reason": "우대조건 'SQL 활용 능력 우수자'에서 쿼리 작성 업무를 유추했어요"
+      "reason": "우대조건에 SQL 활용 능력이 있어, 쿼리 작성과 성능 개선을 개발자가 얼마나 맡는지 확인해 볼 만해요"
     },
     {
       "card_id": "BE09",
       "state": "inferred",
       "evidence": { "field": "pfCond", "quote": "리눅스 사용 경험" },
-      "reason": "우대조건 '리눅스 사용 경험'에서 서버 운영 업무를 유추했어요"
+      "reason": "우대조건에 리눅스 사용 경험이 있어, 서버 운영이나 배포도 개발자가 맡는지 확인해 볼 만해요"
     },
     {
       "card_id": "BE08",

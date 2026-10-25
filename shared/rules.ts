@@ -2,7 +2,7 @@
  * 1차·기술 면접 질문 순서 규칙(데모 v0.2 classify()·build() 이관).
  * 질문 순서는 여기서만 정한다. 화면·서버 함수·대체 결과가 모두 이 함수를 쓴다.
  */
-import type { CardDef, CardPick, Evidence, GapRule, PostingAnalysis, PostingState, Pref, QType } from './contract.js'
+import type { AnalysisCard, CardDef, CardPick, Evidence, GapRule, PostingAnalysis, PostingState, Pref, QType } from './contract.js'
 import { CARD_BOOK, getCard } from './catalog.js'
 
 export const QUESTION_LIMIT = 5
@@ -68,11 +68,15 @@ export function anchorText(experience?: string): string {
 }
 
 /**
- * 유형에 맞는 질문 틀. 충돌 예방 틀이 없는 카드는 충돌 확인 틀(비중 질문)을 쓴다.
+ * 유형에 맞는 질문 틀. 미리 확인(prevent) 틀이 없는 카드는 차이 확인(conflict) 틀(비중 질문)을 쓴다.
  * 틀은 어느 공고에나 쓰이므로 공고 내용을 말하지 않는다. 공고 인용은 근거(evidence)를 아는 앞말 몫(data.test.ts가 지킴)
+ * found(그 공고의 분석 카드)를 주면: 공고마다 덮어쓴 틀(H1-11) → 공고에 적힌 업무용 틀(H2-02) → 기본 틀 순서로 고른다.
  */
-export function questionTemplate(card: CardDef, type: QType): string {
-  return card.questions[type] ?? card.questions.conflict
+export function questionTemplate(card: CardDef, type: QType, found?: Pick<AnalysisCard, 'state' | 'questions'>): string {
+  const own = found?.questions?.[type]
+  if (own) return own
+  const explicit = found?.state === 'explicit' ? card.questions_explicit?.[type] : undefined
+  return explicit ?? card.questions[type] ?? card.questions.conflict
 }
 
 export function typeLabel(type: QType): string {
@@ -94,6 +98,8 @@ export interface RankedPick {
    * 중립 앞말(EXPERIENCE_LEAD)로 경험과 이어진 질문임만 밝히고, 칩과 AI에 보내는 경험은 그대로 둔다(A2-06)
    */
   has_exp: boolean
+  /** 질문 틀({anchor} 자리 그대로). 공고마다 덮어쓴 틀·공고에 적힌 업무용 틀을 고른 결과 */
+  template: string
   /** 검수 문장(질문 틀 + 경험) */
   template_text: string
   watch_out: string
@@ -117,7 +123,7 @@ export function rankPicks(input: PickInput, analysis: PostingAnalysis): RankedPi
     const cardAnchor = pick.pref === 'want' && pick.has_exp ? anchor : ''
     const hit = classify(pick.pref, state, cardAnchor !== '')
     if (!hit) return
-    const template = questionTemplate(card, hit.type)
+    const template = questionTemplate(card, hit.type, found)
     const ranked: RankedPick = {
       card_id: card.id,
       pref: pick.pref,
@@ -127,6 +133,7 @@ export function rankPicks(input: PickInput, analysis: PostingAnalysis): RankedPi
       order,
       reason: found?.reason ?? ABSENT_REASON,
       has_exp: cardAnchor !== '' && template.includes('{anchor}'),
+      template,
       template_text: template.replace('{anchor}', cardAnchor),
       watch_out: pick.pref === 'want' ? card.interpretation.mismatch_if_want : card.interpretation.mismatch_if_avoid,
       good_sign: card.interpretation.good_if,

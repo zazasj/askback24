@@ -16,11 +16,11 @@ describe('/about-ai 점검 숫자', () => {
 })
 
 describe('S4-24 데이터 출처 표', () => {
-  it('"실제"와 "모의"가 모두 있고, 회사 신호 출처는 "실제" 먼저 한 번씩', () => {
+  it('"실제"와 "모의"가 모두 있고, 회사 참고 정보 출처는 "실제" 먼저 한 번씩', () => {
     const rows = sourceRows()
     expect(rows.some((r) => r.source === '실제')).toBe(true)
     expect(rows.some((r) => r.source === '모의')).toBe(true)
-    const signals = rows.filter((r) => r.data === '회사 신호')
+    const signals = rows.filter((r) => r.data === '회사 참고 정보')
     expect(new Set(signals.map((r) => r.origin)).size).toBe(signals.length)
     expect(signals.map((r) => r.origin)).toContain('국민연금 사업장 가입자 현황')
     const firstMock = signals.findIndex((r) => r.source === '모의')
@@ -48,7 +48,7 @@ describe('DATA-06 출처 표의 고용24 오픈API 줄', () => {
     expect(jobs.some((r) => r.note.includes('개인회원'))).toBe(true)
   })
 
-  it('강소기업 통계 줄에 전체 수와 정보통신업 수, 회사 신호의 강소기업 여부는 "모의"(DATA-04)', () => {
+  it('강소기업 통계 줄에 전체 수와 정보통신업 수, 회사 참고 정보의 강소기업 여부는 "모의"(DATA-04)', () => {
     const stats = rows.find((r) => r.data === '강소기업 통계')
     expect(stats?.note.replace(/,/g, '')).toContain(String(SMALL_GIANTS.total))
     expect(stats?.note.replace(/,/g, '')).toContain(String(SMALL_GIANTS.ict.count))
@@ -56,7 +56,7 @@ describe('DATA-06 출처 표의 고용24 오픈API 줄', () => {
     expect(stats?.note.replace(/(\d),(?=\d{3})/g, '$1')).toMatch(
       new RegExp(`^전국 ${SMALL_GIANTS.counted}건\\(응답 ${SMALL_GIANTS.total}건 중 겹친 ${SMALL_GIANTS.total - SMALL_GIANTS.counted}건 뺌, 회사 ${SMALL_GIANTS.counted_companies}곳`),
     )
-    const signal = rows.filter((r) => r.data === '회사 신호' && r.origin.includes('강소기업'))
+    const signal = rows.filter((r) => r.data === '회사 참고 정보' && r.origin.includes('강소기업'))
     expect(signal.length).toBeGreaterThan(0)
     expect(signal.every((r) => r.source === '모의' && r.fetched === '')).toBe(true)
   })
@@ -81,6 +81,18 @@ describe('DATA-06 출처 표의 고용24 오픈API 줄', () => {
     expect(ncs?.note).toContain('팀이 고른 능력단위명')
     expect(ncs?.note).toContain(`NCS 카드 ${total}개`)
     expect(ncs?.note).toContain(`${matched}개는 응답 값을 그대로`)
-    expect(ncs?.note).toContain(`나머지 ${total - matched}개`)
+    // 나머지(팀이 고른 값)는 따로 "모의" 줄에 센다(H1-09 ①)
+    expect(rows.find((r) => r.data === '업무 카드 NCS 참고 표시')?.note).toContain(`나머지 ${total - matched}개`)
+  })
+
+  it('H1-09 NCS는 응답 값 줄 = "실제", 팀이 고른 값 줄 = "모의"로 나누고, 업무 카드 17개 줄은 "모의"', () => {
+    expect(rows.find((r) => r.data === '업무 카드 NCS 표시')?.source).toBe('실제')
+    const team = rows.find((r) => r.data === '업무 카드 NCS 참고 표시')
+    expect(team?.source).toBe('모의')
+    expect(team?.fetched).toBe('')
+    expect(team?.note).toContain('NCS 참고')
+    const cards = rows.find((r) => r.data === `업무 카드 ${CARDS.length}개`)
+    expect(cards?.source).toBe('모의')
+    expect(cards?.note).toBe('공공 자료를 참고해 팀이 나눈 업무예요.')
   })
 })

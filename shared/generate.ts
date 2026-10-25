@@ -19,7 +19,7 @@ import type {
 } from './contract.js'
 import { getAnalysis, getCard, getPosting } from './catalog.js'
 import { finalPrefOf, rankFinal, ruleJudgements, summarize, type FinalRanked, type Judged } from './finalRules.js'
-import { pickTop5, questionTemplate, type RankedPick } from './rules.js'
+import { pickTop5, type RankedPick } from './rules.js'
 import { checkFinalQuestion, checkFirstQuestion, hasForbiddenWord, quotesHeard, type Issue } from './validate.js'
 import type { Draft, DraftItem, FinalDraft, FinalDraftItem, FirstDraftInput, JudgeItem, Judgement, LlmProvider } from './providers/types.js'
 
@@ -99,7 +99,7 @@ function toDraftItem(r: RankedPick, rank: number): DraftItem {
     pref: r.pref,
     state: r.state,
     type: r.type,
-    template: card ? questionTemplate(card, r.type) : r.template_text,
+    template: r.template,
     template_text: r.template_text,
     has_exp: r.has_exp,
   }
@@ -337,7 +337,7 @@ export async function generateFinal(req: FinalQuestionsRequest, options: Generat
   let failure: GenerateReport['failure']
 
   // 1) 판정
-  let judged = ruleJudgements(review)
+  let judged = ruleJudgements(review, picks)
   let accepted = 0
   const judgeItems: JudgeItem[] = review.asked.flatMap((a) => {
     const card = getCard(a.card_id)

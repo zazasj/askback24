@@ -4,6 +4,7 @@
  * 질문 순서는 여기서만 정한다. 서버 함수·가짜 응답 모드·대체 결과가 모두 이 함수를 쓴다.
  */
 import type {
+  AnalysisCard,
   BlankTopic,
   CardDef,
   CardPick,
@@ -44,10 +45,12 @@ const questionOrder = (questionId: string, fallback: number): number => {
 }
 
 /**
- * 단순 규칙: 구체적 → 확인됨, 모호·고르지 않음 → 아직 모름, 못 물음 → 아직 모름("회사가 먼저 설명해 줬어요" → 확인됨),
- * 회사가 물어본 업무 → 회사가 먼저 물은 것. 내 질문에서 이미 다룬 카드는 그 판정을 따른다(직접 들은 답이 더 분명함).
+ * 단순 규칙: 구체적 → 확인됨(걱정돼요 카드는 아직 모름), 모호·고르지 않음 → 아직 모름, 못 물음 → 아직 모름
+ * ("회사가 먼저 설명해 줬어요" → 확인됨), 회사가 물어본 업무 → 회사가 먼저 물은 것.
+ * 내 질문에서 이미 다룬 카드는 그 판정을 따른다(직접 들은 답이 더 분명함).
+ * 걱정한 업무는 답이 구체적이어도 걱정이 맞다는 답일 수 있어 규칙만으로 "확인됨"으로 빼지 않는다(H1-06).
  */
-export function ruleJudgements(review: InterviewReview): Judged[] {
+export function ruleJudgements(review: InterviewReview, picks: readonly CardPick[] = []): Judged[] {
   const B = FINAL_BOOK.basis
   const out: Judged[] = []
   const seen = new Set<string>()
@@ -58,10 +61,11 @@ export function ruleJudgements(review: InterviewReview): Judged[] {
   }
   review.asked.forEach((a, i) => {
     const clear = a.clarity === 'clear'
+    const worried = clear && finalPrefOf(picks, a.card_id) === 'avoid'
     const j: Judged = {
       card_id: a.card_id,
-      state: clear ? 'confirmed' : 'still_unknown',
-      basis: clear ? B.asked_clear : a.clarity === 'vague' ? B.asked_vague : B.asked_unmarked,
+      state: clear && !worried ? 'confirmed' : 'still_unknown',
+      basis: worried ? B.asked_clear_avoid : clear ? B.asked_clear : a.clarity === 'vague' ? B.asked_vague : B.asked_unmarked,
       source: 'rule',
       origin: 'asked',
       order: questionOrder(a.question_id, 50 + i),
@@ -130,9 +134,10 @@ function recheckLead(card: CardDef, origin: Origin, evidence?: Evidence): string
 
 /**
  * 카드 질문의 검수 문장(완충 문장 앞).
- * 다시 확인: 1차 질문을 이어 받는다 — 앞말(recheckLead) + 1차에 가져간 것과 같은 유형의 질문 틀.
- * 질문 틀은 공고 내용을 말하지 않으므로(D-075) 충돌 확인 틀도 그대로 쓴다. 충돌 예방 틀("…경우도 있나요?")로 바꾸면
- * 공고에 적힌 것을 처음부터 다시 묻는 말이 된다(DA-02). 신호 확인은 공고를 전제하지 않는 충돌 예방(없으면 충돌 확인) 틀.
+ * 다시 확인: 1차 질문을 이어 받는다 — 앞말(recheckLead) + 1차에 가져간 것과 같은 유형의 질문 틀(공고마다 덮어쓴 틀 포함).
+ * 질문 틀은 공고 내용을 말하지 않으므로(D-075) 차이 확인 틀도 그대로 쓴다. 미리 확인 틀("…경우도 있나요?")로 바꾸면
+ * 공고에 적힌 것을 처음부터 다시 묻는 말이 된다(DA-02). 1차에서 물었는데 답이 모호했으면 같은 틀을 되풀이하지 않고
+ * 구체적인 예를 묻는다(H1-13). 신호 확인은 공고를 전제하지 않는 미리 확인(없으면 차이 확인) 틀.
  */
 export function finalCardTemplate(
   card: CardDef,
@@ -141,12 +146,17 @@ export function finalCardTemplate(
   postingState: PostingState,
   origin: Origin,
   evidence?: Evidence,
+  found?: Pick<AnalysisCard, 'state' | 'questions'>,
+  clarity?: Clarity,
 ): string {
   const T = FINAL_BOOK.templates
   switch (type) {
     case 'recheck': {
       const firstType = classify(pref === 'none' ? 'unsure' : pref, postingState, false)?.type ?? 'explore'
-      const base = stripAnchor(questionTemplate(card, firstType))
+      const base =
+        origin === 'asked' && clarity === 'vague'
+          ? (card.example_question ?? fill(T.recheck_example, card.label))
+          : stripAnchor(questionTemplate(card, firstType, found))
       const lead = recheckLead(card, origin, evidence)
       return lead ? `${lead} ${base}` : base
     }
@@ -215,7 +225,7 @@ function cardCandidates(picks: readonly CardPick[], judged: readonly Judged[], a
       basis: `${j.basis} · ${found?.reason ?? ABSENT_REASON}`,
       watch_out: pref === 'want' ? card.interpretation.mismatch_if_want : card.interpretation.mismatch_if_avoid,
       good_sign: card.interpretation.good_if,
-      template: finalCardTemplate(card, hit.type, pref, postingState, j.origin, found?.evidence),
+      template: finalCardTemplate(card, hit.type, pref, postingState, j.origin, found?.evidence, found, j.clarity),
       order: j.order,
     }
     if (found?.evidence) c.evidence = found.evidence
@@ -265,7 +275,8 @@ export const CUSHION_LIMIT = 2
  * 최종 질문 목록(순서·유형·검수 문장·표현 단계). 카드 질문 5개 이하 + 처우 질문 3개 이하 = 8개 이하.
  * 완충 문장: 분위기 "압박이 있었어요"면 첫 질문과 첫 처우 질문, 그리고 "분위기가 아니었어요"로 못 물은 질문.
  * 위에서부터 CUSHION_LIMIT 개(완충 문장 종류 수까지)만 붙이고, 그 뒤 질문은 기본(보통 앞말) 단계다.
- * 분위기 "편했어요"면 직접(앞말 없이 바로 묻기).
+ * 분위기 "편했어요"면 직접(앞말 없이 바로 묻기). 단 첫 처우 질문은 업무 이야기에서 근무 조건으로 넘어가는 자리라
+ * 짧은 앞말 하나를 둔다(H2-10 ②).
  */
 export function rankFinal(input: FinalRankInput): FinalRanked[] {
   const { limits, cushions } = FINAL_BOOK
@@ -278,12 +289,13 @@ export function rankFinal(input: FinalRankInput): FinalRanked[] {
   let offerSeen = false
   return all.map((c, i) => {
     let wants = c.reason === 'bad_mood'
-    if (input.mood === 'pressured' && (i === 0 || (c.origin === 'offer' && !offerSeen))) wants = true
+    const firstOffer = c.origin === 'offer' && !offerSeen
+    if (input.mood === 'pressured' && (i === 0 || firstOffer)) wants = true
     if (c.origin === 'offer') offerSeen = true
     const cushioned = wants && used < cushionLimit
     const cushion = cushioned ? (cushions[used++] ?? '') : ''
     // 완충을 바랐지만 한도를 넘은 질문은 "편했어요"여도 직접이 아니라 기본 앞말로 묻는다
-    const tone: Tone = cushioned ? 'cushion' : wants || input.mood !== 'relaxed' ? 'basic' : 'direct'
+    const tone: Tone = cushioned ? 'cushion' : wants || firstOffer || input.mood !== 'relaxed' ? 'basic' : 'direct'
     const ranked: FinalRanked = {
       rank: i + 1,
       key: c.key,

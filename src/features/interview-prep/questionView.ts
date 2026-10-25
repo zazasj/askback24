@@ -4,7 +4,7 @@ import type { Evidence, EvidenceField, FinalQType, FinalQuestion, OfferBlank, Pr
 import { BLANK_TAGS } from './checkpoints'
 
 /**
- * 유형 칩 색: 충돌 주황 · 기회 초록 · 깊이 파랑 · 예방/탐색 회색(DESIGN-REVIEW D7).
+ * 유형 칩 색: 차이(conflict) 주황 · 기회 초록 · 깊이 파랑 · 예방/탐색 회색(DESIGN-REVIEW D7).
  * 최종: 다시 확인 노랑 · 신호 확인 파랑 · 범위 확인 주황 · 처우 확인 보라(우리 강조색) · 기회 확인 초록
  */
 export type ChipTone = 'conflict' | 'opportunity' | 'depth' | 'muted' | 'warning' | 'offer'
@@ -17,7 +17,7 @@ export const FIRST_TONES: Record<QType, ChipTone> = {
   explore: 'muted',
 }
 
-/** 유형은 내 선호 하나에서만 나온다(gap_rules): 충돌 → 걱정돼요, 기회·깊이 → 기대돼요, 탐색 → 모르겠어요 */
+/** 유형은 내 선호 하나에서만 나온다(gap_rules): 차이·미리 확인 → 걱정돼요, 기회·깊이 → 기대돼요, 탐색 → 모르겠어요 */
 export function prefOfType(type: QType): Pref | undefined {
   return CARD_BOOK.gap_rules.find((r) => r.type === type)?.preference
 }
@@ -72,7 +72,7 @@ export function finalTypeLabel(type: FinalQType): string {
   return FINAL_BOOK.type_labels[type]
 }
 
-/** "왜 이 질문인가요" 첫 줄: "충돌 확인: 걱정한 일이 …". 유형 이름과 뜻을 한 글로 둬 칩 이름만 따로 보이지 않게 한다 */
+/** "왜 이 질문인가요" 첫 줄: "차이 확인: 걱정한 일이 …". 유형 이름과 뜻을 한 글로 둬 칩 이름만 따로 보이지 않게 한다 */
 export function firstTypeNote(type: QType): string {
   return `${CARD_BOOK.type_labels[type]}: ${CARD_BOOK.type_descriptions[type]}`
 }

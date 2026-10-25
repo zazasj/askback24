@@ -49,6 +49,25 @@ describe('AI 분석 요약 — 먼저 볼 두 곳(F-04)', () => {
   })
 })
 
+describe('H2-07 ① 먼저 볼 두 곳은 공고에 적힌 것(모호한 표현·공고에 있음) 먼저, 유추는 모자랄 때만', () => {
+  it('모든 공고: 공고에 적힌 형광펜이 두 곳 이상이면 "공고에서 유추" 항목은 먼저 볼 곳에 없다', () => {
+    let checked = 0
+    for (const posting of POSTINGS) {
+      const analysis = getAnalysis(posting.wantedAuthNo)
+      if (!analysis) continue
+      const points = checkPoints(analysis)
+      const resolve = spotResolver(posting, analysis)
+      const looks = firstLooks(points, resolve)
+      const tagOf = (cardId: string) => points.find((p) => p.cardId === cardId)?.tag
+      const written = new Set(points.filter((p) => p.hasMark && p.cardId && p.tag !== '공고에서 유추').map((p) => resolve(p.cardId!)?.key).filter(Boolean))
+      if (written.size < 2) continue
+      checked++
+      for (const l of looks) expect(tagOf(l.cardId), `${posting.wantedAuthNo} ${l.quote}`).not.toBe('공고에서 유추')
+    }
+    expect(checked).toBeGreaterThanOrEqual(6)
+  })
+})
+
 describe('shortReason', () => {
   it('인용 + 조사로 시작하면 그 부분을 빼고, 카드 이름이 이미 있으면 붙이지 않는다', () => {
     expect(shortReason('기존 시스템 유지보수', "'기타 업무 지원'은 범위가 모호해 기존 시스템 유지보수가 포함될 수 있어요", '기타 업무 지원')).toBe(

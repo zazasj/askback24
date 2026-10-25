@@ -171,7 +171,7 @@ const FINAL_STAGES = ['1차 면접 정리 확인', '질문 순서 정하기', 'A
         질문 {{ templateCount }}개는 AI 문장이 검사를 통과하지 못해 미리 검수한 문장으로 바꿨어요.
       </p>
       <p v-if="ruleJudged" class="notice is-fallback">
-        들은 답 판정도 단순 규칙(구체적 → 확인됨, 모호하거나 못 물음 → 아직 모름)으로 했어요. "기대와 다름"은 AI가 답을 읽어야 나와요.
+        들은 답 판정도 단순 규칙(구체적 → 확인됨, 걱정한 업무이거나 모호하거나 못 물음 → 아직 모름)으로 했어요. "기대와 다름"은 AI가 답을 읽어야 나와요.
       </p>
       <p v-else-if="ruleAskedCount > 0" class="notice is-fallback">
         카드 {{ ruleAskedCount }}개는 단순 규칙으로 판정했어요. "기대와 다름"은 AI가 답을 읽어야 나와요.

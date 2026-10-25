@@ -34,7 +34,7 @@
       "card_id": "BE04",
       "state": "inferred",
       "evidence": { "field": "jobCont", "quote": "SQL 기본 문법을 이해하시는 분" },
-      "reason": "자격요건 'SQL 기본 문법을 이해하시는 분'에서 쿼리 작성 업무를 유추했어요"
+      "reason": "자격요건에 SQL이 있어, 실제로 쿼리를 얼마나 쓰고 성능 개선까지 맡는지 확인해 볼 만해요"
     },
     {
       "card_id": "BE14",
@@ -49,11 +49,11 @@
       "status": "missing",
       "label": "근로시간",
       "basis": "공고에 근무 시간이 없어요",
-      "question": "바쁜 시기에는 업무량이 어떻게 조정되고, 연장근로는 월 평균 어느 정도인가요?"
+      "question": "근무 시간이 공고에 적혀 있지 않은데, 출퇴근 시간과 주 근로시간은 어떻게 되고 연장근로가 있다면 월 평균 어느 정도인가요?"
     },
     {
       "topic": "sal",
-      "status": "vague",
+      "status": "check",
       "label": "임금 구성",
       "basis": "연봉 범위만 있고 구성이 없어요",
       "evidence": { "field": "sal", "quote": "3,200만 원 ~ 3,800만 원" },

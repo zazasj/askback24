@@ -56,6 +56,7 @@ export const STATE_LABELS: Record<ReviewState, string> = FINAL_BOOK.state_labels
 
 const ASKED_RULE_BASES: ReadonlySet<string> = new Set([
   FINAL_BOOK.basis.asked_clear,
+  FINAL_BOOK.basis.asked_clear_avoid,
   FINAL_BOOK.basis.asked_vague,
   FINAL_BOOK.basis.asked_unmarked,
 ])
