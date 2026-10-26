@@ -322,6 +322,18 @@ const terms = computed(() => cardTerms(props.card))
   font-weight: 700;
 }
 
+/* 고대비(forced-colors)에서는 고른 칩의 채운 바탕이 없어져 굵기로만 구분됐다 → 시스템 선택 색(A3-r2-06) */
+@media (forced-colors: active) {
+  /* 위 세 규칙과 같은 무게로 덮는다 */
+  .choice.is-want input:checked + .chip,
+  .choice.is-avoid input:checked + .chip,
+  .choice.is-unsure input:checked + .chip {
+    border-color: Highlight;
+    background-color: Highlight;
+    color: HighlightText;
+  }
+}
+
 @media (max-width: 767px) {
   .task-card {
     padding: 1.4rem;

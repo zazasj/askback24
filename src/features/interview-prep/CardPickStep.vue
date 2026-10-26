@@ -88,8 +88,9 @@ function jumpToExperience(): void {
   document.getElementById('experience-input')?.focus()
 }
 
-// 경험 한 줄은 AI에 보내므로 사람·학교·회사를 알아볼 말을 빼 달라고 늘 같이 적는다(개인정보, A1-07)
-const EXPERIENCE_PRIVACY = '이름·학교·회사 이름은 빼고 적어 주세요.'
+// 경험 한 줄은 AI에 보내므로 사람·학교·회사를 알아볼 말을 빼 달라고 늘 같이 적는다(개인정보, A1-07).
+// 어디에 남고 어디로 가는지도 한 곳에서 같이 적는다(브라우저 저장 D-031, 실제 서비스의 AI 전달 — A3-r2-05)
+const EXPERIENCE_PRIVACY = '이름·학교·회사 이름은 빼고 적어 주세요. 적은 글은 이 브라우저에 저장되고, 실제 서비스에서는 질문을 만들 때 AI로 보내요.'
 // 붙이는 규칙을 그대로 적는다(picks.ts experienceTarget). 관련 있는 질문을 고르는 장치는 없다(A2-07)
 const experienceHint = computed(() => {
   if (!experience.value.trim()) return `"기대돼요"를 고른 질문 하나 앞에 붙여요(이력서 칩은 그 업무 질문). 비워 둬도 돼요. ${EXPERIENCE_PRIVACY}`

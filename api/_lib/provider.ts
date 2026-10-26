@@ -4,7 +4,7 @@
 import { createEnnoiaProvider } from '../../shared/providers/ennoia.js'
 import { createMockProvider } from '../../shared/providers/mock.js'
 import { createRemoteProvider, type RemoteConfig } from '../../shared/providers/remote.js'
-import type { LlmProvider } from '../../shared/providers/types.js'
+import type { Draft, FinalDraft, Judgement, LlmProvider } from '../../shared/providers/types.js'
 
 export interface ServerEnv {
   /** mock(기본) · remote(AI 담당 서버, docs/API-SPEC.md) · ennoia(자리만) */
@@ -19,14 +19,54 @@ export interface ServerEnv {
   VERCEL_ENV?: string
 }
 
-/** 기본은 mock. 모르는 값도 mock 으로(배포 실수로 키 없는 공급자를 부르지 않게) */
-export function providerFor(env: ServerEnv): LlmProvider {
+/** 경고 한 줄만 남길 곳. handler 의 Logger 와 모양이 같다 */
+export interface WarnLog {
+  error(message: string): void
+}
+
+export const UNCONFIGURED_WARNING = '[questions] LLM_PROVIDER가 remote가 아니라 검수 문장으로 냄'
+
+/** 실제 빌드(Vercel preview·production)에서 remote 가 아닐 때: 늘 예외 → generate 가 모두 검수 문장(최종 판정은 단순 규칙) */
+function createUnconfiguredProvider(): LlmProvider {
+  const fail = () => new Error('not configured')
+  return {
+    name: 'unconfigured',
+    async writeFirst(): Promise<Draft[]> {
+      throw fail()
+    },
+    async judgeReview(): Promise<Judgement[]> {
+      throw fail()
+    },
+    async writeFinal(): Promise<FinalDraft[]> {
+      throw fail()
+    },
+  }
+}
+
+// 로그 하나(함수 인스턴스의 console)마다 한 번만 경고한다. 요청 내용은 싣지 않는다
+const warned = new WeakSet<object>()
+
+const DEPLOYED: ReadonlySet<string> = new Set(['production', 'preview'])
+
+/**
+ * 기본은 mock. 로컬·단위 시험(VERCEL_ENV 없음·development)은 모르는 값도 mock(D-044).
+ * Vercel preview·production 은 remote 만 부르고, 빠짐·오타·mock·ennoia 는 unconfigured — 가짜 문장이 실제 빌드에서
+ * source "ai" 로 나가지 않게(A3-r2-01, D-146).
+ */
+export function providerFor(env: ServerEnv, log?: WarnLog): LlmProvider {
   if (env.LLM_PROVIDER === 'remote') {
     // 주소가 없거나 https 가 아니거나 운영인데 키가 없으면 공급자가 부르지 않고 예외 → 모두 검수 문장(generate, A3-r1-08)
     const config: RemoteConfig = { requireKey: env.VERCEL_ENV === 'production' }
     if (env.AI_ENDPOINT) config.endpoint = env.AI_ENDPOINT
     if (env.AI_API_KEY) config.key = env.AI_API_KEY
     return createRemoteProvider(config)
+  }
+  if (env.VERCEL_ENV && DEPLOYED.has(env.VERCEL_ENV)) {
+    if (log && !warned.has(log)) {
+      warned.add(log)
+      log.error(UNCONFIGURED_WARNING)
+    }
+    return createUnconfiguredProvider()
   }
   if (env.LLM_PROVIDER === 'ennoia') {
     const config: { key?: string; endpoint?: string } = {}

@@ -45,7 +45,7 @@ export async function handleQuestions(request: Request, env: ServerEnv, log: Log
   if (!parsed.ok) return json(400, { error: 'invalid_request', field: parsed.error })
 
   try {
-    const options = { provider: providerFor(env), timeoutMs: PROVIDER_TIMEOUT_MS, onReport: (r: GenerateReport) => log.info(reportLine(r)) }
+    const options = { provider: providerFor(env, log), timeoutMs: PROVIDER_TIMEOUT_MS, onReport: (r: GenerateReport) => log.info(reportLine(r)) }
     // 최종: 카드 상태 판정 → 순서 규칙 → 표현 단계 → 검사(shared/generate). 들은 답은 응답·로그에 싣지 않는다
     const res = parsed.value.mode === 'final' ? await generateFinal(parsed.value, options) : await generateFirst(parsed.value, options)
     return json(200, res)

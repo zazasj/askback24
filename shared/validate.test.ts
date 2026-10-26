@@ -56,6 +56,21 @@ describe('API-03 질문 문장 속 따옴표 인용(H2-06 ①)', () => {
     expect(checkFinalQuestion({ text: "혹시 함께하게 된다면 '장애 대응·온콜' 업무도 맡게 될 수 있는지 여쭙고 싶습니다." }, OO)).toEqual([])
     expect(quotesNotInPosting('따옴표가 없는 질문은 그대로 통과합니다. 비중은 어느 정도인가요?', OO)).toEqual([])
   })
+
+  // A3-r2-10: 문장은 공백을 한 칸으로 줄여 검사하므로 원문 칸 값의 연속 공백·탭·줄바꿈도 한 칸으로 보고 비교한다
+  it('A3-r2-10 원문에 두 칸 띄어쓰기·탭·줄바꿈이 섞인 구절을 한 칸으로 인용하면 통과, 원문에 없는 말은 여전히 탈락', () => {
+    const spaced: Posting = { ...OO, jobCont: '주요 업무:\n- 사내  결제 시스템\t운영\n- 정산 배치\n  개발 및 개선', pfCond: '고객사 상주 가능자' }
+    const ok = "공고의 '사내 결제 시스템 운영'에 신입은 어느 정도 참여하나요?"
+    expect(quotesNotInPosting(ok, spaced)).toEqual([])
+    expect(checkFirstQuestion({ text: ok, state: 'explicit' }, spaced)).toEqual([])
+    expect(quotesNotInPosting("공고에 적힌 '정산 배치 개발 및 개선'은 어떤 일인가요?", spaced)).toEqual([])
+    // 원문에 없는 말·한 글자 다른 말·두 칸에 걸친 말은 탈락
+    expect(quotesNotInPosting("공고의 '사내 정산 시스템 운영'은 누가 맡나요?", spaced)).toEqual(['사내 정산 시스템 운영'])
+    expect(quotesNotInPosting("공고의 '사내 결제시스템 운영'은 누가 맡나요?", spaced)).toEqual(['사내 결제시스템 운영'])
+    expect(quotesNotInPosting("공고의 '개발 및 개선 고객사 상주'는 어떤 뜻인가요?", spaced)).toEqual(['개발 및 개선 고객사 상주'])
+    // 분석 근거 검사는 글자 그대로(P-04): 한 칸으로 줄인 인용은 받지 않는다
+    expect(quoteInPosting(spaced, { field: 'jobCont', quote: '사내 결제 시스템 운영' })).toBe(false)
+  })
 })
 
 describe('API-03 공고에 없는 카드의 전제 표현', () => {
@@ -107,6 +122,28 @@ describe('API-03 금지어', () => {
   it('A3-r1-02 본적지·배우자(명사)는 그대로 탈락', () => {
     for (const text of ['팀원분들 본적지는 주로 어디인가요?', '배우자가 있는 분들도 상주 근무를 하시나요?', '배우자분 직장 때문에 이직하는 경우가 있나요?']) {
       expect(hasForbiddenWord(text), text).toBe(true)
+    }
+  })
+
+  // A3-r2-07: '하나이고'·'하나이며'처럼 앞 글자가 한글인 '나이'는 낱말 일부라 걸지 않는다
+  it('A3-r2-07 금지어 오탐: 업무 중 하나이고·하나이며 는 통과', () => {
+    for (const text of ['유지보수도 주요 업무 중 하나이고, 신입이 맡는 비중은 어느 정도인가요?', '배포 자동화도 업무 중 하나이며 신입도 참여하나요?']) {
+      expect(hasForbiddenWord(text), text).toBe(false)
+      expect(checkFirstQuestion({ text, state: 'explicit' }, OO), text).toEqual([])
+      expect(checkFinalQuestion({ text }, OO), text).toEqual([])
+    }
+  })
+
+  it('A3-r2-07 나이가·연령·몇 살 은 그대로 탈락(문장 처음·띄어 쓴 뒤 모두)', () => {
+    for (const text of [
+      '나이가 많은 신입도 지원할 수 있나요?',
+      '팀원분들 나이가 어떻게 되시나요?',
+      '팀원분들 평균 연령은 어떻게 되나요?',
+      '팀장님은 몇 살이신가요?',
+      '신입은 보통 몇살 정도인가요?',
+    ]) {
+      expect(hasForbiddenWord(text), text).toBe(true)
+      expect(checkFirstQuestion({ text, state: 'explicit' }, OO), text).toContain('forbidden_word')
     }
   })
 })

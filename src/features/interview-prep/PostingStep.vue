@@ -768,6 +768,21 @@ mark[data-active='true'] {
   font-weight: 700;
 }
 
+/* 고대비(forced-colors)에서는 그라디언트 칠이 없어져 점선 밑줄만 남는다 → 시스템 형광펜 색으로 칠하고 켜진 것은 테두리(A3-r2-06).
+   보통 화면(LD-03 긋기·다 칠한 모양)은 그대로 */
+@media (forced-colors: active) {
+  mark,
+  .look-mark {
+    background-color: Mark;
+    color: MarkText;
+  }
+
+  mark[data-active='true'] {
+    outline: 2px solid Highlight;
+    outline-offset: 1px;
+  }
+}
+
 .posting-note {
   font-size: var(--krds-pc-font-size-body-xsmall);
   color: var(--krds-light-color-text-subtle);

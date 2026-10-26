@@ -589,6 +589,14 @@ onBeforeUnmount(() => {
   }
 }
 
+/* 고대비(forced-colors)에서는 box-shadow 가 없어져 어디를 비추는지 사라진다 → 시스템 강조색 테두리(A3-r2-06) */
+@media (forced-colors: active) {
+  .tour-hole {
+    outline: 0.3rem solid Highlight;
+    outline-offset: -0.3rem;
+  }
+}
+
 @media print {
   .tour-layer,
   .tour-box {

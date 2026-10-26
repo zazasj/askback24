@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { POSTINGS, getAnalysis } from '@shared/catalog'
+import { POSTINGS, PRESETS, getAnalysis } from '@shared/catalog'
 import type { Posting, PostingAnalysis } from '@shared/contract'
-import { checkPoints, firstLooks, shortReason } from './checkpoints'
+import { pickExplore, pickTop5 } from '@shared/rules'
+import { BLANK_TAGS, checkPoints, exploreTag, firstLooks, postingTag, shortReason } from './checkpoints'
 import { markKey, marksOf, segmentsFor } from './highlight'
 
 /** 화면(PostingStep)처럼 카드 → 칠한 형광펜(열쇠·글)을 찾는다 */
@@ -88,5 +89,47 @@ describe('shortReason', () => {
     expect(shortReason('요구사항 협의', '고객사에 상주하면 고객과 요구사항을 직접 협의할 수 있어요(우대조건에서 유추)', '고객사 상주 가능자')).toBe(
       '요구사항 협의 · 고객사에 상주하면 고객과 요구사항을 직접 협의할 수 있어요(우대조건에서 유추)',
     )
+  })
+})
+
+// A3-r2-03: ③ "더 알아볼 질문" 꼬리표는 ① 공고 상태 표시(postingTag)와 같은 말. 공고에 없음이면 꼬리표 없음
+describe('A3-r2-03 더 알아볼 질문 꼬리표 = ① postingTag', () => {
+  /** FirstResultStep 처럼: 예시 A 의 더 알아볼 질문(질문 5개와 겹치지 않음) → 카드 ID */
+  function exploresOf(analysis: PostingAnalysis): string[] {
+    const top = new Set(pickTop5(PRESETS.A, analysis).map((r) => r.card_id))
+    return pickExplore(PRESETS.A, analysis)
+      .filter((r) => !top.has(r.card_id))
+      .map((r) => r.card_id)
+  }
+
+  it('공고 7건 × 예시 A: 꼬리표는 ① postingTag 그대로, "공고에 없음"·분석에 없는 카드는 꼬리표 없음, "공고에 나온 일"은 없다', () => {
+    let tagged = 0
+    for (const posting of POSTINGS) {
+      const analysis = getAnalysis(posting.wantedAuthNo)
+      if (!analysis) continue
+      for (const id of exploresOf(analysis)) {
+        const where = `${posting.wantedAuthNo} ${id}`
+        const shown = postingTag(analysis.cards.find((c) => c.card_id === id))
+        const tag = exploreTag(analysis, id)
+        expect(tag, where).toBe(shown === BLANK_TAGS.missing ? null : shown)
+        expect(tag, where).not.toBe('공고에 나온 일')
+        if (tag) tagged++
+      }
+    }
+    expect(tagged).toBeGreaterThan(0)
+  })
+
+  it('(주)OO소프트: SQL 작성·쿼리 개선·요구사항 협의 = 공고에서 유추 · (주)△△커머스: 장애 대응·온콜(근거 없는 유추) = 꼬리표 없음', () => {
+    const oo = getAnalysis('K-MOCK-0001')
+    const commerce = getAnalysis('K-MOCK-0002')
+    if (!oo || !commerce) throw new Error('분석 없음')
+    expect(exploresOf(oo)).toEqual(['BE14', 'BE04', 'BE12'])
+    expect(exploreTag(oo, 'BE04')).toBe('공고에서 유추')
+    expect(exploreTag(oo, 'BE12')).toBe('공고에서 유추')
+    expect(exploreTag(oo, 'BE14')).toBe(postingTag(oo.cards.find((c) => c.card_id === 'BE14')))
+    expect(exploresOf(commerce)).toContain('BE08')
+    expect(exploreTag(commerce, 'BE08')).toBeNull()
+    expect(exploreTag(commerce, 'BE99')).toBeNull()
+    expect(exploreTag(undefined, 'BE04')).toBeNull()
   })
 })

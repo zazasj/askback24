@@ -120,6 +120,19 @@ function stepTo(n: number) {
   color: var(--rq-on-accent);
 }
 
+/* 고대비(forced-colors)에서 지금 단계가 굵기로만 구분되지 않게 시스템 강조색(A3-r2-06) */
+@media (forced-colors: active) {
+  .step.is-active {
+    border-bottom-color: Highlight;
+  }
+
+  .step.is-active .no {
+    border-color: Highlight;
+    background-color: Highlight;
+    color: HighlightText;
+  }
+}
+
 @media (max-width: 767px) {
   .step-nav {
     gap: 0.4rem;

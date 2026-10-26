@@ -30,10 +30,11 @@ export interface FirstDraftInput {
   items: DraftItem[]
 }
 
-/** 공급자가 돌려주는 문장 하나. evidence 를 주면 그 인용도 검사한다 */
+/** 공급자가 돌려주는 문장 하나 */
 export interface Draft {
   card_id: string
   text: string
+  /** 돌려줘도 모양만 보고 값은 읽지 않는다(결과 근거는 요청 근거, D-268) */
   evidence?: Evidence
 }
 
@@ -97,6 +98,7 @@ export interface FinalDraftInput {
 export interface FinalDraft {
   key: string
   text: string
+  /** 돌려줘도 모양만 보고 값은 읽지 않는다(결과 근거는 요청 근거, D-268) */
   evidence?: Evidence
 }
 

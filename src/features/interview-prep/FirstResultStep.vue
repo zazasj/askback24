@@ -18,6 +18,7 @@ import { FIRST_RESULT_TOUR } from '@/features/tour/tourSteps'
 import { useScreenTour } from '@/features/tour/useScreenTour'
 import { usePrepStore } from '@/stores/prep'
 import { useQuestionsStore } from '@/stores/questions'
+import { exploreTag } from './checkpoints'
 import { firstCopyText } from './copyText'
 import GeneratingView from './GeneratingView.vue'
 import { PREFS, countByPref, toCardPicks } from './picks'
@@ -91,7 +92,7 @@ const explores = computed(() => {
   const made = new Set(questions.value.map((q) => q.card_id))
   return pickExplore({ picks: toCardPicks(selection.value), experience: selection.value.experience }, analysis)
     .filter((r) => !made.has(r.card_id))
-    .map((r) => ({ card_id: r.card_id, label: getCard(r.card_id)?.label ?? r.card_id, inPosting: r.state !== 'absent', text: r.template_text }))
+    .map((r) => ({ card_id: r.card_id, label: getCard(r.card_id)?.label ?? r.card_id, tag: exploreTag(analysis, r.card_id), text: r.template_text }))
 })
 
 const DROPPED_SHOWN = 3
@@ -193,7 +194,7 @@ function printSheet(): void {
                 <p class="explore-meta">
                   <span class="explore-chip">탐색</span>
                   <span>{{ e.label }} · 모르겠어요</span>
-                  <span v-if="e.inPosting" class="explore-in">공고에 나온 일</span>
+                  <span v-if="e.tag" class="explore-in">{{ e.tag }}</span>
                 </p>
                 <p class="explore-text">{{ e.text }}</p>
               </li>

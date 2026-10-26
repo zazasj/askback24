@@ -26,6 +26,15 @@ export function postingTag(found: Pick<AnalysisCard, 'state' | 'evidence'> | und
   return POSTING_TAGS[found.state]
 }
 
+/**
+ * ③ "더 알아볼 질문"에 다는 공고 상태 꼬리표. ①과 같은 말(postingTag)을 그대로 쓰고, 공고에 없음(absent·근거 없는 유추)이거나
+ * 분석에 없는 카드면 달지 않는다 — 같은 카드의 공고 상태가 화면마다 다르게 보이지 않게(A3-r2-03)
+ */
+export function exploreTag(analysis: Pick<PostingAnalysis, 'cards'> | undefined, cardId: string): string | null {
+  const tag = postingTag(analysis?.cards.find((c) => c.card_id === cardId))
+  return tag === BLANK_TAGS.missing ? null : tag
+}
+
 export interface CheckPoint {
   key: string
   tag: string

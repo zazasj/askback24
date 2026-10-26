@@ -38,7 +38,7 @@ npm run preview        # http://localhost:4173
 
 | 변수 | 뜻 |
 |---|---|
-| `LLM_PROVIDER` | `mock`(기본) · `remote`(AI 담당 서버) · `ennoia`(자리만). 모르는 값이면 `mock` |
+| `LLM_PROVIDER` | `mock`(기본) · `remote`(AI 담당 서버) · `ennoia`(자리만). 로컬에서는 모르는 값이면 `mock`. Vercel Preview·Production(`VERCEL_ENV`)에서는 `remote`가 아니면(빠짐·오타·`mock` 포함) 가짜 문장 대신 모두 검수 문장으로 낸다(D-282) |
 | `AI_ENDPOINT`, `AI_API_KEY` | `remote`일 때 AI 담당 서버 주소와 키. 아래 「실제 AI 연결」 |
 | `ENNOIA_API_KEY`, `ENNOIA_ENDPOINT` | 엔노이아 자리만 남아 있다. 엔노이아는 이번 범위에서 뺐고(D-110), 값이 있어도 부르지 않는다 |
 
@@ -96,15 +96,15 @@ npm run check          # 위 세 가지(build · test:unit · test:e2e)를 차�
 
 세 값은 Vercel 대시보드 → 프로젝트 → Settings → Environment Variables에 넣고, Preview(staging 미리보기)와 Production(main)을 따로 고른다. `VITE_`로 시작하는 이름에 넣지 않는다(화면 번들에 들어간다).
 
-`AI_ENDPOINT`는 `https://`만 받는다(로컬 시험용 `http://localhost`·`http://127.0.0.1`은 예외). 운영(Vercel `VERCEL_ENV=production`)에서 `AI_API_KEY`가 비어 있으면 AI 서버를 부르지 않고 모두 검수 문장으로 낸다. 로컬·Preview는 키 없이도 부른다.
+`AI_ENDPOINT`는 `https://`만 받는다(로컬 시험용 `http://localhost`·`http://127.0.0.1`은 예외). 운영(Vercel `VERCEL_ENV=production`)에서 `AI_API_KEY`가 비어 있으면 AI 서버를 부르지 않고 모두 검수 문장으로 낸다. 로컬·Preview는 키 없이도 부른다. Vercel Preview·Production에서 `LLM_PROVIDER`가 `remote`가 아니면(빠짐·`Remote` 같은 오타·`mock`) 가짜 공급자를 쓰지 않고 모두 검수 문장(최종 판정은 단순 규칙)으로 낸다. 함수 로그에 `provider=unconfigured`와 경고 한 줄 "LLM_PROVIDER가 remote가 아니라 검수 문장으로 냄"이 남는다. 가짜 문장이 실제 빌드에서 AI 결과처럼 보이지 않게 하려는 것이다.
 
 가짜 응답 모드에서 실제 모드로 바꾸는 순서(배포 전환은 세진이 정한다):
 
 1. AI 담당 서버가 `docs/API-SPEC.md`의 세 주소를 만들고, `docs/api-examples/*-request.json`을 보내 `*-response.json`과 같은 모양이 오는지 확인한다.
 2. Vercel Preview 환경변수에 `LLM_PROVIDER=remote`, `AI_ENDPOINT`, `AI_API_KEY`를 넣는다.
 3. `vercel.json`의 `buildCommand`를 `npm run build:mock`에서 `npm run build`로 바꿔 staging에 push한다. 이제 화면이 `POST /api/questions`를 부른다.
-4. staging 미리보기에서 질문을 만들어 본다. ③ 제목 옆 "가짜 응답 모드" 태그가 없고 질문에 "검수 문장" 라벨이 붙지 않으면 연결된 것이다. Vercel 함수 로그의 `[questions] … provider=remote … template=0`에서 `template=`이 0이 아니면 `issues=`(걸린 검사)와 `failure=`(오류·시간 초과)를 본다.
-5. 문제가 없으면 Production 환경변수에도 같은 값을 넣고 main에 합친다. 되돌릴 때는 `LLM_PROVIDER=mock`(서버만) 또는 `buildCommand`를 `npm run build:mock`으로 돌린다.
+4. staging 미리보기에서 질문을 만들어 본다. 먼저 Vercel 함수 로그에서 `[questions] … provider=remote … template=0`을 확인한다. `provider=unconfigured`면 `LLM_PROVIDER`가 `remote`로 들어가지 않은 것이다(오타·빠짐). `template=`이 0이 아니면 `issues=`(걸린 검사)와 `failure=`(오류·시간 초과)를 본다. 그다음 화면에서 ③ 제목 옆 "가짜 응답 모드" 태그가 없고 질문에 "검수 문장" 라벨이 붙지 않는지 본다.
+5. 문제가 없으면 Production 환경변수에도 같은 값을 넣고 main에 합친다. `LLM_PROVIDER=mock`으로 되돌리면 실제 빌드에서는 모두 검수 문장으로 나간다(가짜 문장을 AI 결과로 보이지 않게). 가짜 응답 모드로 돌리려면 `buildCommand`를 `npm run build:mock`으로 돌린다.
 
 AI 서버가 늦거나(9초) 오류를 내거나 응답 모양이 틀리면 우리 서버가 그 질문을 미리 검수한 문장(최종 판정은 단순 규칙)으로 대신하므로 화면은 멈추지 않는다. 로컬 `npm run dev`에는 서버 함수가 없어서 연결은 단위 시험(가짜 fetch, `api/_lib/remote.test.ts`)과 staging 미리보기로 확인한다.
 

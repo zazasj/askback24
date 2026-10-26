@@ -250,8 +250,9 @@ const STANDARD_CONTRACT_URL = 'https://www.moel.go.kr/policy/policydata/view.do?
               <button type="button" class="btn btn-tertiary side-btn" @click="copyAll">전체 복사</button>
               <button type="button" class="btn btn-accent side-btn" @click="printSheet">면접에 들고 갈 한 장 인쇄</button>
             </div>
-            <!-- 실제로는 한두 개만 물을 수 있다는 안내(H1-14·H1-12, RS-05). 1차 ③ 오른쪽 상자와 같은 자리 -->
-            <p class="side-line side-tip">면접에서는 보통 한두 개만 물을 수 있어요. 꼭 물을 질문부터 골라 두세요.</p>
+            <!-- 실제로는 한두 개만 물을 수 있다는 안내(H1-14·H1-12, RS-05). 1차 ③ 오른쪽 상자와 같은 자리.
+                 화면에 고르는 곳이 없어(T2에서 없앰) 고르는 일은 인쇄한 종이에서 하게 적는다(A3-r2-11) -->
+            <p class="side-line side-tip">면접에서는 보통 한두 개만 물을 수 있어요. 인쇄한 종이에 꼭 물을 질문을 표시해 가세요.</p>
           </aside>
           <aside class="side-more" aria-labelledby="final-side-title" data-print="hide">
             <div class="side-box">

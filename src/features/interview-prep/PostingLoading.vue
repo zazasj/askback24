@@ -274,6 +274,18 @@ const stateOf = (i: number) => (i < active.value ? 'done' : i === active.value ?
   }
 }
 
+/* 고대비(forced-colors)에서 진행·완료 단계 점이 구분되게 시스템 강조색(A3-r2-06) */
+@media (forced-colors: active) {
+  .stage[data-state='active'] .dot {
+    border-color: Highlight;
+  }
+
+  .stage[data-state='done'] .dot {
+    border-color: Highlight;
+    background-color: Highlight;
+  }
+}
+
 @media (max-width: 1023px) {
   .skeleton {
     grid-template-columns: minmax(0, 1fr);

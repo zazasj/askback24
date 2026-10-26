@@ -1,4 +1,6 @@
 /** 정적 데이터 점검: 형광펜이 안 칠해지는 근거(= 근거 없는 전제) 0건, 가상 인물 정보만. */
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { ANALYSES, CARDS, CARD_BOOK, FINAL_BOOK, POSTINGS, PRESETS, getCard, getPosting, getSignals } from './catalog'
 import type { Evidence, Posting } from './contract'
@@ -174,6 +176,16 @@ describe('공고·분석·신호', () => {
         }
       }
     }
+  })
+
+  // A3-r2-08: "명단에 없음"이 정부가 "체불 없음"을 확인한 것처럼 읽히지 않게 그 줄 옆에 해석 한계(/about-ai 출처 표와 같은 글)
+  it('A3-r2-08 임금체불 줄에는 "명단에 없다고 체불이 없다는 뜻은 아니에요" caveat가 있다', () => {
+    const CAVEAT = '명단은 체불로 유죄가 두 번 이상 확정된 일부 사업주만 공개해요. 명단에 없다고 체불이 없다는 뜻은 아니에요'
+    const lines = POSTINGS.flatMap((p) => getSignals(p.wantedAuthNo).filter((s) => s.source_name === '임금체불 사업주 명단').map((s) => ({ id: p.wantedAuthNo, s })))
+    expect(lines.map((l) => l.id)).toEqual(['K-MOCK-0003', 'K-MOCK-0005'])
+    for (const { id, s } of lines) expect(s.caveat, id).toBe(CAVEAT)
+    const about = readFileSync(fileURLToPath(new URL('../src/features/about/aboutData.ts', import.meta.url)), 'utf8')
+    expect(about, '/about-ai 출처 표와 같은 글').toContain(CAVEAT)
   })
 
   it('(주)OO소프트 공고에 "기타 업무 지원"·"고객사 상주 가능자" 근거가 있다', () => {

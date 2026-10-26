@@ -13,7 +13,7 @@ import { REMOTE_PATHS, createRemoteProvider } from '../../shared/providers/remot
 import { buildApiExamples, type ApiExampleName } from '../../scripts/apiExamples.ts'
 import { POST } from '../questions.ts'
 import { handleQuestions, type Logger } from './handler.ts'
-import { providerFor, type ServerEnv } from './provider.ts'
+import { UNCONFIGURED_WARNING, providerFor, type ServerEnv } from './provider.ts'
 
 const root = fileURLToPath(new URL('../..', import.meta.url))
 const KEY = 'sk-test-REMOTE-0000-secret'
@@ -303,6 +303,82 @@ describe('A3-r1-08 https 만 · 운영(VERCEL_ENV=production)은 키가 있어�
       expect(calls).toEqual([])
     } finally {
       info.mockRestore()
+    }
+  })
+})
+
+// A3-r2-01: 실제 빌드(Vercel preview·production)에서 remote 가 아니면 가짜 문장을 내지 않고 모두 검수 문장
+describe('A3-r2-01 preview·production 에서 LLM_PROVIDER 가 remote 가 아니면 unconfigured', () => {
+  const NOT_REMOTE: Array<[string, string | undefined]> = [
+    ['없음', undefined],
+    ["'Remote'(오타)", 'Remote'],
+    ["'mock'", 'mock'],
+    ["'ennoia'", 'ennoia'],
+  ]
+
+  for (const VERCEL_ENV of ['preview', 'production']) {
+    for (const [label, LLM_PROVIDER] of NOT_REMOTE) {
+      it(`A3-r2-01 ${VERCEL_ENV} × LLM_PROVIDER ${label} → fetch 0번 · 1차·최종 모두 template · 로그 provider=unconfigured`, async () => {
+        const calls = stubFetch(exampleServer)
+        const env: ServerEnv = { AI_ENDPOINT: ENDPOINT, AI_API_KEY: KEY, VERCEL_ENV }
+        if (LLM_PROVIDER !== undefined) env.LLM_PROVIDER = LLM_PROVIDER
+        expect(providerFor(env).name).toBe('unconfigured')
+        const first = await askFirst(env)
+        const final = await askFinal(env)
+        expect(first.status).toBe(200)
+        expect(sources(first.body.questions)).toEqual(['template', 'template', 'template', 'template', 'template'])
+        expect(final.body.final_questions.every((q) => q.source === 'template')).toBe(true)
+        expect(final.body.card_states.every((s) => s.source === 'rule')).toBe(true)
+        expect(calls).toEqual([])
+        expect(first.logs).toMatch(/\[questions\] mode=first provider=unconfigured n=5 template=5 .*failure=error/)
+        expect(final.logs).toMatch(/\[questions\] mode=final provider=unconfigured .*failure=error/)
+        expect(`${first.text}${final.text}${first.logs}${final.logs}`).not.toContain(KEY)
+      })
+    }
+  }
+
+  it('A3-r2-01 경고 줄은 로그마다 처음 한 번만, 요청 내용 없이', async () => {
+    const log = memoryLog()
+    const env: ServerEnv = { LLM_PROVIDER: 'mock', VERCEL_ENV: 'production' }
+    await handleQuestions(post(screen.first), env, log)
+    await handleQuestions(post(screen.final), env, log)
+    expect(log.lines.filter((l) => l === UNCONFIGURED_WARNING)).toHaveLength(1)
+    const all = log.lines.join('\n')
+    if (screen.first.experience) expect(all).not.toContain(screen.first.experience)
+    for (const h of HEARDS) expect(all).not.toContain(h)
+  })
+
+  it('A3-r2-01 VERCEL_ENV 가 없거나 development 면 지금처럼 mock(D-044), remote 는 그대로 remote', () => {
+    for (const VERCEL_ENV of [undefined, 'development']) {
+      for (const LLM_PROVIDER of [undefined, 'Remote', 'mock']) {
+        const env: ServerEnv = {}
+        if (VERCEL_ENV) env.VERCEL_ENV = VERCEL_ENV
+        if (LLM_PROVIDER) env.LLM_PROVIDER = LLM_PROVIDER
+        expect(providerFor(env).name, `${VERCEL_ENV} × ${LLM_PROVIDER}`).toBe('mock')
+      }
+      expect(providerFor({ LLM_PROVIDER: 'ennoia', ...(VERCEL_ENV ? { VERCEL_ENV } : {}) }).name).toBe('ennoia')
+    }
+    for (const VERCEL_ENV of ['preview', 'production']) expect(providerFor({ LLM_PROVIDER: 'remote', VERCEL_ENV }).name).toBe('remote')
+  })
+
+  it('A3-r2-01 함수 진입점: VERCEL_ENV=production 이고 LLM_PROVIDER 가 비면 부르지 않고 검수 문장', async () => {
+    vi.stubEnv('LLM_PROVIDER', '')
+    vi.stubEnv('AI_ENDPOINT', ENDPOINT)
+    vi.stubEnv('AI_API_KEY', KEY)
+    vi.stubEnv('VERCEL_ENV', 'production')
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      const calls = stubFetch(exampleServer)
+      const res = await POST(post(screen.first))
+      const body = (await res.json()) as FirstQuestionsResponse
+      expect(res.status).toBe(200)
+      expect(calls).toEqual([])
+      expect(sources(body.questions).every((s) => s === 'template')).toBe(true)
+      expect(info.mock.calls.flat().join('\n')).toContain('provider=unconfigured')
+    } finally {
+      info.mockRestore()
+      error.mockRestore()
     }
   })
 })

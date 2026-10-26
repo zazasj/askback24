@@ -183,6 +183,15 @@ const MODES: readonly Mode[] = ['first', 'final']
   outline-offset: 0.2rem;
 }
 
+/* 고대비(forced-colors)에서 "준비할 면접" 고른 칸이 굵기로만 구분되지 않게 시스템 선택 색(A3-r2-06) */
+@media (forced-colors: active) {
+  .mode-option input:checked + .chip {
+    border-color: Highlight;
+    background-color: Highlight;
+    color: HighlightText;
+  }
+}
+
 /* 휴대폰: 머리가 첫 화면을 덜 차지하게 라디오는 2열 세그먼트(DR-r1-02).
    요약은 두 줄: 회사명·지원결과 / 채용제목(지원 조건이 잘리지 않게 두 줄까지, DR-r2-06) */
 @media (max-width: 767px) {

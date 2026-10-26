@@ -26,7 +26,8 @@ export const TEXT_MAX = 260
 
 /** 면접에서 묻지 않는 개인 사항(채용절차법·고용상 차별 금지 항목)과 회사를 평가하는 말 */
 export const FORBIDDEN_PATTERNS: readonly RegExp[] = [
-  /나이|연령|몇\s*살/,
+  // 앞 글자가 한글이면 '나이'로 보지 않음("업무 중 하나이고"·"하나이며" 오탐) — A3-r2-07
+  /(?<![가-힣])나이|연령|몇\s*살/,
   // '배우자'는 명사로 쓸 때만("함께 배우자는" 오탐), '본적'은 '본적지'만("기본적으로"·"해 본적이" 오탐) — A3-r1-02
   /결혼|기혼|미혼|배우자(?:가|의|와|분|님)|이혼/,
   /출신|고향|본적지/,
@@ -57,12 +58,17 @@ const CARD_LABELS: ReadonlySet<string> = new Set(CARDS.map((c) => c.label))
 /**
  * 질문 문장에서 인용한 말이 공고 원문(어느 칸이든)에 글자 그대로 없는 것. 카드 이름("'고객사 상주 개발' 업무")은 공고 인용이 아니라 뺀다.
  * D-075는 인용 검사를 단위 시험에만 두었지만, 실제 LLM이 지어낸 인용을 막으려고 validate에 넣는다(H2-06 ①)
+ * 문장은 공백을 한 칸으로 줄인 뒤 검사하므로(generate) 원문 칸 값도 연속 공백·줄바꿈을 한 칸으로 줄여 비교한다.
+ * 칸 사이는 줄바꿈으로 나눠 두어 두 칸에 걸친 인용은 받지 않는다(A3-r2-10). 분석 근거 검사 quoteInPosting 은 글자 그대로(P-04)
  */
+const squash = (s: string): string => s.replace(/\s+/g, ' ')
+
 export function quotesNotInPosting(text: string, posting: Posting): string[] {
   const source = Object.values(posting)
     .filter((v): v is string => typeof v === 'string')
+    .map(squash)
     .join('\n')
-  return quotesIn(text).filter((q) => !CARD_LABELS.has(q) && !source.includes(q))
+  return quotesIn(text).filter((q) => !CARD_LABELS.has(q) && !source.includes(squash(q)))
 }
 
 export function hasForbiddenWord(text: string): boolean {
