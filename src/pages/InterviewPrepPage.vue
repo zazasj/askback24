@@ -5,23 +5,27 @@
  * 1차: ① 공고 확인 → ② 내 기대·걱정 → ③ 질문 받기. 최종: ① 공고 확인 → ② 1차 면접 정리 → ③ 최종 질문 받기.
  * ②의 "질문 만들기"·"최종 질문 만들기"는 질문 저장소에서 만들기를 시작하고 ③으로 간다(③이 만드는 중을 보여 준다).
  */
-import { computed, nextTick, onMounted, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { PRESETS, getAnalysis, getPosting, getSignals, type PresetKey } from '@shared/catalog'
 import type { Mode } from '@shared/contract'
 import NotFoundContent from '@/components/ui/NotFoundContent.vue'
 import { useDemoStore } from '@/stores/demo'
 import { useDemoToolActions, type DemoToolAction } from '@/stores/demoTools'
+import { usePostingIntroStore } from '@/stores/postingIntro'
 import { usePrepStore } from '@/stores/prep'
 import { useQuestionsStore } from '@/stores/questions'
 import { useReviewStore } from '@/stores/review'
 import CardPickStep from '@/features/interview-prep/CardPickStep.vue'
 import FinalResultStep from '@/features/interview-prep/FinalResultStep.vue'
 import FirstResultStep from '@/features/interview-prep/FirstResultStep.vue'
+import PostingLoading from '@/features/interview-prep/PostingLoading.vue'
 import PostingStep from '@/features/interview-prep/PostingStep.vue'
 import PrepHeader from '@/features/interview-prep/PrepHeader.vue'
 import ReviewStep from '@/features/interview-prep/ReviewStep.vue'
 import StepNav from '@/features/interview-prep/StepNav.vue'
+import { quotesInOrder } from '@/features/interview-prep/highlight'
+import { POSTING_FIELD_ORDER } from '@/features/interview-prep/postingRows'
 import { NEXT_FROM_POSTING, STEP_LABELS, entryMode, type StepNo } from '@/features/interview-prep/steps'
 import { usePrepRoute } from '@/features/interview-prep/usePrepRoute'
 
@@ -30,6 +34,7 @@ const demo = useDemoStore()
 const prep = usePrepStore()
 const questions = useQuestionsStore()
 const review = useReviewStore()
+const intro = usePostingIntroStore()
 
 const application = computed(() => demo.findApplication(String(route.params.applyId ?? '')))
 const posting = computed(() => (application.value ? getPosting(application.value.wantedAuthNo) : undefined))
@@ -50,6 +55,56 @@ const apiFail = computed(() => route.query.apiFail === '1')
 const hasFirst = computed(() => !!(application.value && questions.firstOf(application.value.apply_id)))
 /** 1차 질문을 만드는 중이면 곧 결과가 생기므로 "먼저 1차 면접 질문을 만들어 주세요"로 막지 않는다 */
 const firstGenerating = computed(() => !!(application.value && questions.isGenerating(application.value.apply_id)))
+
+// ── ① 공고 분석 로딩(LD-01·02·04) ─────────────────────
+// S4가 ①로 열리고, 주소에 ?card= 가 없고, 그 지원 건을 아직 보지 않았고, 움직임 줄이기가 아닐 때만 약 2초.
+// 로딩 뒤 처음 그리는 ①만 형광펜을 차례로 칠한다. 로딩 없이 ①을 보면(두 번째·?card=·움직임 줄이기·단계 표시로 옴) 본 것으로 둔다
+const reduceMotion = (): boolean => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+/** 지금 로딩을 보여 주는 지원 건 */
+const loadingFor = ref<string | null>(null)
+/** 로딩 뒤 처음 그리는 ①의 지원 건(형광펜 칠하기). ①을 떠나면 비운다 */
+const drawFor = ref<string | null>(null)
+const showLoading = computed(() => !!application.value && step.value === 1 && loadingFor.value === application.value.apply_id)
+const introQuotes = computed(() => (posting.value ? quotesInOrder(posting.value, analysis.value, POSTING_FIELD_ORDER, 4) : []))
+
+watch(
+  () => application.value?.apply_id,
+  (id) => {
+    loadingFor.value = null
+    drawFor.value = null
+    // 분석 결과가 없는 공고에는 "AI가 분석한 공고"라는 말이 맞지 않아 띄우지 않는다
+    if (id && analysis.value && step.value === 1 && !focusCard.value && !intro.hasSeen(id) && !reduceMotion()) loadingFor.value = id
+  },
+  { immediate: true },
+)
+
+watch(
+  [() => application.value?.apply_id, step, loadingFor],
+  ([id, s, loadingId]) => {
+    if (s !== 1) {
+      loadingFor.value = null
+      drawFor.value = null
+    } else if (id && loadingId !== id) {
+      intro.markSeen(id)
+    }
+  },
+  { immediate: true },
+)
+
+watch(showLoading, (v) => (intro.loading = v), { immediate: true })
+onBeforeUnmount(() => (intro.loading = false))
+
+/** 로딩이 끝나면 ①을 그리고(형광펜 칠하기) 초점을 ① 제목으로. 그사이 다른 곳으로 옮긴 초점은 빼앗지 않는다 */
+function introDone(): void {
+  const id = loadingFor.value
+  if (!id) return
+  intro.markSeen(id)
+  drawFor.value = id
+  loadingFor.value = null
+  void nextTick(() => {
+    if (focusLost()) document.getElementById(STEP_HEADINGS[mode.value][1])?.focus({ preventScroll: true })
+  })
+}
 
 /** "질문 만들기": 같은 선택으로 만든 질문이 있으면 다시 만들지 않고 ③만 연다(A2-01, 다시 만들기는 "AI로 다시 만들기") */
 function makeQuestions(): void {
@@ -165,14 +220,16 @@ onMounted(() => {
 
     <StepNav class="steps" :labels="labels" :current="step" />
 
+    <PostingLoading v-if="step === 1 && showLoading" :quotes="introQuotes" @done="introDone" />
     <PostingStep
-      v-if="step === 1"
+      v-else-if="step === 1"
       :posting="posting"
       :analysis="analysis"
       :signals="signals"
       :next-label="NEXT_FROM_POSTING[mode]"
       :focus-card="focusCard"
       :needs-first="mode === 'final' && !hasFirst && !firstGenerating"
+      :draw="drawFor === application.apply_id"
       @next="goStep(2)"
       @first="toFirst"
     />

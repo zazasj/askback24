@@ -3,7 +3,8 @@ import { POSTINGS, getAnalysis, getPosting, getSignals } from '@shared/catalog'
 import type { EvidenceField, Posting } from '@shared/contract'
 import { BLANK_TAGS, checkPoints, postingTag } from './checkpoints'
 import { offerMeta } from './questionView'
-import { marksOf, segmentsFor, splitByQuotes } from './highlight'
+import { marksOf, quotesInOrder, segmentsFor, splitByQuotes } from './highlight'
+import { POSTING_FIELD_ORDER } from './postingRows'
 
 const join = (segs: Array<{ text: string }>) => segs.map((s) => s.text).join('')
 
@@ -141,5 +142,33 @@ describe('근로조건 상태 글자(DR-r1-12)', () => {
     }
     const hours = getAnalysis('K-MOCK-0001')?.blanks.find((b) => b.topic === 'workHours')
     expect(hours && offerMeta(hours)).toBe('근로시간 · 공고에 없음')
+  })
+})
+
+describe('① 로딩의 근거 인용(LD-01)', () => {
+  it('① 표 문서 순서로, 같은 글은 한 번, 최대 4개이고 모두 그 공고 원문 형광펜이다', () => {
+    for (const posting of POSTINGS) {
+      const analysis = getAnalysis(posting.wantedAuthNo)
+      const all = quotesInOrder(posting, analysis, POSTING_FIELD_ORDER)
+      const four = quotesInOrder(posting, analysis, POSTING_FIELD_ORDER, 4)
+      expect(four, posting.wantedAuthNo).toEqual(all.slice(0, 4))
+      expect(new Set(all).size, posting.wantedAuthNo).toBe(all.length)
+      const marked = new Set(marksOf(analysis).map((m) => m.quote))
+      for (const q of all) expect(marked.has(q), `${posting.wantedAuthNo} "${q}"`).toBe(true)
+    }
+  })
+
+  it('(주)OO소프트: 직무내용 형광펜이 앞, 우대조건 "고객사 상주 가능자"는 그 뒤', () => {
+    const posting = getPosting('K-MOCK-0001') as Posting
+    const all = quotesInOrder(posting, getAnalysis('K-MOCK-0001'), POSTING_FIELD_ORDER)
+    const job = posting.jobCont
+    const inJob = all.filter((q) => job.includes(q))
+    expect(inJob.map((q) => job.indexOf(q))).toEqual([...inJob.map((q) => job.indexOf(q))].sort((a, b) => a - b))
+    expect(all.indexOf('고객사 상주 가능자')).toBeGreaterThan(all.indexOf('기타 업무 지원'))
+    expect(all.slice(0, inJob.length)).toEqual(inJob)
+  })
+
+  it('분석이 없으면 빈 목록', () => {
+    expect(quotesInOrder(getPosting('K-MOCK-0001') as Posting, undefined, POSTING_FIELD_ORDER, 4)).toEqual([])
   })
 })

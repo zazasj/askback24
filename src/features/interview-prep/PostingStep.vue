@@ -4,15 +4,18 @@
  * 공고 원문(고용24 상세 표 모양, 직무내용은 원문 줄 그대로 글 블록) + 형광펜 + 설명 말풍선,
  * 옆(휴대폰은 아래)에 "AI가 찾은 확인할 점"과 회사 신호(출처 배지).
  * focusCard(주소 ?card=)가 오면 그 카드의 형광펜을 켜고 그 자리로 간다(③ "근거 보기").
+ * draw 이면(공고 분석 로딩 뒤 처음 보는 ①) 형광펜을 문서 순서로 차례로 칠한다(LD-03). 아니면 처음부터 칠한 모양.
  */
-import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
 import { createReusableTemplate, onKeyStroke, useEventListener } from '@vueuse/core'
 import { getCard } from '@shared/catalog'
-import type { BlankTopic, CompanySignal, Posting, PostingAnalysis } from '@shared/contract'
+import type { CompanySignal, Posting, PostingAnalysis } from '@shared/contract'
 import PostingText from '@/features/jobs/PostingText.vue'
 import { lastLineOf, postingLines, type PostingLine } from '@/features/jobs/postingText'
+import { usePostingIntroStore } from '@/stores/postingIntro'
 import { checkPoints, firstLooks, postingTag } from './checkpoints'
 import { markKey, marksOf, splitByQuotes, type Segment } from './highlight'
+import { POSTING_ROWS as ROWS, type RowDef } from './postingRows'
 
 const props = defineProps<{
   posting: Posting
@@ -22,35 +25,10 @@ const props = defineProps<{
   focusCard?: string | null
   /** 최종 흐름인데 1차 결과가 없다: 다음 단계 대신 1차 질문 만들기를 먼저 권한다(DR-r2-05) */
   needsFirst?: boolean
+  /** 공고 분석 로딩 뒤 처음 보는 ①: 형광펜을 차례로 칠한다(LD-03) */
+  draw?: boolean
 }>()
 const emit = defineEmits<{ next: []; first: [] }>()
-
-type PostingKey = keyof Posting & string
-
-interface RowDef {
-  key: string
-  label: string
-  fields: PostingKey[]
-  /** 비어 있으면 줄을 숨긴다(비어 있음이 확인할 점이 아닌 칸) */
-  hideEmpty?: boolean
-  /** 긴 글 칸: 원문 줄·소제목·목록 기호 그대로 글 블록으로(S3 상세와 같은 부품) */
-  block?: boolean
-  /** 이 칸에 해당하는 근로조건(분석 JSON blanks). 칸이 비어도 직무내용에 적혀 있으면 빈 칸 글에 밝힌다 */
-  topic?: BlankTopic
-}
-
-const ROWS: readonly RowDef[] = [
-  { key: 'job', label: '직무내용', fields: ['jobCont'], block: true },
-  { key: 'pf', label: '우대조건', fields: ['pfCond', 'etcPfCond'] },
-  { key: 'emp', label: '고용형태', fields: ['empTpNm'] },
-  { key: 'career', label: '경력', fields: ['enterTpNm'] },
-  { key: 'edu', label: '학력', fields: ['eduNm'], hideEmpty: true },
-  { key: 'sal', label: '임금', fields: ['salTpNm', 'sal'], topic: 'sal' },
-  { key: 'hours', label: '근무시간', fields: ['workdayWorkhrCont'], topic: 'workHours' },
-  { key: 'region', label: '근무지역', fields: ['workRegion'], hideEmpty: true },
-  { key: 'welfare', label: '복리후생', fields: ['etcWelfare'], hideEmpty: true },
-  { key: 'sel', label: '전형방법', fields: ['selMthd'], hideEmpty: true },
-]
 
 interface MarkSpot {
   key: string
@@ -128,6 +106,107 @@ function markEl(key: string): HTMLElement | null {
   return root.value?.querySelector<HTMLElement>(`mark[data-mark-key="${key}"]`) ?? null
 }
 
+// ── 형광펜 긋기(LD-03) ───────────────────────────────────
+// 화면에 한 번이라도 보인 형광펜을 문서 순서로 하나씩 칠한다. 한 개 0.4초(CSS transition), 시작 간격 0.25초라
+// 첫 화면 형광펜 6개가 로딩 끝에서 1.45초 안에 칠하기 시작해 2초 안에 다 칠해진다. 화면 밖 것은 보일 때 줄에 선다
+const DRAW_START_MS = 200
+const DRAW_GAP_MS = 250
+const STROKE_MS = 400
+
+const intro = usePostingIntroStore()
+// 들어올 때 한 번 정한다: 칠하는 중에 부모가 draw 를 내려도 남은 것을 마저 칠한다
+const animate = props.draw === true
+const drawn = reactive(new Set<string>())
+/** 화면에 한 번이라도 들어온 형광펜(칠할 줄) */
+const seenMarks = new Set<string>()
+let drawTimer: ReturnType<typeof setTimeout> | undefined
+let idleTimer: ReturnType<typeof setTimeout> | undefined
+let nextDrawAt = 0
+let observer: IntersectionObserver | undefined
+
+const isDrawn = (key: string): boolean => !animate || drawn.has(key)
+
+function drawMark(key: string): void {
+  if (drawn.has(key)) return
+  drawn.add(key)
+  root.value?.querySelectorAll(`mark[data-mark-key="${key}"]`).forEach((el) => observer?.unobserve(el))
+}
+
+const nextToDraw = (): string | undefined => spots.value.find((s) => seenMarks.has(s.key) && !drawn.has(s.key))?.key
+
+function pumpDraw(): void {
+  if (drawTimer !== undefined) return
+  if (!nextToDraw()) {
+    // 마지막 한 개가 다 칠해질 때까지 칠하는 중으로 둔다(안내 T5가 기다림)
+    if (idleTimer === undefined) {
+      idleTimer = setTimeout(() => {
+        idleTimer = undefined
+        intro.drawing = false
+      }, STROKE_MS)
+    }
+    return
+  }
+  clearTimeout(idleTimer)
+  idleTimer = undefined
+  intro.drawing = true
+  drawTimer = setTimeout(
+    () => {
+      drawTimer = undefined
+      const key = nextToDraw()
+      if (key) {
+        drawMark(key)
+        nextDrawAt = performance.now() + DRAW_GAP_MS
+      }
+      pumpDraw()
+    },
+    Math.max(0, nextDrawAt - performance.now()),
+  )
+}
+
+function startDrawing(): void {
+  const marks = root.value?.querySelectorAll<HTMLElement>('mark[data-mark-key]') ?? []
+  if (typeof IntersectionObserver === 'undefined') {
+    spots.value.forEach((s) => drawMark(s.key))
+    return
+  }
+  intro.drawing = true
+  nextDrawAt = performance.now() + DRAW_START_MS
+  // 첫 화면(화면 안 전체)에 있는 것은 바로 줄에 세운다(LD-03 "첫 화면 형광펜")
+  marks.forEach((el) => {
+    const r = el.getBoundingClientRect()
+    if (el.dataset.markKey && r.bottom > 0 && r.top < window.innerHeight) seenMarks.add(el.dataset.markKey)
+  })
+  // 스크롤로 들어오는 것은 아래 고정 바 위로 올라왔을 때 줄에 세운다(바 밑에서 칠해져 긋는 모습을 못 보는 일이 없게)
+  const bar = root.value?.querySelector<HTMLElement>('.step-bar')
+  const cover = bar ? Math.ceil(bar.getBoundingClientRect().height + (parseFloat(getComputedStyle(bar).bottom) || 0)) : 0
+  observer = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        const key = (e.target as HTMLElement).dataset.markKey
+        if (e.isIntersecting && key) seenMarks.add(key)
+      }
+      pumpDraw()
+    },
+    { rootMargin: `0px 0px -${cover}px 0px` },
+  )
+  marks.forEach((el) => observer?.observe(el))
+  pumpDraw()
+}
+
+// 칠하기 전에 누르거나(설명) 확인할 점에서 켠 형광펜은 차례를 기다리지 않고 바로 칠한다(LD-03 칠하는 중에도 누르기)
+if (animate) {
+  watch([openKey, activeKey], (keys) => {
+    for (const k of keys) if (k) drawMark(k)
+  })
+}
+
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  clearTimeout(drawTimer)
+  clearTimeout(idleTimer)
+  if (animate) intro.drawing = false
+})
+
 /**
  * 말풍선은 형광펜 줄 아래에 펼쳐져 아래 고정 바에 가릴 수 있어 바 위까지 끌어올린다(DR-r3-01).
  * 바 높이만큼의 여백은 html scroll-padding-bottom(base.css)이 맡는다. 확인할 점에서 올 때는 형광펜 가운데 맞춤을 따른다.
@@ -164,6 +243,7 @@ function markBind(field: string, seg: Segment) {
     'data-bubble-keep': '',
     'data-mark-key': key,
     'data-active': activeKey.value === key ? 'true' : undefined,
+    'data-drawn': isDrawn(key) ? 'true' : 'false',
     'aria-expanded': isOpen,
     'aria-controls': isOpen ? 'mark-bubble' : undefined,
     'aria-describedby': 'mark-help',
@@ -198,6 +278,7 @@ useEventListener(document, 'click', (e: MouseEvent) => {
 })
 
 onMounted(() => {
+  if (animate) startDrawing()
   const card = props.focusCard
   // 주소 이동 뒤 라우터의 맨 위 스크롤이 끝난 다음에 형광펜 자리로 간다
   if (card) setTimeout(() => goToCard(card, true), 0)
@@ -635,10 +716,13 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
   font-style: normal;
 }
 
+/* 형광펜은 바탕색 대신 한 색 그라디언트로 칠해, 칠하기 전(data-drawn="false")은 폭 0에서 왼쪽→오른쪽으로 채운다(LD-03).
+   다 칠한 모양은 2차 형광펜(한 색 바탕)과 같다. 줄을 넘는 형광펜은 줄마다 따로 채운다(clone) */
 mark {
+  --mark-color: var(--rq-mark);
   padding: 0.1rem 0.2rem;
   border-radius: var(--krds-radius-small1);
-  background: var(--rq-mark);
+  background: linear-gradient(var(--mark-color), var(--mark-color)) left center / 100% 100% no-repeat;
   color: var(--krds-light-color-text-bolder);
   text-decoration: underline dotted;
   text-decoration-color: var(--krds-light-color-text-subtle);
@@ -646,11 +730,16 @@ mark {
   cursor: pointer;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+  transition: background-size 0.4s cubic-bezier(0.3, 0, 0.2, 1);
+}
+
+mark[data-drawn='false'] {
+  background-size: 0% 100%;
 }
 
 mark:hover,
 mark[data-active='true'] {
-  background: var(--rq-mark-active);
+  --mark-color: var(--rq-mark-active);
 }
 
 mark[data-active='true'] {

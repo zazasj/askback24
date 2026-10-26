@@ -2,7 +2,7 @@
  * 공고 형광펜. 원문을 조각으로 나눠 v-for 로 그린다(v-html 금지).
  * 근거 quote 는 원문 필드 값의 글자 그대로 일부라서, 원문에 없는 인용은 칠하지 않고 버린다.
  */
-import type { EvidenceField, PostingAnalysis } from '@shared/contract'
+import type { EvidenceField, Posting, PostingAnalysis } from '@shared/contract'
 
 export interface MarkRef {
   field: EvidenceField
@@ -59,3 +59,26 @@ export function segmentsFor(field: EvidenceField, text: string, marks: readonly 
 }
 
 export const markKey = (field: string, seg: Segment): string => `${field}:${seg.start}`
+
+/**
+ * ① 형광펜 인용을 ① 표의 문서 순서로(같은 글은 한 번). ① 로딩이 이 공고 분석의 근거로 보여 준다(LD-01).
+ * fields 는 ① 표 필드 순서(postingRows.ts POSTING_FIELD_ORDER)
+ */
+export function quotesInOrder(
+  posting: Posting,
+  analysis: PostingAnalysis | undefined,
+  fields: ReadonlyArray<keyof Posting>,
+  max = Infinity,
+): string[] {
+  const marks = marksOf(analysis)
+  const out: string[] = []
+  for (const field of fields) {
+    const text = String(posting[field] ?? '').trim()
+    if (!text) continue
+    for (const seg of splitByQuotes(text, marks.filter((m) => m.field === field))) {
+      if (seg.cardIds.length && !out.includes(seg.text)) out.push(seg.text)
+      if (out.length >= max) return out
+    }
+  }
+  return out
+}
