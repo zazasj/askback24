@@ -2,7 +2,7 @@
 /**
  * 시연 띠 오른쪽 끝의 "시연 도구". 시연용 버튼을 본 화면에서 빼 두어 실제 서비스처럼 보이게 하고,
  * 띠 안에 두어 본문을 가리지 않으면서 "시연용"이라는 뜻을 함께 보인다(DR-r1-01).
- * 화면별 버튼(useDemoToolActions)이 위, 공통 버튼(안내 다시 보기·시연 초기화)이 아래.
+ * 화면별 버튼(useDemoToolActions)이 위, 공통 버튼(안내 다시 보기·안내 끄기·시연 초기화)이 아래.
  */
 import { nextTick, ref, useTemplateRef } from 'vue'
 import { onClickOutside, onKeyStroke } from '@vueuse/core'
@@ -10,10 +10,12 @@ import { useRouter } from 'vue-router'
 import { useDemoStore } from '@/stores/demo'
 import { useDemoToolsStore, type DemoToolAction } from '@/stores/demoTools'
 import { useToastStore } from '@/stores/toast'
+import { useTourStore } from '@/stores/tour'
 
 const tools = useDemoToolsStore()
 const demo = useDemoStore()
 const toast = useToastStore()
+const tour = useTourStore()
 const router = useRouter()
 
 const root = useTemplateRef<HTMLElement>('root')
@@ -34,12 +36,22 @@ function run(action: DemoToolAction): void {
   action.run()
 }
 
+/** 안내 띠와 함께 S1 서비스 안내를 1단계부터 다시(TR-04). 다른 화면 안내 기록은 그대로 */
 async function showGuideAgain(): Promise<void> {
   close(true)
   demo.showGuide()
+  tour.requestReplay('s1')
   await router.push('/mypage/applications')
   // 이미 지원 내역에 있으면 이동이 없어 안내 띠가 화면 밖에 남을 수 있다
   window.scrollTo({ top: 0 })
+}
+
+/** "안내 끄기" ↔ "안내 켜기"(TR-05). 끄면 어느 화면에서도 저절로 뜨지 않는다. "시연 초기화"가 다시 켠다 */
+function toggleTour(): void {
+  close(true)
+  const off = !tour.off
+  tour.setOff(off)
+  toast.show(off ? '처음 온 사람 안내를 껐어요. 시연 도구에서 다시 켤 수 있어요' : '처음 온 사람 안내를 켰어요. 처음 보는 화면에서 떠요')
 }
 
 async function resetDemo(): Promise<void> {
@@ -62,6 +74,7 @@ async function resetDemo(): Promise<void> {
       class="toggle tap-target"
       aria-controls="demo-tools-panel"
       :aria-expanded="tools.open"
+      data-tour="demo-tools"
       @click="tools.open = !tools.open"
     >
       <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" focusable="false">
@@ -93,6 +106,7 @@ async function resetDemo(): Promise<void> {
       </ul>
       <ul class="actions is-common">
         <li><button type="button" class="action" @click="showGuideAgain">안내 다시 보기</button></li>
+        <li><button type="button" class="action" @click="toggleTour">{{ tour.off ? '안내 켜기' : '안내 끄기' }}</button></li>
         <li><button type="button" class="action" :disabled="busy" @click="resetDemo">시연 초기화</button></li>
       </ul>
     </div>

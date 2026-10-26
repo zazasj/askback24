@@ -12,7 +12,10 @@ import { getCard } from '@shared/catalog'
 import type { CompanySignal, Posting, PostingAnalysis } from '@shared/contract'
 import PostingText from '@/features/jobs/PostingText.vue'
 import { lastLineOf, postingLines, type PostingLine } from '@/features/jobs/postingText'
+import { postingTour } from '@/features/tour/tourSteps'
+import { useScreenTour } from '@/features/tour/useScreenTour'
 import { usePostingIntroStore } from '@/stores/postingIntro'
+import { useTourStore } from '@/stores/tour'
 import { checkPoints, firstLooks, postingTag } from './checkpoints'
 import { markKey, marksOf, splitByQuotes, type Segment } from './highlight'
 import { POSTING_ROWS as ROWS, type RowDef } from './postingRows'
@@ -200,6 +203,20 @@ if (animate) {
   })
 }
 
+// ── 처음 온 사람 안내(TR-02): 로딩·첫 화면 형광펜 칠하기가 끝난 뒤 뜬다(TR-08, TourHost 가 intro.busy 를 기다림) ──
+useScreenTour('prep-posting', () => postingTour(props.nextLabel), { titleId: 'posting-step-title' })
+// 안내는 화면을 어둡게 덮고 대상을 찾아 스크롤하므로, 남은 형광펜은 긋는 모습 대신 다 칠한 모양으로 둔다
+// (막 아래에서 칠하면 보이지 않고, 안내 첫 화면에 칠하지 않은 형광펜이 남지 않게)
+const tour = useTourStore()
+if (animate) {
+  watch(
+    () => tour.activeKey,
+    (k) => {
+      if (k) spots.value.forEach((s) => drawMark(s.key))
+    },
+  )
+}
+
 onBeforeUnmount(() => {
   observer?.disconnect()
   clearTimeout(drawTimer)
@@ -242,6 +259,7 @@ function markBind(field: string, seg: Segment) {
     tabindex: 0,
     'data-bubble-keep': '',
     'data-mark-key': key,
+    'data-tour': 'posting-mark',
     'data-active': activeKey.value === key ? 'true' : undefined,
     'data-drawn': isDrawn(key) ? 'true' : 'false',
     'aria-expanded': isOpen,
@@ -336,7 +354,7 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
 
     <!-- 고용24식 안내 상자(채팅 말풍선 아님). 인용을 누르면 그 형광펜을 켜고 그리로 간다(F-04).
          제목·개수 줄·목록이 이 상자의 바로 아래 자식이어야 한 묶음으로 읽힌다(둘만 감싸는 칸을 두지 않음) -->
-    <section v-if="points.length" class="ai-summary" aria-labelledby="ai-summary-title">
+    <section v-if="points.length" class="ai-summary" aria-labelledby="ai-summary-title" data-tour="posting-summary">
       <h3 id="ai-summary-title" class="ai-summary-title">AI 분석 요약</h3>
       <p class="ai-summary-count">확인할 곳 <strong>{{ points.length }}군데</strong>를 찾았어요.</p>
       <ol v-if="looks.length" class="looks" :aria-label="`먼저 볼 ${looks.length === 2 ? '두' : '한'} 곳`">
@@ -423,7 +441,7 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
       </section>
 
       <div class="side">
-        <section class="side-box checks" aria-labelledby="checks-title">
+        <section class="side-box checks" aria-labelledby="checks-title" data-tour="posting-checks">
           <h3 id="checks-title" class="side-title">AI가 찾은 확인할 점</h3>
           <p class="side-sub">면접에서 물어보면 좋을 곳을 골랐어요. 누르면 공고의 그 문구로 가요.</p>
           <ul v-if="points.length" id="check-list" class="check-list">
@@ -489,7 +507,7 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
     </div>
 
     <!-- 다음 버튼이 긴 공고·확인할 점 아래로 묻히지 않게 아래 고정 바(② .pick-bar와 같은 모양, DR-r1-03) -->
-    <div v-if="needsFirst" class="step-bar is-blocked">
+    <div v-if="needsFirst" class="step-bar is-blocked" data-tour="posting-next">
       <p class="step-bar-notice">먼저 1차 면접 질문을 만들어 주세요</p>
       <div class="step-bar-actions">
         <button type="button" class="btn btn-tertiary btn-lg" @click="emit('next')">{{ nextLabel }}</button>
@@ -498,7 +516,7 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
     </div>
     <div v-else class="step-bar">
       <p v-if="points.length" class="step-bar-note">확인할 곳 <strong>{{ points.length }}군데</strong>를 다 봤으면 다음 단계로 가요</p>
-      <button type="button" class="btn btn-accent btn-lg next" @click="emit('next')">{{ nextLabel }}</button>
+      <button type="button" class="btn btn-accent btn-lg next" data-tour="posting-next" @click="emit('next')">{{ nextLabel }}</button>
     </div>
   </section>
 </template>

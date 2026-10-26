@@ -14,6 +14,7 @@ import SideNav from '@/components/gov/SideNav.vue'
 import SideSelect from '@/components/gov/SideSelect.vue'
 import DemoOffTip from '@/components/ui/DemoOffTip.vue'
 import ToastHost from '@/components/ui/ToastHost.vue'
+import TourHost from '@/features/tour/TourHost.vue'
 
 const route = useRoute()
 const withSide = computed(() => route.meta.side !== undefined)
@@ -41,6 +42,8 @@ const isPrep = computed(() => route.name === 'prep')
   <GovFooter />
   <ToastHost />
   <DemoOffTip />
+  <!-- 처음 온 사람 안내(스포트라이트). 화면마다 useScreenTour 로 단계를 올린다(TR) -->
+  <TourHost />
 </template>
 
 <style scoped>

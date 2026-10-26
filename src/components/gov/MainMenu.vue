@@ -11,7 +11,7 @@ const OTHERS = ['취업지원', '실업급여', '직업 능력 개발', '출산�
       <ul class="menu-list">
         <li>
           <!-- 펼침 메뉴가 없어 아래 화살표를 두지 않는다(H2-17 ②) -->
-          <RouterLink to="/jobs" class="menu-item" active-class="is-active">
+          <RouterLink to="/jobs" class="menu-item" active-class="is-active" data-tour="main-jobs">
             <span>채용정보</span>
           </RouterLink>
         </li>

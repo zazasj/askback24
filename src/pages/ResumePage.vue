@@ -5,9 +5,14 @@
  * 경력·직업훈련·프로젝트의 경험 세 줄이 S4 ② "이력서에서 가져오기" 칩이 된다.
  */
 import { PERSONA } from '@/demoData'
+import { RESUME_TOUR } from '@/features/tour/tourSteps'
+import { useScreenTour } from '@/features/tour/useScreenTour'
 import { vDemoOff } from '@/lib/demoOff'
 
 const p = PERSONA
+
+// 처음 들어오면 이 화면 안내(TR-02)
+useScreenTour('resume', () => [...RESUME_TOUR])
 /** 흐린 버튼(G-14)을 눌렀을 때의 알림 */
 const NOT_IN_DEMO = '시연에서는 이력서 출력만 쓸 수 있어요'
 
@@ -57,7 +62,7 @@ function printResume(): void {
       </button>
     </div>
 
-    <section class="owner" aria-label="이력서 요약">
+    <section class="owner" aria-label="이력서 요약" data-tour="resume-owner">
       <div class="photo" aria-hidden="true">
         <svg viewBox="0 0 48 56" width="48" height="56" focusable="false">
           <circle cx="24" cy="20" r="10" fill="none" stroke="currentColor" stroke-width="2.4" />
@@ -125,7 +130,8 @@ function printResume(): void {
       </ul>
     </section>
 
-    <section class="resume-section" aria-labelledby="sec-training">
+    <!-- 경험 칩(S4 ② "이력서에서 가져오기")이 나오는 곳 — 안내가 비춘다(TR-02) -->
+    <section class="resume-section" aria-labelledby="sec-training" data-tour="resume-exp">
       <h2 id="sec-training" class="section-title">직업훈련</h2>
       <ul class="entries">
         <li v-for="t in p.trainings" :key="t.name" class="entry">

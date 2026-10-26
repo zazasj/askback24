@@ -10,6 +10,8 @@ import NotFoundContent from '@/components/ui/NotFoundContent.vue'
 import ApplyDialog from '@/features/jobs/ApplyDialog.vue'
 import PostingText from '@/features/jobs/PostingText.vue'
 import { DETAIL_SECTIONS, EMPTY_TEXT, rowCode, rowText, salaryText } from '@/features/jobs/postingView'
+import { JOB_TOUR } from '@/features/tour/tourSteps'
+import { useScreenTour } from '@/features/tour/useScreenTour'
 import { usePageTitle } from '@/lib/title'
 import { useDemoStore } from '@/stores/demo'
 import { useToastStore } from '@/stores/toast'
@@ -20,6 +22,9 @@ const toast = useToastStore()
 
 const posting = computed(() => getPosting(String(route.params.wantedAuthNo ?? '')))
 usePageTitle(() => posting.value?.wantedTitle)
+
+// 처음 들어오면 이 화면 안내(TR-02). 공고가 없는 주소(찾을 수 없음)에는 안내가 없다
+useScreenTour('job', () => [...JOB_TOUR], { ready: () => !!posting.value, titleId: 'posting-title' })
 
 const applied = computed(() => (posting.value ? demo.hasApplied(posting.value.wantedAuthNo) : false))
 
@@ -80,13 +85,13 @@ function submit(): void {
     </header>
 
     <section class="summary" aria-label="공고 요약">
-      <dl class="summary-list">
+      <dl class="summary-list" data-tour="job-summary">
         <div v-for="s in summary" :key="s.label" class="summary-item">
           <dt>{{ s.label }}</dt>
           <dd :class="{ 'is-empty': !s.text }">{{ s.text || EMPTY_TEXT }}</dd>
         </div>
       </dl>
-      <div class="apply-box">
+      <div class="apply-box" data-tour="job-apply">
         <button v-if="!applied" ref="applyButton" type="button" class="btn btn-primary btn-lg apply-btn" @click="dialogOpen = true">
           입사지원
         </button>

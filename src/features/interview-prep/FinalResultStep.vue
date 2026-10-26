@@ -11,6 +11,8 @@ import { getAnalysis, getCard } from '@shared/catalog'
 import type { FinalQuestion, Posting, ReviewState } from '@shared/contract'
 import MockModeTag from '@/components/ui/MockModeTag.vue'
 import { useCopy } from '@/composables/useCopy'
+import { FINAL_RESULT_TOUR } from '@/features/tour/tourSteps'
+import { useScreenTour } from '@/features/tour/useScreenTour'
 import { usePrepStore } from '@/stores/prep'
 import { finalKey, useQuestionsStore } from '@/stores/questions'
 import { useReviewStore } from '@/stores/review'
@@ -49,6 +51,9 @@ const ruleJudged = computed(() => {
 })
 /** 일부만 규칙 판정이어도 규칙 결과가 AI 판정으로 보이지 않게 개수를 알린다 */
 const ruleAskedCount = computed(() => ruleJudgedAskedCount(result.value?.response.card_states ?? []))
+
+// 최종 질문을 다 만든 뒤 이 화면 안내(TR-02)
+useScreenTour('prep-final', () => [...FINAL_RESULT_TOUR], { ready: () => !generating.value && !!result.value, titleId: 'final-title' })
 
 // 만드는 중 ↔ 결과가 바뀔 때 누른 버튼이 사라지므로 초점을 제목으로 옮긴다
 const title = useTemplateRef<HTMLElement>('title')
@@ -168,7 +173,7 @@ const STANDARD_CONTRACT_URL = 'https://www.moel.go.kr/policy/policydata/view.do?
       <p class="sr-only" aria-live="polite">최종 질문 {{ questions.length }}개를 만들었어요.</p>
 
       <!-- ③은 질문이 주인공: 요약은 한 줄 개수 띠, 카드별 내용·뜻은 펼침 안(DR-r1-09) -->
-      <section class="summary" aria-labelledby="summary-title" data-print="hide">
+      <section class="summary" aria-labelledby="summary-title" data-print="hide" data-tour="final-summary">
         <div class="summary-head">
           <h3 id="summary-title" class="summary-title">1차 면접 정리 결과</h3>
           <ul class="summary-strip">
@@ -240,7 +245,7 @@ const STANDARD_CONTRACT_URL = 'https://www.moel.go.kr/policy/policydata/view.do?
         <!-- 1차 ③과 같은 짜임: 데스크톱은 오른쪽 상자들이 함께 따라오고, 쌓이는 폭에서는 복사·인쇄 상자만 질문 위로(RS-03) -->
         <div class="side-col" data-print="hide">
           <!-- 이 화면의 주 행동은 면접에 들고 갈 한 장이라 인쇄를 채운 버튼 하나로 둔다(Q-04 원칙, 아래 바가 없어짐) -->
-          <aside class="side-box side-tools" aria-label="복사·인쇄" data-print="hide">
+          <aside class="side-box side-tools" aria-label="복사·인쇄" data-print="hide" data-tour="result-tools">
             <div class="side-actions">
               <button type="button" class="btn btn-tertiary side-btn" @click="copyAll">전체 복사</button>
               <button type="button" class="btn btn-accent side-btn" @click="printSheet">면접에 들고 갈 한 장 인쇄</button>

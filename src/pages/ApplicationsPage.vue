@@ -10,9 +10,12 @@ import { getPosting } from '@shared/catalog'
 import AiLabel from '@/components/ui/AiLabel.vue'
 import { daysBefore, formatDate, parseIsoDate, toIsoDate } from '@/lib/dates'
 import { entryMode, entryStep, prepButtonLabel } from '@/features/interview-prep/steps'
+import { S1_TOUR } from '@/features/tour/tourSteps'
+import { useScreenTour } from '@/features/tour/useScreenTour'
 import { vDemoOff } from '@/lib/demoOff'
 import { useDemoStore } from '@/stores/demo'
 import { useQuestionsStore } from '@/stores/questions'
+import { useTourStore } from '@/stores/tour'
 import type { Application } from '@/types'
 
 type ViewedFilter = 'all' | 'viewed' | 'unviewed'
@@ -149,6 +152,22 @@ async function submitSearch(): Promise<void> {
 function pulseClass(i: number): Record<string, boolean> {
   return { 'is-pulse': i === 0 && !demo.guideClosed }
 }
+
+// ── 처음 온 사람 안내(TR-01): 이 화면에서 사이트 기능 전체를 소개한다 ──
+useScreenTour('s1', () => [...S1_TOUR])
+const tour = useTourStore()
+
+/** 안내 띠 "이용 안내 다시 보기": 서비스 안내를 1단계부터(TR-04) */
+function replayTour(): void {
+  tour.requestReplay('s1')
+}
+
+/** 안내가 비출 면접 준비 버튼: 맨 위 지원 건(1차 흐름)과 1차 합격 지원 건(최종 흐름) */
+const finalRowId = computed(() => filtered.value.find((r) => !r.closed && r.app.result === '1차 합격')?.app.apply_id)
+function prepTour(r: Row, i: number): string | undefined {
+  const names = [i === 0 ? 's1-prep-top' : '', r.app.apply_id === finalRowId.value ? 's1-prep-final' : ''].filter(Boolean)
+  return names.length ? names.join(' ') : undefined
+}
 async function closeGuide(): Promise<void> {
   demo.closeGuide()
   await nextTick()
@@ -178,6 +197,8 @@ async function closeGuide(): Promise<void> {
         </p>
         <!-- 시간 약속 없이 무엇을 차례로 하는지만(H2-17 ①) -->
         <p class="guide-text">맨 위 지원 건의 <strong>면접 역질문 준비</strong>를 누르면 공고 확인부터 질문 받기까지 차례로 안내해요.</p>
+        <!-- 서비스 안내(스포트라이트)를 처음부터 다시(TR-04). 채운 버튼은 "바로 해 보기" 하나라 글자 버튼으로 -->
+        <button type="button" class="guide-tour tap-target" @click="replayTour">이용 안내 다시 보기</button>
       </div>
       <!-- 낮은 노트북 화면(1366×768)에서는 표가 첫 화면 아래라 띠에서 바로 시작한다(H1-02 가). 휴대폰은 1행 버튼이 바로 아래라 숨김 -->
       <button v-if="topRow" type="button" class="btn btn-accent guide-try" @click="tryNow">바로 해 보기</button>
@@ -223,7 +244,7 @@ async function closeGuide(): Promise<void> {
         <p :ref="setCount" class="count">전체 <strong>{{ filtered.length }}</strong>건</p>
 
         <!-- 데스크톱: 표 -->
-        <div class="table-wrap">
+        <div class="table-wrap" data-tour="s1-table">
           <table class="gov-table app-table">
             <caption class="sr-only">
               알선/입사지원 내역: 회사명과 지원공고, 지원일, 열람일, 지원결과, 면접 준비
@@ -268,6 +289,7 @@ async function closeGuide(): Promise<void> {
                     :class="pulseClass(i)"
                     :disabled="r.closed"
                     :aria-describedby="r.prepStatus ? `prep-status-${r.app.apply_id}` : undefined"
+                    :data-tour="prepTour(r, i)"
                     @click="openPrep(r)"
                   >
                     {{ r.prepLabel }}
@@ -284,7 +306,7 @@ async function closeGuide(): Promise<void> {
 
         <!-- 휴대폰: 카드 -->
         <ul class="app-cards" aria-label="알선/입사지원 내역">
-          <li v-for="(r, i) in filtered" :key="r.app.apply_id" class="app-card">
+          <li v-for="(r, i) in filtered" :key="r.app.apply_id" class="app-card" :data-tour="i === 0 ? 's1-card-top' : undefined">
             <p class="corp">{{ r.corpNm }}</p>
             <p v-if="r.closed" class="posting-closed">
               <span class="posting">{{ r.title }}</span>
@@ -315,6 +337,7 @@ async function closeGuide(): Promise<void> {
                 :class="pulseClass(i)"
                 :disabled="r.closed"
                 :aria-describedby="r.prepStatus ? `prep-status-m-${r.app.apply_id}` : undefined"
+                :data-tour="prepTour(r, i)"
                 @click="openPrep(r)"
               >
                 {{ r.prepLabel }}
@@ -404,6 +427,26 @@ async function closeGuide(): Promise<void> {
   margin-top: 0.4rem;
   font-size: var(--krds-pc-font-size-body-small);
   color: var(--krds-light-color-text-subtle);
+}
+
+/* 글자 링크 모양(안내 띠의 채운 버튼은 "바로 해 보기" 하나) */
+.guide-tour {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.4rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: var(--krds-pc-font-size-body-small);
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--rq-accent-strong);
+  text-decoration: underline;
+  text-underline-offset: 0.3rem;
+}
+
+.guide-tour:hover {
+  color: var(--rq-accent);
 }
 
 .guide-try {

@@ -7,6 +7,8 @@ import { computed, ref } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { POSTINGS, getAnalysis } from '@shared/catalog'
 import { EMPTY_TEXT, listOrder, matchesQuery, salaryChunks, salaryText } from '@/features/jobs/postingView'
+import { JOBS_TOUR } from '@/features/tour/tourSteps'
+import { useScreenTour } from '@/features/tour/useScreenTour'
 import { useDemoStore } from '@/stores/demo'
 
 const demo = useDemoStore()
@@ -30,6 +32,9 @@ const rows = computed(() =>
     applied: demo.hasApplied(p.wantedAuthNo),
   })),
 )
+
+// 처음 들어오면 이 화면 안내(TR-02)
+useScreenTour('jobs', () => [...JOBS_TOUR])
 </script>
 
 <template>
@@ -51,7 +56,7 @@ const rows = computed(() =>
     </div>
 
     <!-- 데스크톱: 표 -->
-    <div v-if="!isMobile" class="table-wrap">
+    <div v-if="!isMobile" class="table-wrap" data-tour="jobs-table">
       <table class="gov-table jobs-table">
         <caption class="sr-only">
           채용정보 목록: 회사명과 채용제목, 임금, 근무지역, 경력·학력, 접수마감
@@ -77,7 +82,7 @@ const rows = computed(() =>
             <td class="cell-posting">
               <strong class="corp">{{ r.p.corpNm }}</strong>
               <span class="title-line">
-                <RouterLink :to="r.to" class="posting tap-target">{{ r.p.wantedTitle }}</RouterLink>
+                <RouterLink :to="r.to" class="posting tap-target" data-tour="jobs-title">{{ r.p.wantedTitle }}</RouterLink>
                 <span v-if="r.applied" class="badge badge-primary">지원함</span>
               </span>
             </td>
@@ -102,10 +107,10 @@ const rows = computed(() =>
     <!-- 휴대폰: 카드 -->
     <ul v-else class="job-cards" aria-label="채용정보 목록">
       <!-- 카드 어디를 눌러도 상세로 가게 제목 링크를 카드 전체로 늘린다(링크는 하나라 화면낭독기에는 제목만, DR-r3-06) -->
-      <li v-for="r in rows" :key="r.p.wantedAuthNo" class="job-card">
+      <li v-for="(r, i) in rows" :key="r.p.wantedAuthNo" class="job-card" :data-tour="i === 0 ? 'jobs-card-top' : undefined">
         <p class="corp">{{ r.p.corpNm }}</p>
         <p class="title-line">
-          <RouterLink :to="r.to" class="posting">{{ r.p.wantedTitle }}</RouterLink>
+          <RouterLink :to="r.to" class="posting" data-tour="jobs-title">{{ r.p.wantedTitle }}</RouterLink>
           <span v-if="r.applied" class="badge badge-primary">지원함</span>
         </p>
         <svg class="card-chevron" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">

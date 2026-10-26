@@ -16,7 +16,8 @@ const value = computed({
 </script>
 
 <template>
-  <div class="side-select">
+  <!-- 휴대폰 S1 서비스 안내 "이력서" 단계가 왼쪽 메뉴 대신 비추는 곳(TR-07) -->
+  <div class="side-select" data-tour="side-select">
     <label for="side-select" class="label">마이페이지 메뉴</label>
     <select id="side-select" v-model="value" class="input">
       <option v-for="l in SIDE_LINKS" :key="l.key" :value="l.to">{{ l.label }}</option>

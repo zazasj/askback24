@@ -36,7 +36,7 @@ const terms = computed(() => cardTerms(props.card))
 </script>
 
 <template>
-  <div :id="`card-${card.id}`" ref="root" class="task-card" :class="pref ? `is-${pref}` : undefined" tabindex="-1">
+  <div :id="`card-${card.id}`" ref="root" class="task-card" :class="pref ? `is-${pref}` : undefined" tabindex="-1" data-tour="pick-card">
     <div class="head">
       <h3 :id="nameId" class="name">{{ card.label }}</h3>
       <span v-if="tag" class="posting-tag">{{ tag }}</span>
@@ -44,7 +44,7 @@ const terms = computed(() => cardTerms(props.card))
     <p :id="descId" class="plain">{{ card.plain }}</p>
     <!-- "도움말"은 줄 왼쪽, NCS는 같은 줄 오른쪽. 카드 높이가 모두 같고 이 줄은 아래에 붙어 카드마다 같은 자리다(D18) -->
     <div class="meta-row">
-      <HelpPopup :title="card.label" :boundary="root">
+      <HelpPopup :title="card.label" :boundary="root" data-tour="card-help">
         <!-- 넓은 화면에서는 카드 설명을 한 줄로 자르므로(HP-06) 전체 글을 맨 위에 늘 둔다 -->
         <p class="help-desc">{{ card.plain }}</p>
         <h3 class="help-sub">예를 들면</h3>

@@ -14,6 +14,8 @@ import { QUESTION_LIMIT, pickExplore, typeLabel } from '@shared/rules'
 import { API_MODE } from '@/api/client'
 import MockModeTag from '@/components/ui/MockModeTag.vue'
 import { useCopy } from '@/composables/useCopy'
+import { FIRST_RESULT_TOUR } from '@/features/tour/tourSteps'
+import { useScreenTour } from '@/features/tour/useScreenTour'
 import { usePrepStore } from '@/stores/prep'
 import { useQuestionsStore } from '@/stores/questions'
 import { firstCopyText } from './copyText'
@@ -40,6 +42,9 @@ const stale = computed(() => !!result.value && !store.isCurrent(props.applyId, p
 const seeded = computed(() => result.value?.seed === true)
 const templateCount = computed(() => questions.value.filter((q) => q.source === 'template').length)
 const allTemplate = computed(() => questions.value.length > 0 && templateCount.value === questions.value.length)
+
+// 질문을 다 만든 뒤 이 화면 안내(TR-02). 만드는 중·빈 화면에는 띄우지 않는다
+useScreenTour('prep-first', () => [...FIRST_RESULT_TOUR], { ready: () => !generating.value && questions.value.length > 0, titleId: 'result-title' })
 
 function make(): void {
   void store.makeFirst(props.applyId, props.posting.wantedAuthNo, { apiFail: props.apiFail === true })
@@ -172,6 +177,7 @@ function printSheet(): void {
               :watch-out="q.watch_out"
               :good-sign="q.good_sign"
               :type-note="firstTypeNote(q.type)"
+              data-tour="result-question"
             />
           </ol>
           <!-- 5개 한도로 빠진 카드(A2-13). 오른쪽 상자(sticky)에 넣으면 1440×900에서 상자가 화면 아래끝까지 늘어나
@@ -201,7 +207,7 @@ function printSheet(): void {
         <!-- 오른쪽 상자 둘: 데스크톱은 함께 오른쪽에서 따라오고(sticky), 쌓이는 폭(1100px 이하)에서는 묶음을 풀어
              복사·인쇄 상자만 질문 위로 올린다(RS-03). 버튼은 화면 전체에서 하나씩이라 두 번 그리지 않는다 -->
         <div class="side-col" data-print="hide">
-          <aside class="side-box side-tools" aria-label="복사·인쇄" data-print="hide">
+          <aside class="side-box side-tools" aria-label="복사·인쇄" data-print="hide" data-tour="result-tools">
             <div class="side-actions">
               <button type="button" class="btn btn-tertiary side-btn" @click="copyAll">전체 복사</button>
               <button type="button" class="btn btn-tertiary side-btn" @click="printSheet">면접에 들고 갈 한 장 인쇄</button>
@@ -237,7 +243,7 @@ function printSheet(): void {
       <div class="result-bar" data-print="hide">
         <!-- 질문을 만든 바로 그 화면의 채운 버튼이라 잘못 누르지 않게 언제 누르는지 적는다(데스크톱, H2-18 가) -->
         <p class="result-bar-note"><strong>면접 다녀왔어요</strong>는 면접에 다녀온 뒤 눌러 주세요</p>
-        <button type="button" class="btn btn-accent btn-lg result-bar-btn" @click="emit('review')">면접 다녀왔어요</button>
+        <button type="button" class="btn btn-accent btn-lg result-bar-btn" data-tour="result-went" @click="emit('review')">면접 다녀왔어요</button>
       </div>
     </template>
 

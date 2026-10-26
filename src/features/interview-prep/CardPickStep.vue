@@ -10,6 +10,8 @@ import { EXPERIENCE_LEAD, experienceAnchor } from '@shared/rules'
 import { API_MODE } from '@/api/client'
 import { PERSONA } from '@/demoData'
 import { JOB_INFO } from '@/realData'
+import { PICK_TOUR } from '@/features/tour/tourSteps'
+import { useScreenTour } from '@/features/tour/useScreenTour'
 import { useDemoToolsStore } from '@/stores/demoTools'
 import { usePrepStore } from '@/stores/prep'
 import { postingTag } from './checkpoints'
@@ -20,6 +22,9 @@ const props = defineProps<{ applyId: string; analysis?: PostingAnalysis }>()
 const emit = defineEmits<{ make: [] }>()
 
 const prep = usePrepStore()
+
+// 처음 들어오면 이 화면 안내(TR-02)
+useScreenTour('prep-pick', () => [...PICK_TOUR], { titleId: 'pick-step-title' })
 
 const selection = computed(() => prep.selectionOf(props.applyId))
 const picks = computed(() => selection.value.picks)
@@ -172,7 +177,7 @@ const experienceHint = computed(() => {
       </div>
     </section>
 
-    <div class="pick-bar">
+    <div class="pick-bar" data-tour="pick-bar">
       <div class="counter-wrap">
         <p class="counter" aria-live="polite">
           <strong class="count">{{ total }}개 골랐어요</strong>

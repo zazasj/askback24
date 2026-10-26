@@ -32,7 +32,12 @@ const current = computed(() => route.meta.side)
           </li>
           <li v-for="link in SIDE_LINKS" :key="link.key">
             <!-- RouterLink 이 현재 화면 링크에 aria-current="page"를 단다. S4는 그 아래 화면이라 모양만 켠다 -->
-            <RouterLink :to="link.to" class="item-link" :class="{ 'is-current': current === link.key }">
+            <RouterLink
+              :to="link.to"
+              class="item-link"
+              :class="{ 'is-current': current === link.key }"
+              :data-tour="link.key === 'resume' ? 'side-resume' : undefined"
+            >
               {{ link.label }}
             </RouterLink>
           </li>

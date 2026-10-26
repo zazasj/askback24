@@ -9,6 +9,8 @@ import { useEventListener } from '@vueuse/core'
 import { CARDS } from '@shared/catalog'
 import type { Clarity, Mood, NotAskedReason, Question } from '@shared/contract'
 import { typeLabel } from '@shared/rules'
+import { REVIEW_TOUR } from '@/features/tour/tourSteps'
+import { useScreenTour } from '@/features/tour/useScreenTour'
 import { usePrepStore } from '@/stores/prep'
 import { useQuestionsStore } from '@/stores/questions'
 import { useReviewStore } from '@/stores/review'
@@ -42,6 +44,9 @@ const item = (cardId: string) => itemOf(draft.value, cardId)
 const done = computed(() => questions.value.filter((q) => isItemDone(item(q.card_id))).length)
 const touched = computed(() => isTouched(draft.value))
 const hasPicks = computed(() => prep.selectionOf(props.applyId).picks.length > 0)
+
+// 정리할 1차 질문이 있을 때 이 화면 안내(TR-02). 빈 상태("먼저 1차 면접 질문을 만들어 주세요")에는 띄우지 않는다
+useScreenTour('prep-review', () => [...REVIEW_TOUR], { ready: () => questions.value.length > 0, titleId: 'review-title' })
 
 /**
  * 하나라도 적었으면 떠날 때 확인 창을 띄운다(H2-22). 휴대폰에서 다른 앱에 다녀오면 탭이 다시 열리며 입력이 지워질 수 있다.
@@ -106,7 +111,13 @@ function setMood(m: Mood): void {
           <p class="hint">질문마다 물어봤는지 골라 주세요. 들은 답은 한 줄이면 충분해요.</p>
         </div>
         <ol class="review-list">
-          <li v-for="(q, i) in questions" :key="q.card_id" class="review-item" :class="{ 'is-done': isItemDone(item(q.card_id)) }">
+          <li
+            v-for="(q, i) in questions"
+            :key="q.card_id"
+            class="review-item"
+            :class="{ 'is-done': isItemDone(item(q.card_id)) }"
+            data-tour="review-item"
+          >
             <div class="q-head">
               <span class="num" aria-hidden="true">{{ i + 1 }}</span>
               <span class="sr-only">{{ i + 1 }}번 질문</span>
@@ -216,7 +227,7 @@ function setMood(m: Mood): void {
           <strong class="count">정리한 질문 {{ done }}/{{ questions.length }}개</strong>
           <span class="count-tip">정리하지 않은 질문은 아직 모름으로 두고 다시 올려요.</span>
         </p>
-        <button type="button" class="btn btn-accent btn-lg make" :disabled="!touched" @click="emit('make')">최종 질문 만들기</button>
+        <button type="button" class="btn btn-accent btn-lg make" :disabled="!touched" data-tour="review-make" @click="emit('make')">최종 질문 만들기</button>
       </div>
       <p v-if="!hasPicks" class="hint">고른 카드가 없어 회사가 물어본 업무와 처우 질문 위주로 만들어요.</p>
     </template>
