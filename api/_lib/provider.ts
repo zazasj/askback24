@@ -3,16 +3,29 @@
  */
 import { createEnnoiaProvider } from '../../shared/providers/ennoia.js'
 import { createMockProvider } from '../../shared/providers/mock.js'
+import { createRemoteProvider, type RemoteConfig } from '../../shared/providers/remote.js'
 import type { LlmProvider } from '../../shared/providers/types.js'
 
 export interface ServerEnv {
+  /** mock(기본) · remote(AI 담당 서버, docs/API-SPEC.md) · ennoia(자리만) */
   LLM_PROVIDER?: string
+  /** remote: AI 담당 서버 주소(…/v1/… 앞부분) */
+  AI_ENDPOINT?: string
+  /** remote: Authorization: Bearer 값 */
+  AI_API_KEY?: string
   ENNOIA_API_KEY?: string
   ENNOIA_ENDPOINT?: string
 }
 
 /** 기본은 mock. 모르는 값도 mock 으로(배포 실수로 키 없는 공급자를 부르지 않게) */
 export function providerFor(env: ServerEnv): LlmProvider {
+  if (env.LLM_PROVIDER === 'remote') {
+    // 주소가 없으면 공급자가 부르지 않고 예외 → 모두 검수 문장(generate)
+    const config: RemoteConfig = {}
+    if (env.AI_ENDPOINT) config.endpoint = env.AI_ENDPOINT
+    if (env.AI_API_KEY) config.key = env.AI_API_KEY
+    return createRemoteProvider(config)
+  }
   if (env.LLM_PROVIDER === 'ennoia') {
     const config: { key?: string; endpoint?: string } = {}
     if (env.ENNOIA_API_KEY) config.key = env.ENNOIA_API_KEY

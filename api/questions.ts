@@ -7,6 +7,8 @@ import { handleQuestions } from './_lib/handler.js'
 export function POST(request: Request): Promise<Response> {
   return handleQuestions(request, {
     LLM_PROVIDER: process.env.LLM_PROVIDER,
+    AI_ENDPOINT: process.env.AI_ENDPOINT,
+    AI_API_KEY: process.env.AI_API_KEY,
     ENNOIA_API_KEY: process.env.ENNOIA_API_KEY,
     ENNOIA_ENDPOINT: process.env.ENNOIA_ENDPOINT,
   })

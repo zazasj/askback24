@@ -1,0 +1,102 @@
+{
+  "mode": "first",
+  "posting": {
+    "wantedAuthNo": "K-MOCK-0001",
+    "draft": false,
+    "corpNm": "(주)OO소프트",
+    "indTpNm": "응용 소프트웨어 개발 및 공급업",
+    "totPsncnt": "46",
+    "busiSize": "중소기업",
+    "busiCont": "공공·금융 시스템 구축(SI)과 운영(SM)",
+    "wantedTitle": "백엔드 개발자 (신입·경력 1년 이하)",
+    "jobsNm": "응용 소프트웨어 개발자",
+    "jobsCd": "133200",
+    "jobCont": "[회사소개]\n(주)OO소프트는 공공기관과 금융권의 정보시스템 구축 사업을 수행하는 IT 서비스 기업입니다.\n2011년 설립 이후 행정·금융 분야 프로젝트를 꾸준히 수행해 왔으며, 신입 개발자는 선배 개발자와 같은 프로젝트에 배치되어 실무를 함께 익히게 됩니다.\n\n[담당업무]\n- Java·Spring 기반 업무 시스템의 서버 개발 및 기타 업무 지원\n- 프로젝트 개발 산출물 작성(프로그램 명세서, 단위 테스트 결과서 등)\n- 투입 프로젝트에 따라 담당 모듈 배정\n\n[자격요건]\n- 학력: 대졸(4년) 이상 (졸업예정자 지원 가능)\n- Java로 웹 프로그램을 만들어 본 경험이 있으신 분 (학교·교육 과정 프로젝트 포함)\n- SQL 기본 문법을 이해하시는 분\n\n[우대사항]\n- 정보처리기사 자격증 소지자\n- 공공기관·금융권 프로젝트 참여 경험이 있으신 분\n- 전자정부 표준프레임워크 사용 경험자\n\n[근무환경 및 복지]\n- 4대 보험, 퇴직금\n- 연차 외 여름휴가 3일\n- 외부 교육비·자격증 응시료 지원\n- 명절 선물, 경조사 지원\n\n[전형절차]\n서류전형 → 1차 면접(실무) → 최종 면접(임원) → 최종 합격\n※ 제출 서류: 이력서, 자기소개서(자유 양식)\n※ 서류 합격자에 한해 개별 연락드립니다.",
+    "empTpNm": "기간의 정함이 없는 근로계약 (수습 3개월)",
+    "collectPsncnt": "2",
+    "salTpNm": "연봉",
+    "sal": "3,200만 원 ~ 3,800만 원",
+    "enterTpNm": "신입·경력(1년 이하)",
+    "eduNm": "대졸(4년) 이상",
+    "pfCond": "고객사 상주 가능자, 정보처리기사",
+    "etcPfCond": "",
+    "selMthd": "서류전형, 1차 면접(실무), 최종 면접(임원)",
+    "workRegion": "서울특별시 ○○구",
+    "regionCd": "11000",
+    "workdayWorkhrCont": "",
+    "fourIns": "국민연금, 고용보험, 산재보험, 건강보험",
+    "retirepay": "있음",
+    "etcWelfare": "",
+    "receiptCloseDt": "채용시까지"
+  },
+  "experience": "직업훈련 팀 프로젝트에서 FastAPI로 API를 설계부터 배포까지 맡아 본 경험이 있습니다.",
+  "items": [
+    {
+      "rank": 1,
+      "card_id": "BE15",
+      "card_label": "고객사 상주 개발",
+      "pref": "avoid",
+      "state": "explicit",
+      "type": "conflict",
+      "template": "신입이 고객사에 상주해 일하는 비율과, 한 번 나가면 보통 기간은 어느 정도인가요?",
+      "template_text": "신입이 고객사에 상주해 일하는 비율과, 한 번 나가면 보통 기간은 어느 정도인가요?",
+      "has_exp": false,
+      "evidence": {
+        "field": "pfCond",
+        "quote": "고객사 상주 가능자"
+      }
+    },
+    {
+      "rank": 2,
+      "card_id": "BE07",
+      "card_label": "기존 시스템 유지보수",
+      "pref": "avoid",
+      "state": "vague",
+      "type": "conflict",
+      "template": "현재 팀 업무에서 기존 시스템 유지보수와 새 기능 개발의 비중은 대략 어떻게 되나요?",
+      "template_text": "현재 팀 업무에서 기존 시스템 유지보수와 새 기능 개발의 비중은 대략 어떻게 되나요?",
+      "has_exp": false,
+      "evidence": {
+        "field": "jobCont",
+        "quote": "기타 업무 지원"
+      }
+    },
+    {
+      "rank": 3,
+      "card_id": "BE02",
+      "card_label": "서비스 구조 설계",
+      "pref": "want",
+      "state": "absent",
+      "type": "opportunity",
+      "template": "설계 회의나 설계 리뷰에 신입도 참여하나요? 참여한다면 어떤 역할을 맡게 되나요?",
+      "template_text": "설계 회의나 설계 리뷰에 신입도 참여하나요? 참여한다면 어떤 역할을 맡게 되나요?",
+      "has_exp": false
+    },
+    {
+      "rank": 4,
+      "card_id": "BE03",
+      "card_label": "DB 테이블 설계",
+      "pref": "want",
+      "state": "absent",
+      "type": "opportunity",
+      "template": "DB 테이블 설계는 백엔드 개발자가 직접 하나요, 별도 담당자가 있나요?",
+      "template_text": "DB 테이블 설계는 백엔드 개발자가 직접 하나요, 별도 담당자가 있나요?",
+      "has_exp": false
+    },
+    {
+      "rank": 5,
+      "card_id": "BE01",
+      "card_label": "신규 API 개발",
+      "pref": "want",
+      "state": "explicit",
+      "type": "depth",
+      "template": "{anchor}이 팀에서는 새 API를 만들 때 신입이 어디까지 맡나요? 설계부터 배포까지인지, 정해진 스펙의 구현까지인지 궁금합니다.",
+      "template_text": "직업훈련 팀 프로젝트에서 FastAPI로 API를 설계부터 배포까지 맡아 본 경험이 있습니다. 이 팀에서는 새 API를 만들 때 신입이 어디까지 맡나요? 설계부터 배포까지인지, 정해진 스펙의 구현까지인지 궁금합니다.",
+      "has_exp": true,
+      "evidence": {
+        "field": "jobCont",
+        "quote": "서버 개발"
+      }
+    }
+  ]
+}

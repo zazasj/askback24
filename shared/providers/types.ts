@@ -100,8 +100,33 @@ export interface FinalDraft {
   evidence?: Evidence
 }
 
+// ── AI 담당 서버 HTTP 형식(LLM_PROVIDER=remote, docs/API-SPEC.md) ──────────
+/** POST {AI_ENDPOINT}/v1/first-questions 본문 = FirstDraftInput */
+export interface FirstQuestionsAiResponse {
+  questions: Draft[]
+  /** 문제를 찾을 때 보는 모델 이름. 우리 서버는 읽지 않는다 */
+  model?: string
+}
+
+/** POST {AI_ENDPOINT}/v1/final-judgements 본문 = JudgeInput */
+export interface FinalJudgementsAiResponse {
+  judgements: Judgement[]
+  model?: string
+}
+
+/** POST {AI_ENDPOINT}/v1/final-questions 본문 = FinalDraftInput */
+export interface FinalQuestionsAiResponse {
+  questions: FinalDraft[]
+  model?: string
+}
+
+/** 4xx·5xx 본문 */
+export interface AiErrorResponse {
+  error: { code: string; message: string }
+}
+
 export interface LlmProvider {
-  /** 로그용 이름(mock · ennoia) */
+  /** 로그용 이름(mock · remote · ennoia) */
   readonly name: string
   writeFirst(input: FirstDraftInput, signal: AbortSignal): Promise<Draft[]>
   /** 없으면 단순 규칙으로 판정한다 */
