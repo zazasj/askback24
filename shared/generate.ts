@@ -107,7 +107,7 @@ function toDraftItem(r: RankedPick, rank: number): DraftItem {
   return item
 }
 
-function toQuestion(r: RankedPick, rank: number, text: string, source: Question['source'], evidence = r.evidence): Question {
+function toQuestion(r: RankedPick, rank: number, text: string, source: Question['source']): Question {
   const q: Question = {
     rank,
     card_id: r.card_id,
@@ -119,7 +119,7 @@ function toQuestion(r: RankedPick, rank: number, text: string, source: Question[
     has_exp: r.has_exp,
     source,
   }
-  if (evidence) q.evidence = evidence
+  if (r.evidence) q.evidence = r.evidence
   return q
 }
 
@@ -180,9 +180,9 @@ export async function generateFirst(req: FirstQuestionsRequest, options: Generat
     const draft = Array.isArray(drafts) ? drafts.find((d) => d && d.card_id === r.card_id) : undefined
     if (draft && typeof draft.text === 'string') {
       const text = draft.text.replace(/\s+/g, ' ').trim()
-      const evidence = draft.evidence ?? r.evidence
-      const found = checkFirstQuestion({ text, state: r.state, ...(evidence ? { evidence } : {}) }, posting)
-      if (!found.length) return toQuestion(r, rank, text, 'ai', evidence)
+      // 근거는 늘 우리 규칙의 것(API-SPEC 18행). AI가 준 evidence는 읽지 않는다 — 다르면 "근거 보기"·basis·"공고에 없음"이 어긋남(A3-r1-03)
+      const found = checkFirstQuestion({ text, state: r.state, ...(r.evidence ? { evidence: r.evidence } : {}) }, posting)
+      if (!found.length) return toQuestion(r, rank, text, 'ai')
       issues.push(...found)
     }
     return toQuestion(r, rank, r.template_text, 'template')
@@ -298,7 +298,7 @@ function toFinalDraftItem(r: FinalRanked): FinalDraftItem {
   return item
 }
 
-function toFinalQuestion(r: FinalRanked, text: string, source: FinalQuestion['source'], evidence = r.evidence): FinalQuestion {
+function toFinalQuestion(r: FinalRanked, text: string, source: FinalQuestion['source']): FinalQuestion {
   const q: FinalQuestion = {
     rank: r.rank,
     type: r.type,
@@ -311,7 +311,7 @@ function toFinalQuestion(r: FinalRanked, text: string, source: FinalQuestion['so
   }
   if (r.card_id) q.card_id = r.card_id
   if (r.topic) q.topic = r.topic
-  if (evidence) q.evidence = evidence
+  if (r.evidence) q.evidence = r.evidence
   return q
 }
 
@@ -384,12 +384,12 @@ export async function generateFinal(req: FinalQuestionsRequest, options: Generat
     const draft = Array.isArray(drafts) ? drafts.find((d) => d && d.key === r.key) : undefined
     if (draft && typeof draft.text === 'string') {
       const text = draft.text.replace(/\s+/g, ' ').trim()
-      const evidence = draft.evidence ?? r.evidence
+      // 1차와 같이 근거는 우리 규칙의 것만(A3-r1-03)
       const check: Parameters<typeof checkFinalQuestion>[0] = { text }
       if (r.posting_state) check.state = r.posting_state
-      if (evidence) check.evidence = evidence
+      if (r.evidence) check.evidence = r.evidence
       const found = checkFinalQuestion(check, posting, heard)
-      if (!found.length) return toFinalQuestion(r, text, 'ai', evidence)
+      if (!found.length) return toFinalQuestion(r, text, 'ai')
       issues.push(...found)
     }
     return toFinalQuestion(r, r.template_text, 'template')

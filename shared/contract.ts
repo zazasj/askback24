@@ -122,6 +122,12 @@ export interface CardDef {
   core: boolean
   label: string
   plain: string
+  /**
+   * 넓은 화면(1280px 이상) 카드에 한 줄로 보일 짧은 설명. 한 줄 말줄임이면 핵심 낱말(온콜 등)이 잘리는 카드만 둔다(A3-r1-17).
+   * 전체 글은 plain(도움말 맨 위·화면낭독기 설명)
+   */
+  plain_short?: string
+  /** 도움말 "예를 들면" 2개. 화면 글이라 해요체 */
   examples: string[]
   ncs: Array<{ subcategory: string; unit: string }>
   basis?: string

@@ -391,17 +391,32 @@ const SCREENS_3: ReadonlyArray<Shot3> = [
     name: '6-s4-first-3-side',
     setup: async (page) => {
       await makeFirstQuestions(page, 'oo')
-      return resultSide(page)
+      return sideShot(page)
     },
   },
   {
     name: '6-s4-final-3-side',
     setup: async (page) => {
       await makeFinalQuestions(page)
-      return resultSide(page)
+      return sideShot(page)
     },
   },
 ]
+
+/**
+ * ③ 오른쪽 상자 캡처 범위. 3차 r1 시험 수정(SPEC-ISSUES RS 캡처): 오른쪽 열은 aside 둘(복사·인쇄 + 내가 고른 것/1차 면접 정리, D-236)이라
+ * 데스크톱은 맨 위로 올린 뒤 두 aside 를 함께 담은 오른쪽 열 전체를 찍는다("선택 바꾸기"·"AI로 다시 만들기"·표준근로계약서 상자까지).
+ * 휴대폰(쌓이는 폭)은 질문 1 위의 복사·인쇄 상자만(RS-03)
+ */
+async function sideShot(page: Page): Promise<Locator> {
+  const tools = resultSide(page)
+  await expect(tools, '"전체 복사"를 품은 오른쪽 상자').toHaveCount(1)
+  if ((page.viewportSize()?.width ?? 0) <= 767) return tools
+  await scrollToTop(page)
+  const column = tools.locator('xpath=..')
+  expect(await column.getByRole('complementary').count(), '오른쪽 열의 aside(복사·인쇄 + 내가 고른 것/1차 면접 정리)').toBeGreaterThanOrEqual(2)
+  return column
+}
 
 for (const screen of SCREENS_3) {
   test(`SCREENS ${screen.name}`, async ({ page }, testInfo) => {

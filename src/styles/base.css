@@ -93,6 +93,17 @@ input[type='date']:focus-within {
   outline-offset: 0.2rem;
 }
 
+/*
+ * 누를 수 없는 제목(tabindex="-1")은 초점을 받아도 테두리를 그리지 않는다. 안내를 닫거나 단계가 바뀌면 초점을 제목으로 옮기는데(TR-06·A2-02)
+ * 마우스로 닫아도 굵은 파란 테두리가 생겨 선택·오류처럼 보였다(A3-r1-15). 화면낭독기는 그대로 읽고, 버튼·입력칸 테두리는 그대로
+ */
+h1[tabindex='-1']:focus,
+h1[tabindex='-1']:focus-visible,
+h2[tabindex='-1']:focus,
+h2[tabindex='-1']:focus-visible {
+  outline: none;
+}
+
 .sr-only {
   position: absolute !important;
   width: 1px !important;

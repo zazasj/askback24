@@ -323,14 +323,7 @@ const STANDARD_CONTRACT_URL = 'https://www.moel.go.kr/policy/policydata/view.do?
   gap: 0.6rem;
 }
 
-.section-title:focus {
-  outline: none;
-}
-
-.section-title:focus-visible {
-  outline: 0.3rem solid var(--krds-light-color-border-primary);
-  outline-offset: 0.2rem;
-}
+/* 이 제목(tabindex="-1")의 초점 테두리는 base.css 가 없앤다(A3-r1-15) */
 
 .lead {
   color: var(--krds-light-color-text-subtle);

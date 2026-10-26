@@ -90,6 +90,25 @@ describe('API-03 금지어', () => {
   it('회사를 평가하는 말도 탈락', () => {
     expect(hasForbiddenWord('혹시 블랙 기업이라는 말을 들어 보셨나요?')).toBe(true)
   })
+
+  // A3-r1-02: '본적'·'배우자'가 다른 낱말 안에 들어 있으면 걸지 않는다(실제 AI 문장이 검수 문장으로 바뀌던 오탐)
+  it('A3-r1-02 금지어 오탐: 기본적으로·근본적인·해 본적이·함께 배우자는 은 통과', () => {
+    for (const text of [
+      '장애가 나면 근본적인 원인 분석까지 신입이 참여하나요?',
+      '신입은 기본적으로 어떤 업무부터 맡게 되나요?',
+      'API를 직접 설계해 본적이 있어 여쭙습니다.',
+      '함께 배우자는 분위기에서 코드 리뷰를 하나요?',
+    ]) {
+      expect(hasForbiddenWord(text), text).toBe(false)
+      expect(checkFirstQuestion({ text, state: 'explicit' }, OO), text).toEqual([])
+    }
+  })
+
+  it('A3-r1-02 본적지·배우자(명사)는 그대로 탈락', () => {
+    for (const text of ['팀원분들 본적지는 주로 어디인가요?', '배우자가 있는 분들도 상주 근무를 하시나요?', '배우자분 직장 때문에 이직하는 경우가 있나요?']) {
+      expect(hasForbiddenWord(text), text).toBe(true)
+    }
+  })
 })
 
 describe('API-03 최종 질문의 1차 면접관 인용', () => {

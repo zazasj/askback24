@@ -11,12 +11,14 @@ import { useRoute } from 'vue-router'
 import { helpPopupOpen } from '@/components/ui/helpPopupState'
 import { useDemoToolsStore } from '@/stores/demoTools'
 import { usePostingIntroStore } from '@/stores/postingIntro'
-import { testTourOff, useTourStore, type ScreenTour, type TourKey, type TourStep } from '@/stores/tour'
+import { useToastStore } from '@/stores/toast'
+import { TOUR_OFF_TOAST, testTourOff, useTourStore, type ScreenTour, type TourKey, type TourStep } from '@/stores/tour'
 import { boxWidth, placeDesktop, placeSheet, scrollDelta, sheetScrollDelta, type Rect, type View } from './tourLayout'
 
 const tour = useTourStore()
 const tools = useDemoToolsStore()
 const intro = usePostingIntroStore()
+const toast = useToastStore()
 const route = useRoute()
 
 /** 화면이 바뀐 뒤 자리 잡을 시간(라우터 스크롤·초점 이동이 끝난 다음) */
@@ -64,8 +66,8 @@ const holeStyle = computed(() => {
 const reduceMotion = (): boolean => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 // ── 언제 띄우나 ──────────────────────────────────────
-/** 다른 것이 떠 있거나 움직이는 중(TR-08) */
-const blocked = computed(() => tools.open || helpPopupOpen.value || intro.busy)
+/** 다른 것이 떠 있거나 움직이는 중(TR-08). ① 형광펜 말풍선은 dialog 가 아니라 따로 본다(A3-r1-14) */
+const blocked = computed(() => tools.open || helpPopupOpen.value || intro.busy || intro.bubble)
 
 let timer: ReturnType<typeof setTimeout> | undefined
 
@@ -198,6 +200,16 @@ async function go(i: number): Promise<void> {
 function onMain(): void {
   if (isLast.value) finish()
   else void go(index.value + 1)
+}
+
+/**
+ * "다른 화면 안내도 그만 보기" = 시연 도구 "안내 끄기"(A3-r1-10). 끄는 길이 시연 도구 안에만 있어 상자 안에서 찾을 수 없었다.
+ * 지금 안내는 본 것으로 닫는다. "시연 초기화"가 끄기를 푸는 것(TR-05)은 그대로
+ */
+function stopAll(): void {
+  tour.setOff(true)
+  finish()
+  toast.show(TOUR_OFF_TOAST)
 }
 
 // ── 키보드 ───────────────────────────────────────────
@@ -389,6 +401,7 @@ onBeforeUnmount(() => {
             <button ref="mainBtn" type="button" class="btn btn-primary" @click="onMain">{{ isLast ? doneLabel : '다음' }}</button>
           </div>
         </div>
+        <button type="button" class="tour-off" @click="stopAll">다른 화면 안내도 그만 보기</button>
       </div>
     </dialog>
   </Teleport>
@@ -522,6 +535,26 @@ onBeforeUnmount(() => {
   color: var(--krds-light-color-text-basic);
 }
 
+/* "건너뛰기"보다 한 단계 작은 글자 버튼(이 화면만이 아니라 모든 안내를 끈다). 누르는 높이는 24px 이상 */
+.tour-off {
+  justify-self: start;
+  min-height: 2.8rem;
+  padding: 0 0.4rem;
+  margin-left: -0.4rem;
+  border: 0;
+  border-radius: var(--krds-radius-small2);
+  background: none;
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  font-weight: 500;
+  color: var(--krds-light-color-text-subtle);
+  text-decoration: underline;
+  text-underline-offset: 0.3rem;
+}
+
+.tour-off:hover {
+  color: var(--krds-light-color-text-basic);
+}
+
 /* ── 휴대폰: 화면 아래 시트(폭 전체, 아래끝 = 화면 아래끝). 엄지 닿는 버튼 44px ── */
 .tour-box.is-sheet {
   inset: auto 0 0;
@@ -535,7 +568,8 @@ onBeforeUnmount(() => {
   padding: 1.6rem 1.6rem calc(2rem + env(safe-area-inset-bottom, 0px));
 }
 
-.tour-box.is-sheet .tour-skip {
+.tour-box.is-sheet .tour-skip,
+.tour-box.is-sheet .tour-off {
   min-height: var(--rq-touch);
 }
 

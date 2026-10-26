@@ -93,7 +93,7 @@ function setMood(m: Mood): void {
         </p>
         <p class="privacy">
           들은 답과 면접 분위기는 저장하지 않아요. 새로고침하면 지워지고, 만든 최종 질문만 이 브라우저에 남아요. 실제 서비스에서는 들은
-          답을 AI에 보내 최종 질문을 만들어요. 면접관 이름이나 회사 내부 이야기는 빼고 적어 주세요.
+          답을 AI에 보내 답이 구체적이었는지만 판정하고, 질문 문장을 쓸 때는 보내지 않아요. 면접관 이름이나 회사 내부 이야기는 빼고 적어 주세요.
         </p>
       </template>
     </div>
@@ -245,15 +245,7 @@ function setMood(m: Mood): void {
   gap: 0.6rem;
 }
 
-/* 단계가 바뀌면 이 제목으로 초점을 옮긴다(A2-02). 키보드로 왔을 때만 테두리 */
-.section-title:focus {
-  outline: none;
-}
-
-.section-title:focus-visible {
-  outline: 0.3rem solid var(--krds-light-color-border-primary);
-  outline-offset: 0.2rem;
-}
+/* 이 제목(tabindex="-1")의 초점 테두리는 base.css 가 없앤다(A3-r1-15) */
 
 .lead {
   color: var(--krds-light-color-text-basic);

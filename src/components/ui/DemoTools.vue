@@ -10,7 +10,7 @@ import { useRouter } from 'vue-router'
 import { useDemoStore } from '@/stores/demo'
 import { useDemoToolsStore, type DemoToolAction } from '@/stores/demoTools'
 import { useToastStore } from '@/stores/toast'
-import { useTourStore } from '@/stores/tour'
+import { TOUR_OFF_TOAST, useTourStore } from '@/stores/tour'
 
 const tools = useDemoToolsStore()
 const demo = useDemoStore()
@@ -51,7 +51,7 @@ function toggleTour(): void {
   close(true)
   const off = !tour.off
   tour.setOff(off)
-  toast.show(off ? '처음 온 사람 안내를 껐어요. 시연 도구에서 다시 켤 수 있어요' : '처음 온 사람 안내를 켰어요. 처음 보는 화면에서 떠요')
+  toast.show(off ? TOUR_OFF_TOAST : '처음 온 사람 안내를 켰어요. 처음 보는 화면에서 떠요')
 }
 
 async function resetDemo(): Promise<void> {

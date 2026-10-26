@@ -78,7 +78,7 @@ function realApiRows(): SourceRow[] {
       source: '실제',
       // 파일 경로는 화면에서 열 수 없어 README에만 둔다. API가 카드를 이어 준 것이 아니라 팀이 고른 이름으로 찾은 것이다(A2-12)
       // 응답 값과 팀 값을 한 줄 "실제"로 묶지 않고 나눈다(H1-09 ①). 팀 값 줄은 teamNcsRow
-      note: `NCS 카드 ${ncsCards}개마다 팀이 고른 능력단위명으로 직무정보 API를 찾아, 같은 이름이 나온 ${matched}개는 응답 값을 그대로 보여요. 능력단위 정의는 카드의 "예를 들면"에 있어요.`,
+      note: `NCS 카드 ${ncsCards}개마다 팀이 고른 능력단위명으로 직무정보 API를 찾아, 같은 이름이 나온 ${matched}개는 응답 값을 그대로 보여요. 능력단위 정의는 ② 카드의 "도움말"에 있어요.`,
       fetched: fetchedOn('duty'),
     },
     {

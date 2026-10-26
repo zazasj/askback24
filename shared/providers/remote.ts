@@ -8,11 +8,26 @@ import type { Evidence, EvidenceField } from '../contract.js'
 import type { Draft, FinalDraft, FinalDraftInput, FirstDraftInput, JudgeInput, Judgement, LlmProvider } from './types.js'
 
 export interface RemoteConfig {
-  /** 예: https://ai.example.com — 끝의 / 는 떼고 /v1/… 을 붙인다 */
+  /** 예: https://ai.example.com — 끝의 / 는 떼고 /v1/… 을 붙인다. https 만(로컬 시험용 http://localhost·127.0.0.1 예외) */
   endpoint?: string
   key?: string
+  /** 운영(Production)이면 true — 키가 없으면 부르지 않는다. 로컬·Preview 는 키 없이도 부른다(D-227) */
+  requireKey?: boolean
   /** 시험용. 없으면 부를 때의 전역 fetch */
   fetch?: typeof fetch
+}
+
+const LOCAL_HOSTS: ReadonlySet<string> = new Set(['localhost', '127.0.0.1'])
+
+/** 키를 평문으로 보내지 않게 https 만 부른다. 로컬 시험 서버만 http 허용 */
+export function endpointAllowed(base: string): boolean {
+  let url: URL
+  try {
+    url = new URL(base)
+  } catch {
+    return false
+  }
+  return url.protocol === 'https:' || (url.protocol === 'http:' && LOCAL_HOSTS.has(url.hostname))
 }
 
 export const REMOTE_PATHS = {
@@ -91,7 +106,9 @@ export function readFinalDrafts(list: readonly unknown[]): FinalDraft[] {
 
 async function post(config: RemoteConfig, path: string, body: unknown, signal: AbortSignal): Promise<unknown> {
   const base = config.endpoint?.trim().replace(/\/+$/, '')
-  if (!base) throw new RemoteError('not_configured')
+  // 주소가 없거나 https 가 아니거나, 운영인데 키가 없으면 부르지 않는다 → generate 가 모두 검수 문장(A3-r1-08)
+  if (!base || !endpointAllowed(base)) throw new RemoteError('not_configured')
+  if (config.requireKey && !config.key) throw new RemoteError('not_configured')
   const headers: Record<string, string> = { 'Content-Type': 'application/json; charset=utf-8', Accept: 'application/json' }
   if (config.key) headers.Authorization = `Bearer ${config.key}`
   const doFetch = config.fetch ?? globalThis.fetch

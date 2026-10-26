@@ -11,5 +11,6 @@ export function POST(request: Request): Promise<Response> {
     AI_API_KEY: process.env.AI_API_KEY,
     ENNOIA_API_KEY: process.env.ENNOIA_API_KEY,
     ENNOIA_ENDPOINT: process.env.ENNOIA_ENDPOINT,
+    VERCEL_ENV: process.env.VERCEL_ENV,
   })
 }

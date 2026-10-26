@@ -166,6 +166,29 @@ describe('AS-07 (b) 모양이 틀린 항목만 검수 문장', () => {
   })
 })
 
+// A3-r1-03: 근거는 우리 규칙이 정해 요청에 담는다. AI가 다른(모양은 맞는) 근거를 돌려줘도 결과 근거는 요청 것
+describe('A3-r1-03 요청과 다른 evidence → 결과 근거는 요청 것', () => {
+  const OTHER = { field: 'jobCont', quote: '기타 업무 지원' } as const
+
+  it('A3-r1-03 1차: 근거를 바꿔 돌려줘도·근거 없는 카드에 근거를 붙여도 결과는 요청 근거, 모두 ai', async () => {
+    const req = example<{ items: Array<{ card_id: string; evidence?: unknown }> }>('first-request').items
+    const bent = example<{ questions: Array<Record<string, unknown>> }>('first-response').questions.map((q) => ({ ...q, evidence: OTHER }))
+    stubFetch((path) => (path === REMOTE_PATHS.first ? json({ questions: bent }) : exampleServer(path, null)))
+    const { body } = await askFirst()
+    expect(sources(body.questions)).toEqual(['ai', 'ai', 'ai', 'ai', 'ai'])
+    expect(body.questions.map((q) => q.evidence ?? null)).toEqual(req.map((i) => i.evidence ?? null))
+  })
+
+  it('A3-r1-03 최종: 근거를 바꿔 돌려줘도 결과는 요청 근거, 모두 ai', async () => {
+    const req = example<{ items: Array<{ key: string; evidence?: unknown }> }>('final-questions-request').items
+    const bent = example<{ questions: Array<Record<string, unknown>> }>('final-questions-response').questions.map((q) => ({ ...q, evidence: OTHER }))
+    stubFetch((path) => (path === REMOTE_PATHS.final ? json({ questions: bent }) : exampleServer(path, null)))
+    const { body } = await askFinal()
+    expect(body.final_questions.every((q) => q.source === 'ai')).toBe(true)
+    expect(body.final_questions.map((q) => q.evidence ?? null)).toEqual(req.map((i) => i.evidence ?? null))
+  })
+})
+
 describe('AS-07 (c) 시간 초과·5xx·JSON 아님 → 모두 검수 문장, 최종 판정은 단순 규칙', () => {
   const broken: Array<[string, Respond]> = [
     ['503 + 오류 형식', () => json({ error: { code: 'unavailable', message: 'model is loading' } }, 503)],
@@ -217,6 +240,70 @@ describe('AS-07 (c) 시간 초과·5xx·JSON 아님 → 모두 검수 문장, �
     const { body } = await askFirst({ LLM_PROVIDER: 'remote', AI_API_KEY: KEY })
     expect(sources(body.questions).every((s) => s === 'template')).toBe(true)
     expect(calls).toEqual([])
+  })
+})
+
+// A3-r1-08(D-227 보완): 키를 평문으로 보내지 않게 https 만, 운영에서 키를 빠뜨리면 부르지 않는다
+describe('A3-r1-08 https 만 · 운영(VERCEL_ENV=production)은 키가 있어야 부름', () => {
+  it('A3-r1-08 http:// 주소(localhost·127.0.0.1 밖)는 부르지 않고 1차·최종 모두 검수 문장', async () => {
+    for (const endpoint of ['http://ai.example.test', 'http://10.0.0.5:8080', 'ftp://ai.example.test', 'ai.example.test']) {
+      const calls = stubFetch(exampleServer)
+      const env: ServerEnv = { ...ENV, AI_ENDPOINT: endpoint }
+      const first = await askFirst(env)
+      const final = await askFinal(env)
+      expect(sources(first.body.questions).every((s) => s === 'template'), endpoint).toBe(true)
+      expect(final.body.final_questions.every((q) => q.source === 'template'), endpoint).toBe(true)
+      expect(final.body.card_states.every((s) => s.source === 'rule'), endpoint).toBe(true)
+      expect(calls, endpoint).toEqual([])
+      expect(first.logs).toContain('failure=error')
+    }
+  })
+
+  it('A3-r1-08 로컬 시험용 http://localhost·127.0.0.1 은 부른다', async () => {
+    for (const endpoint of ['http://localhost:8787/', 'http://127.0.0.1:8787']) {
+      const calls = stubFetch(exampleServer)
+      const { body } = await askFirst({ ...ENV, AI_ENDPOINT: endpoint })
+      expect(sources(body.questions), endpoint).toEqual(['ai', 'ai', 'ai', 'ai', 'ai'])
+      expect(calls.map((c) => new URL(c.url).pathname), endpoint).toEqual(['/v1/first-questions'])
+    }
+  })
+
+  it('A3-r1-08 운영에서 AI_API_KEY 가 비면 부르지 않고 모두 검수 문장, 키가 있으면 부른다', async () => {
+    const none = stubFetch(exampleServer)
+    const noKey = await askFirst({ LLM_PROVIDER: 'remote', AI_ENDPOINT: ENDPOINT, VERCEL_ENV: 'production' })
+    expect(sources(noKey.body.questions).every((s) => s === 'template')).toBe(true)
+    expect(none).toEqual([])
+    const withKey = stubFetch(exampleServer)
+    const ok = await askFirst({ ...ENV, VERCEL_ENV: 'production' })
+    expect(sources(ok.body.questions)).toEqual(['ai', 'ai', 'ai', 'ai', 'ai'])
+    expect(withKey.map((c) => c.headers.get('authorization'))).toEqual([`Bearer ${KEY}`])
+  })
+
+  it('A3-r1-08 로컬·Preview 는 지금처럼 키 없이도 부른다(Authorization 없음, D-227)', async () => {
+    for (const VERCEL_ENV of [undefined, 'preview', 'development']) {
+      const calls = stubFetch(exampleServer)
+      const env: ServerEnv = { LLM_PROVIDER: 'remote', AI_ENDPOINT: ENDPOINT }
+      if (VERCEL_ENV) env.VERCEL_ENV = VERCEL_ENV
+      const { body } = await askFirst(env)
+      expect(sources(body.questions), String(VERCEL_ENV)).toEqual(['ai', 'ai', 'ai', 'ai', 'ai'])
+      expect(calls.map((c) => c.headers.get('authorization')), String(VERCEL_ENV)).toEqual([null])
+    }
+  })
+
+  it('A3-r1-08 함수 진입점은 VERCEL_ENV 를 process.env 에서 읽는다', async () => {
+    vi.stubEnv('LLM_PROVIDER', 'remote')
+    vi.stubEnv('AI_ENDPOINT', ENDPOINT)
+    vi.stubEnv('AI_API_KEY', '')
+    vi.stubEnv('VERCEL_ENV', 'production')
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    try {
+      const calls = stubFetch(exampleServer)
+      const res = await POST(post(screen.first))
+      expect(res.status).toBe(200)
+      expect(calls).toEqual([])
+    } finally {
+      info.mockRestore()
+    }
   })
 })
 

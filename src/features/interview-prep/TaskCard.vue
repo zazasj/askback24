@@ -41,7 +41,9 @@ const terms = computed(() => cardTerms(props.card))
       <h3 :id="nameId" class="name">{{ card.label }}</h3>
       <span v-if="tag" class="posting-tag">{{ tag }}</span>
     </div>
-    <p :id="descId" class="plain">{{ card.plain }}</p>
+    <!-- 넓은 화면은 한 줄 말줄임이라, 핵심 낱말이 잘리는 카드는 짧은 설명으로 바꿔 보인다(A3-r1-17). 전체 글은 화면낭독기 설명·도움말 맨 위 -->
+    <p :id="descId" class="plain" :class="{ 'has-short': !!card.plain_short }">{{ card.plain }}</p>
+    <p v-if="card.plain_short" class="plain plain-short">{{ card.plain_short }}</p>
     <!-- "도움말"은 줄 왼쪽, NCS는 같은 줄 오른쪽. 카드 높이가 모두 같고 이 줄은 아래에 붙어 카드마다 같은 자리다(D18) -->
     <div class="meta-row">
       <HelpPopup :title="card.label" :boundary="root" data-tour="card-help">
@@ -157,6 +159,18 @@ const terms = computed(() => cardTerms(props.card))
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 1;
     line-clamp: 1;
+  }
+
+  /* 짧은 설명이 있는 카드는 전체 글 대신 짧은 글(A3-r1-17). 격자 칸은 하나만 쓰도록 다른 하나는 display:none */
+  .plain.has-short {
+    display: none;
+  }
+}
+
+/* 1279px 이하는 전체 글이 줄바꿈되어 다 보이므로 짧은 글은 두지 않는다 */
+@media (max-width: 1279px) {
+  .plain-short {
+    display: none;
   }
 }
 

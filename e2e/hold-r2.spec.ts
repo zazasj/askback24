@@ -570,7 +570,33 @@ test('V-15 최종 ③ 소제목 "최종 면접에서 물을 것"·"처우 협의
   expect(t2.length, '처우 확인 3개 이상').toBeGreaterThanOrEqual(3)
   expect(new Set(t2), '둘째 묶음은 처우 확인만').toEqual(new Set(['처우 확인']))
   expect(t1.length + t2.length, '개수 그대로').toBe(all)
-  await expect(page.getByText(/보통 한두 개만 물을 수 있어요/).first(), '첫째 묶음 안내 한 줄').toBeVisible()
+  // 3차 r1 시험 수정(SPEC-ISSUES V-15): "한두 개만" 문장은 D-239로 오른쪽 상자로 옮겨 RS-05가 본다. 여기서는 묶음마다
+  // 소제목 옆·아래(질문 목록 밖, 목록보다 위)에 보이는 안내 한 줄이 있는지 본다 — 문장 내용은 ACCEPTANCE에 없다
+  for (const title of ['최종 면접에서 물을 것', '처우 협의 때 물을 것']) {
+    const group = page.getByRole('region', { name: title, exact: true })
+    await expect(group, `묶음 "${title}"(aria-labelledby 소제목)`).toHaveCount(1)
+    const note = await group.evaluate((sec) => {
+      const heading = sec.querySelector('h2, h3, h4')
+      const list = sec.querySelector('ol, ul')
+      if (!heading || !list) return ''
+      const h = heading.getBoundingClientRect()
+      const l = list.getBoundingClientRect()
+      const out: string[] = []
+      const walker = document.createTreeWalker(sec, NodeFilter.SHOW_TEXT)
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        const el = n.parentElement
+        if (!el || heading.contains(el) || list.contains(el)) continue
+        const t = (n.textContent ?? '').replace(/\s+/g, ' ').trim()
+        if (!t) continue
+        const r = el.getBoundingClientRect()
+        if (r.width < 1 || r.height < 1 || !el.checkVisibility({ visibilityProperty: true, opacityProperty: true })) continue
+        if (r.top < h.top - 2 || r.bottom > l.top + 2) continue
+        out.push(t)
+      }
+      return out.join(' ')
+    })
+    expect(note, `"${title}" 묶음 머리(소제목 옆·아래, 질문 목록 밖)에 보이는 안내 한 줄`).not.toBe('')
+  }
 })
 
 // ── V-16 안내 문구 ───────────────────────────────────────────

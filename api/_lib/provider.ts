@@ -15,13 +15,15 @@ export interface ServerEnv {
   AI_API_KEY?: string
   ENNOIA_API_KEY?: string
   ENNOIA_ENDPOINT?: string
+  /** Vercel 이 넣는 배포 환경(production · preview · development). production 이면 AI_API_KEY 가 있어야 부른다 */
+  VERCEL_ENV?: string
 }
 
 /** 기본은 mock. 모르는 값도 mock 으로(배포 실수로 키 없는 공급자를 부르지 않게) */
 export function providerFor(env: ServerEnv): LlmProvider {
   if (env.LLM_PROVIDER === 'remote') {
-    // 주소가 없으면 공급자가 부르지 않고 예외 → 모두 검수 문장(generate)
-    const config: RemoteConfig = {}
+    // 주소가 없거나 https 가 아니거나 운영인데 키가 없으면 공급자가 부르지 않고 예외 → 모두 검수 문장(generate, A3-r1-08)
+    const config: RemoteConfig = { requireKey: env.VERCEL_ENV === 'production' }
     if (env.AI_ENDPOINT) config.endpoint = env.AI_ENDPOINT
     if (env.AI_API_KEY) config.key = env.AI_API_KEY
     return createRemoteProvider(config)

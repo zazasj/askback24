@@ -213,10 +213,15 @@ function goBack(): void {
     <section class="block" aria-labelledby="about-privacy">
       <h2 id="about-privacy" class="section-title">개인정보</h2>
       <ul class="privacy">
-        <!-- 최종 요청(shared/contract.ts InterviewReview)에 실리는 것을 빠짐없이 적는다(A2-09) -->
+        <!-- 최종 요청(shared/contract.ts InterviewReview)에 실리는 것을 빠짐없이 적는다(A2-09).
+             우리 서버로 가는 것과 AI 처리 기관으로 가는 것을 나눈다(A3-r1-09, docs/API-SPEC.md 「화면 입력 → 요청 값」) -->
         <li>
-          질문을 만들 때 AI에 보내는 것은 고른 카드와 경험 한 줄이고, 최종 면접 준비 때는 1차 면접에서 들은 답·못 물은 이유·면접 분위기·회사가
-          물어본 업무까지예요. 이력서 전체는 보내지 않아요.
+          우리 서버로 보내는 것은 고른 카드·경험 한 줄이고, 최종 면접 준비 때는 1차 면접 정리(들은 답·못 물은 이유·면접 분위기·회사가
+          물어본 업무)까지예요. 이력서 전체는 보내지 않아요.
+        </li>
+        <li>
+          AI로 넘기는 것은 공고 원문, 질문에 쓸 상위 5개 카드, 붙일 질문이 있을 때의 경험 한 줄이고, 최종 때는 들은 답과 구체적이었는지(판정에만)와
+          면접 분위기에 맞춘 말투예요.
         </li>
         <li v-if="isMock">지금 시연은 가짜 응답 모드라 AI에 아무것도 보내지 않아요.</li>
         <li>서버는 경험 한 줄·들은 답·면접 분위기를 저장하거나 기록하지 않아요.</li>

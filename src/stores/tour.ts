@@ -10,6 +10,9 @@ import { onDemoReset } from './demoTools'
 
 export const TEST_TOUR_OFF_KEY = 'rq:test:tour-off'
 
+/** 안내를 껐을 때 알림. 시연 도구 "안내 끄기"와 안내 상자 "다른 화면 안내도 그만 보기"가 같은 말을 쓴다 */
+export const TOUR_OFF_TOAST = '처음 온 사람 안내를 껐어요. 시연 도구에서 다시 켤 수 있어요'
+
 /** 안내가 있는 화면. S1은 사이트 기능 전체를 소개하는 서비스 안내, 나머지는 그 화면 안내 */
 export type TourKey = 's1' | 'jobs' | 'job' | 'resume' | 'prep-posting' | 'prep-pick' | 'prep-first' | 'prep-review' | 'prep-final'
 

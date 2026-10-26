@@ -16,6 +16,8 @@ export const usePostingIntroStore = defineStore('postingIntro', () => {
   /** 로딩 뒤 ① 형광펜을 칠하는 중(첫 화면 것을 다 칠하면 끝, 스크롤해 보이는 것을 칠할 때 다시 켜짐) */
   const drawing = ref(false)
   const busy = computed(() => loading.value || drawing.value)
+  /** ① 형광펜 설명 말풍선이 열려 있다. dialog 가 아니라 안내가 따로 기다린다(TR-08, A3-r1-14) */
+  const bubble = ref(false)
 
   onDemoReset(() => {
     seen.value = []
@@ -29,5 +31,5 @@ export const usePostingIntroStore = defineStore('postingIntro', () => {
     if (!hasSeen(applyId)) seen.value = [...seen.value, applyId]
   }
 
-  return { seen, loading, drawing, busy, hasSeen, markSeen }
+  return { seen, loading, drawing, busy, bubble, hasSeen, markSeen }
 })

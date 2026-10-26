@@ -3,6 +3,7 @@
  * 근거 quote 는 원문 필드 값의 글자 그대로 일부라서, 원문에 없는 인용은 칠하지 않고 버린다.
  */
 import type { EvidenceField, Posting, PostingAnalysis } from '@shared/contract'
+import { checkPoints, firstLooks } from './checkpoints'
 
 export interface MarkRef {
   field: EvidenceField
@@ -70,15 +71,54 @@ export function quotesInOrder(
   fields: ReadonlyArray<keyof Posting>,
   max = Infinity,
 ): string[] {
-  const marks = marksOf(analysis)
   const out: string[] = []
-  for (const field of fields) {
-    const text = String(posting[field] ?? '').trim()
-    if (!text) continue
-    for (const seg of splitByQuotes(text, marks.filter((m) => m.field === field))) {
-      if (seg.cardIds.length && !out.includes(seg.text)) out.push(seg.text)
-      if (out.length >= max) return out
-    }
+  for (const s of spotsInOrder(posting, analysis, fields)) {
+    if (out.length >= max) break
+    if (!out.includes(s.quote)) out.push(s.quote)
   }
   return out
+}
+
+/** ① 표 문서 순서의 형광펜 조각(① 화면의 spots 와 같은 순서·같은 카드) */
+function spotsInOrder(
+  posting: Posting,
+  analysis: PostingAnalysis | undefined,
+  fields: ReadonlyArray<keyof Posting>,
+): Array<{ quote: string; cardIds: string[] }> {
+  const marks = marksOf(analysis)
+  return fields.flatMap((field) => {
+    const text = String(posting[field] ?? '').trim()
+    if (!text) return []
+    return splitByQuotes(
+      text,
+      marks.filter((m) => m.field === field),
+    )
+      .filter((seg) => seg.cardIds.length)
+      .map((seg) => ({ quote: seg.text, cardIds: seg.cardIds }))
+  })
+}
+
+/**
+ * ① 로딩의 근거 인용(LD-01, 최대 max개). 고르기는 "AI 분석 요약"의 먼저 볼 곳 인용이 먼저, 남는 자리는 문서 순서.
+ * 보여 주는 순서는 문서 순서 그대로(PLAN-3 T4). 로딩 바로 다음 화면이 먼저 보라는 곳이 로딩에 빠지지 않게(A3-r1-16, D-245 보완)
+ */
+export function loadingQuotes(
+  posting: Posting,
+  analysis: PostingAnalysis | undefined,
+  fields: ReadonlyArray<keyof Posting>,
+  max = 4,
+): string[] {
+  const spots = spotsInOrder(posting, analysis, fields)
+  const all = [...new Set(spots.map((s) => s.quote))]
+  const spotOf = (cardId: string) => {
+    const s = spots.find((x) => x.cardIds.includes(cardId))
+    return s ? { key: s.quote, quote: s.quote } : undefined
+  }
+  const picked = new Set<string>()
+  for (const look of firstLooks(checkPoints(analysis), spotOf)) if (picked.size < max) picked.add(look.quote)
+  for (const q of all) {
+    if (picked.size >= max) break
+    picked.add(q)
+  }
+  return all.filter((q) => picked.has(q))
 }

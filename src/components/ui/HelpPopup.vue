@@ -268,6 +268,20 @@ function place(): void {
   cursor: pointer;
 }
 
+/*
+ * 누르는 영역만 위아래로 넓힌다(A3-r1-18). 데스크톱 글자 줄 높이 약 18px → 26px. 카드 높이·NCS 줄 자리는 그대로(HP-05·F-03).
+ * 위는 설명 글, 아래는 고르기 칩과 0.8rem 떨어져 있어 다른 컨트롤과 겹치지 않는다
+ */
+.help-btn {
+  position: relative;
+}
+
+.help-btn::before {
+  content: '';
+  position: absolute;
+  inset: -0.4rem 0;
+}
+
 .help-btn:hover {
   background: var(--krds-light-color-surface-primary-subtler);
 }

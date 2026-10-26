@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { POSTINGS, getAnalysis, getPosting, getSignals } from '@shared/catalog'
 import type { EvidenceField, Posting } from '@shared/contract'
-import { BLANK_TAGS, checkPoints, postingTag } from './checkpoints'
+import { BLANK_TAGS, checkPoints, firstLooks, postingTag } from './checkpoints'
 import { offerMeta } from './questionView'
-import { marksOf, quotesInOrder, segmentsFor, splitByQuotes } from './highlight'
+import { loadingQuotes, marksOf, quotesInOrder, segmentsFor, splitByQuotes } from './highlight'
 import { POSTING_FIELD_ORDER } from './postingRows'
 
 const join = (segs: Array<{ text: string }>) => segs.map((s) => s.text).join('')
@@ -170,5 +170,39 @@ describe('① 로딩의 근거 인용(LD-01)', () => {
 
   it('분석이 없으면 빈 목록', () => {
     expect(quotesInOrder(getPosting('K-MOCK-0001') as Posting, undefined, POSTING_FIELD_ORDER, 4)).toEqual([])
+    expect(loadingQuotes(getPosting('K-MOCK-0001') as Posting, undefined, POSTING_FIELD_ORDER)).toEqual([])
+  })
+
+  // A3-r1-16(D-245 보완): 고르기는 "AI 분석 요약"의 먼저 볼 곳 먼저, 보여 주는 순서는 문서 순서 그대로
+  it('A3-r1-16 로딩 인용: 최대 4개, 먼저 볼 곳 인용을 모두 담고, 문서 순서 그대로', () => {
+    for (const posting of POSTINGS) {
+      const analysis = getAnalysis(posting.wantedAuthNo)
+      const all = quotesInOrder(posting, analysis, POSTING_FIELD_ORDER)
+      const shown = loadingQuotes(posting, analysis, POSTING_FIELD_ORDER, 4)
+      const id = posting.wantedAuthNo
+      expect(shown.length, id).toBe(Math.min(4, all.length))
+      const at = shown.map((q) => all.indexOf(q))
+      expect(at.every((i) => i >= 0), `${id} 모두 그 공고 형광펜`).toBe(true)
+      expect(at, `${id} 문서 순서`).toEqual([...at].sort((a, b) => a - b))
+      const looks = firstLooks(checkPoints(analysis), (cardId) => {
+        const q = all.find((x) => marksOf(analysis).some((m) => m.cardId === cardId && m.quote === x))
+        return q ? { key: q, quote: q } : undefined
+      })
+      for (const l of looks) expect(shown, `${id} 먼저 볼 곳 "${l.quote}"`).toContain(l.quote)
+    }
+  })
+
+  it('A3-r1-16 (주)OO소프트: 먼저 볼 곳이자 ③ 1번 근거인 "고객사 상주 가능자"가 로딩에 나오고, 남는 자리는 문서 순서', () => {
+    const posting = getPosting('K-MOCK-0001') as Posting
+    const analysis = getAnalysis('K-MOCK-0001')
+    const all = quotesInOrder(posting, analysis, POSTING_FIELD_ORDER)
+    const shown = loadingQuotes(posting, analysis, POSTING_FIELD_ORDER, 4)
+    expect(all.slice(0, 4)).not.toContain('고객사 상주 가능자')
+    expect(shown).toContain('고객사 상주 가능자')
+    expect(shown).toContain('기타 업무 지원')
+    expect(shown[shown.length - 1]).toBe('고객사 상주 가능자')
+    // 먼저 볼 곳 둘을 뺀 나머지는 문서 순서 앞에서부터
+    const rest = shown.filter((q) => q !== '고객사 상주 가능자' && q !== '기타 업무 지원')
+    expect(rest).toEqual(all.filter((q) => q !== '고객사 상주 가능자' && q !== '기타 업무 지원').slice(0, rest.length))
   })
 })

@@ -24,7 +24,7 @@ import PostingStep from '@/features/interview-prep/PostingStep.vue'
 import PrepHeader from '@/features/interview-prep/PrepHeader.vue'
 import ReviewStep from '@/features/interview-prep/ReviewStep.vue'
 import StepNav from '@/features/interview-prep/StepNav.vue'
-import { quotesInOrder } from '@/features/interview-prep/highlight'
+import { loadingQuotes } from '@/features/interview-prep/highlight'
 import { POSTING_FIELD_ORDER } from '@/features/interview-prep/postingRows'
 import { NEXT_FROM_POSTING, STEP_LABELS, entryMode, type StepNo } from '@/features/interview-prep/steps'
 import { usePrepRoute } from '@/features/interview-prep/usePrepRoute'
@@ -65,7 +65,7 @@ const loadingFor = ref<string | null>(null)
 /** 로딩 뒤 처음 그리는 ①의 지원 건(형광펜 칠하기). ①을 떠나면 비운다 */
 const drawFor = ref<string | null>(null)
 const showLoading = computed(() => !!application.value && step.value === 1 && loadingFor.value === application.value.apply_id)
-const introQuotes = computed(() => (posting.value ? quotesInOrder(posting.value, analysis.value, POSTING_FIELD_ORDER, 4) : []))
+const introQuotes = computed(() => (posting.value ? loadingQuotes(posting.value, analysis.value, POSTING_FIELD_ORDER, 4) : []))
 
 watch(
   () => application.value?.apply_id,

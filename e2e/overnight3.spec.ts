@@ -737,20 +737,30 @@ test('HP-03 팝업이 열리면 초점이 안으로 · "닫기"·Esc·바깥 누
 
   // 한 번에 하나: A가 열린 채 다른 카드 "도움말" 자리를 누른다
   await open('한 번에 하나')
-  const ra = await rectOf(dA)
+  expect(await openHelpDialogs(page).count(), 'A만 열림').toBe(1)
+  if (isMobile) {
+    // 휴대폰(767px 이하)은 아래 시트를 showModal 로 띄워 뒤 화면을 누를 수 없다 — 구조상 하나뿐이라 시트가 모달인지 본다
+    expect(await dA.evaluate((d) => d.matches(':modal')), '휴대폰 시트는 모달(뒤 화면의 다른 "도움말"을 누를 수 없음)').toBe(true)
+    test.info().annotations.push({ type: 'HP-03', description: '휴대폰은 모달 시트라 두 번째 열기는 구조상 없음(:modal 확인)' })
+    return
+  }
+  // 3차 r1 시험 수정(SPEC-ISSUES HP-03): 화면 안에 후보가 없으면 건너뛰던 것을 없앤다. 다음 카드 버튼을 화면 안으로 들인 뒤
+  // A 팝업에 가리지 않은 것을 고른다(들일 때마다 다시 잰다)
   let other: string | null = null
   for (const n of names.slice(1)) {
-    const rb = await rectOf(helpButton(page, n))
-    if (rb.width > 0 && rb.top >= 0 && rb.bottom <= v.vh && !intersects(rb, ra)) {
+    const b = helpButton(page, n)
+    await b.scrollIntoViewIfNeeded()
+    await expect(dA, `"${n}" 버튼을 들인 뒤에도 A는 열려 있다`).toBeVisible()
+    const rb = await rectOf(b)
+    const ra = await rectOf(dA)
+    const vNow = await viewport(page)
+    if (rb.width > 0 && rb.top >= 0 && rb.bottom <= vNow.vh && !intersects(rb, ra)) {
       other = n
       break
     }
   }
-  expect(await openHelpDialogs(page).count(), 'A만 열림').toBe(1)
-  if (!other) {
-    test.info().annotations.push({ type: 'HP-03', description: '화면 안에 팝업에 가리지 않은 다른 "도움말" 버튼이 없어 두 번째 열기는 건너뜀' })
-    return
-  }
+  expect(other, 'A 팝업에 가리지 않은 다른 카드 "도움말" 버튼(화면 안으로 들여서)').not.toBeNull()
+  if (!other) return
   const rb = await rectOf(helpButton(page, other))
   await page.mouse.click(rb.left + rb.width / 2, rb.top + rb.height / 2)
   await page.waitForTimeout(300)
@@ -1030,12 +1040,50 @@ test('LD-03 로딩 뒤 ① 형광펜이 문서 순서로 차례로 칠해진다:
     expect(gap, `문서 순서로 차례로: "${a.text}" 다음 "${b.text}"(${Math.round(gap)}ms)`).toBeGreaterThanOrEqual(30)
     expect(gap, `칠하는 간격 약 0.25초: "${a.text}" → "${b.text}"`).toBeLessThanOrEqual(700)
   }
+  // 칠하는 모양: background-size transition 한 개 약 0.4초(3차 r1 시험 수정, SPEC-ISSUES LD-03)
+  const stroke = await page
+    .locator('mark')
+    .first()
+    .evaluate((el) => {
+      const cs = getComputedStyle(el)
+      const props = cs.transitionProperty.split(',').map((s) => s.trim())
+      const durs = cs.transitionDuration.split(',').map((s) => {
+        const t = s.trim()
+        return parseFloat(t) * (t.endsWith('ms') ? 0.001 : 1)
+      })
+      const i = props.findIndex((p) => p === 'background-size' || p === 'all')
+      return i < 0 ? null : (durs[i % durs.length] ?? null)
+    })
+  expect(stroke, '형광펜 긋기는 background-size transition').not.toBeNull()
+  expect(stroke ?? 0, `한 개 약 0.4초(${stroke}s)`).toBeGreaterThanOrEqual(0.3)
+  expect(stroke ?? 0, `한 개 약 0.4초(${stroke}s)`).toBeLessThanOrEqual(0.5)
   const below = marks.filter((m) => !view.has(m.i) && m.top >= m.vh)
   if (below.length === 0) {
     test.info().annotations.push({ type: 'LD-03', description: '처음 화면 아래에 있는 형광펜이 없어 "보일 때 칠하기"는 건너뜀' })
     return
   }
   for (const m of below) expect(m.drawn, `화면 밖 형광펜 "${m.text}"은 보이기 전까지 칠하지 않는다`).toBe('false')
+  // 3차 r1 시험 수정(SPEC-ISSUES LD-03): 첫 화면에 형광펜이 없으면(데스크톱 907px·휴대폰 1218px) 순서·간격을 보지 못했다.
+  // 화면 밖 첫 형광펜을 화면 높이 1/4에 오게 한 번에 스크롤해 둘 이상이 함께 들어오게 하고, 들어와 칠해진 것에 같은 순서·간격을 본다
+  const head = below[0] as (typeof below)[number]
+  const scrolledAt = await page.evaluate((top) => {
+    window.scrollTo({ top: window.scrollY + top - window.innerHeight / 4, behavior: 'instant' })
+    return performance.now()
+  }, head.top)
+  await page.waitForTimeout(2_300)
+  const after = await ldMarks(page)
+  const entered = after
+    .filter((m) => below.some((b) => b.i === m.i) && m.drawn === 'true' && (m.t ?? -Infinity) >= scrolledAt)
+    .sort((a, b) => a.i - b.i)
+  expect(entered.length, `스크롤로 함께 들어와 칠해진 형광펜 둘 이상(${entered.map((m) => m.text).join(' / ')})`).toBeGreaterThanOrEqual(2)
+  for (let k = 1; k < entered.length; k++) {
+    const a = entered[k - 1]
+    const b = entered[k]
+    if (!a || !b) continue
+    const gap = (b.t ?? 0) - (a.t ?? 0)
+    expect(gap, `스크롤로 들어온 것도 문서 순서로 차례로: "${a.text}" 다음 "${b.text}"(${Math.round(gap)}ms)`).toBeGreaterThanOrEqual(30)
+    expect(gap, `칠하는 간격 약 0.25초: "${a.text}" → "${b.text}"`).toBeLessThanOrEqual(700)
+  }
   const last = below[below.length - 1] as (typeof below)[number]
   await page.locator('mark').nth(last.i).scrollIntoViewIfNeeded()
   await expect.poll(async () => (await ldMarks(page))[last.i]?.drawn, { message: `"${last.text}"이 보이면 칠해진다`, timeout: 4_000 }).toBe('true')

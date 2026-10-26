@@ -151,9 +151,29 @@ describe('API-04 일부만 검사 탈락 → 그 질문만 대체', () => {
     expect(report?.template).toBe(1)
   })
 
-  it('근거 인용을 지어내면 그 질문만 대체', async () => {
-    const { res } = await withBroken((d) => ({ ...d, evidence: { field: 'jobCont', quote: '설계 리뷰 참여' } }))
+  it('문장 속 인용을 지어내면 그 질문만 대체', async () => {
+    const { res, report } = await withBroken((d) => ({ ...d, text: "공고의 '설계 리뷰 참여'는 신입도 들어가나요? 들어간다면 어떤 역할인가요?" }))
     expect(res.questions.map((q) => q.source)).toEqual(['ai', 'ai', 'template', 'ai', 'ai'])
+    expect(report?.issues).toEqual(['quote_not_in_posting'])
+  })
+
+  // A3-r1-03: 근거는 우리 규칙이 정해 요청에 담는다(API-SPEC). AI가 다른 근거를 돌려줘도 결과·검사는 요청 근거
+  it('A3-r1-03 요청과 다른 evidence → 결과 근거는 요청 것(근거 없는 카드는 없음 그대로)', async () => {
+    const mock = createMockProvider()
+    const other = provider(async (input, signal) => {
+      const drafts = await mock.writeFirst(input, signal)
+      return drafts.map((d) =>
+        d.card_id === 'BE15'
+          ? { ...d, evidence: { field: 'jobCont', quote: '기타 업무 지원' } }
+          : d.card_id === 'BE02'
+            ? { ...d, evidence: { field: 'jobCont', quote: '설계 리뷰 참여' } }
+            : d,
+      )
+    })
+    const res = await generateFirst(reqA(), { provider: other })
+    expect(res.questions.map((q) => q.source)).toEqual(['ai', 'ai', 'ai', 'ai', 'ai'])
+    expect(res.questions[0]?.evidence).toEqual({ field: 'pfCond', quote: '고객사 상주 가능자' })
+    expect(res.questions[2]?.card_id).toBe('BE02')
     expect(res.questions[2]?.evidence).toBeUndefined()
   })
 

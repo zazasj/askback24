@@ -217,11 +217,15 @@ if (animate) {
   )
 }
 
+// 말풍선이 열려 있으면 안내가 그 위에 막을 덮지 않고 닫힌 뒤 시작한다(TR-08, A3-r1-14)
+watch(openKey, (k) => (intro.bubble = k !== null), { immediate: true })
+
 onBeforeUnmount(() => {
   observer?.disconnect()
   clearTimeout(drawTimer)
   clearTimeout(idleTimer)
   if (animate) intro.drawing = false
+  intro.bubble = false
 })
 
 /**
