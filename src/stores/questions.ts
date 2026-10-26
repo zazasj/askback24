@@ -18,12 +18,11 @@ import { useReviewStore } from './review'
 /** 만드는 중 화면을 이보다 짧게 보이지 않는다(번쩍임 방지) */
 export const MIN_LOADING_MS = 1_200
 
+// 6차 RS-01: "면접에서 쓸 것 같아요"(옛 kept 칸)를 없앴다. 그 전에 저장된 값에 kept가 남아 있어도 검사하지 않고 읽지 않는다
 export interface FirstResult {
   /** 이 결과를 만든 선택의 표식(선택이 바뀌었는지 볼 때) */
   request_key: string
   response: FirstQuestionsResponse
-  /** "면접에서 쓸 것 같아요"를 누른 카드 */
-  kept: string[]
   made_at: string
   /** 시연 시드(S1 2행)로 미리 만들어 둔 결과 */
   seed?: boolean
@@ -31,8 +30,6 @@ export interface FirstResult {
 
 export interface FinalResult {
   response: FinalQuestionsResponse
-  /** "면접에서 쓸 것 같아요"를 누른 질문(finalKey) */
-  kept: string[]
   made_at: string
 }
 
@@ -40,7 +37,6 @@ type ResultBook = Record<string, FirstResult>
 type FinalBook = Record<string, FinalResult>
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
-const isKeptList = (v: unknown): v is string[] => Array.isArray(v) && v.every((k) => typeof k === 'string')
 
 function isFirstResult(v: unknown): v is FirstResult {
   return (
@@ -48,8 +44,7 @@ function isFirstResult(v: unknown): v is FirstResult {
     typeof v.request_key === 'string' &&
     isObject(v.response) &&
     v.response.mode === 'first' &&
-    Array.isArray(v.response.questions) &&
-    isKeptList(v.kept)
+    Array.isArray(v.response.questions)
   )
 }
 
@@ -60,8 +55,7 @@ function isFinalResult(v: unknown): v is FinalResult {
     v.response.mode === 'final' &&
     Array.isArray(v.response.final_questions) &&
     Array.isArray(v.response.card_states) &&
-    isObject(v.response.summary) &&
-    isKeptList(v.kept)
+    isObject(v.response.summary)
   )
 }
 
@@ -133,7 +127,7 @@ export const useQuestionsStore = defineStore('questions', () => {
     const saved = firsts.value[applyId]
     if (saved) return saved
     const seed = seedFirst(applyId)
-    return seed ? { ...seed, kept: [], made_at: '', seed: true } : undefined
+    return seed ? { ...seed, made_at: '', seed: true } : undefined
   }
 
   function isGenerating(applyId: string): boolean {
@@ -188,26 +182,13 @@ export const useQuestionsStore = defineStore('questions', () => {
     try {
       const [response] = await Promise.all([fetchFirstQuestions(req, { apiFail: options.apiFail === true, variant }), sleep(MIN_LOADING_MS)])
       if (!firstRuns.settle(applyId, my)) return
-      const before = firstOf(applyId)?.kept ?? []
       firsts.value = {
         ...firsts.value,
-        [applyId]: {
-          request_key: requestKey(req),
-          response,
-          kept: before.filter((id) => response.questions.some((q) => q.card_id === id)),
-          made_at: new Date().toISOString(),
-        },
+        [applyId]: { request_key: requestKey(req), response, made_at: new Date().toISOString() },
       }
     } catch {
       firstRuns.fail(applyId, my)
     }
-  }
-
-  function toggleKept(applyId: string, cardId: string): void {
-    const r = firstOf(applyId)
-    if (!r) return
-    const kept = r.kept.includes(cardId) ? r.kept.filter((k) => k !== cardId) : [...r.kept, cardId]
-    firsts.value = { ...firsts.value, [applyId]: { ...r, kept } }
   }
 
   // ── 최종 면접·처우 질문 ───────────────────────────────
@@ -232,25 +213,10 @@ export const useQuestionsStore = defineStore('questions', () => {
     try {
       const [response] = await Promise.all([fetchFinalQuestions(req, { apiFail: options.apiFail === true, variant }), sleep(MIN_LOADING_MS)])
       if (!finalRuns.settle(applyId, my)) return
-      const before = finalOf(applyId)?.kept ?? []
-      finals.value = {
-        ...finals.value,
-        [applyId]: {
-          response,
-          kept: before.filter((k) => response.final_questions.some((q) => finalKey(q) === k)),
-          made_at: new Date().toISOString(),
-        },
-      }
+      finals.value = { ...finals.value, [applyId]: { response, made_at: new Date().toISOString() } }
     } catch {
       finalRuns.fail(applyId, my)
     }
-  }
-
-  function toggleFinalKept(applyId: string, key: string): void {
-    const r = finalOf(applyId)
-    if (!r) return
-    const kept = r.kept.includes(key) ? r.kept.filter((k) => k !== key) : [...r.kept, key]
-    finals.value = { ...finals.value, [applyId]: { ...r, kept } }
   }
 
   return {
@@ -265,11 +231,9 @@ export const useQuestionsStore = defineStore('questions', () => {
     finalBehindFirst,
     ensureFirst,
     makeFirst,
-    toggleKept,
     finalOf,
     isGeneratingFinal,
     hasFailedFinal,
     makeFinal,
-    toggleFinalKept,
   }
 })

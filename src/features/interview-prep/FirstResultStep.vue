@@ -3,7 +3,8 @@
  * S4 ③ 1차·기술 면접 질문. ②에서 "질문 만들기"를 누르면 만드는 중 → 질문 5개.
  * 결과는 지원 건마다 저장되어 새로고침해도 그대로다. 결과가 없이 이 단계를 열면 지금 선택으로 바로 만든다.
  * 처우 질문은 여기서 주지 않는다(D-012). 1차 면접을 다녀오면 최종 단계로 넘긴다.
- * "전체 복사"·"면접 다녀왔어요"는 ①②처럼 아래 고정 바에 둔다(F-05).
+ * 아래 고정 바는 ①②처럼 다음 단계("면접 다녀왔어요") 하나만(F-05). "전체 복사"·인쇄는 오른쪽 상자에 하나씩(RS-02),
+ * 상자가 질문 아래로 쌓이는 폭에서는 그 둘만 질문 위로 올린다(RS-03).
  */
 import { computed, nextTick, onMounted, useTemplateRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -15,11 +16,11 @@ import MockModeTag from '@/components/ui/MockModeTag.vue'
 import { useCopy } from '@/composables/useCopy'
 import { usePrepStore } from '@/stores/prep'
 import { useQuestionsStore } from '@/stores/questions'
+import { firstCopyText } from './copyText'
 import GeneratingView from './GeneratingView.vue'
 import { PREFS, countByPref, toCardPicks } from './picks'
 import QuestionCard from './QuestionCard.vue'
 import { FIRST_TONES, evidenceLabel, firstMetaParts, firstTypeNote } from './questionView'
-import { keptFirst } from './printOrder'
 
 const props = defineProps<{ applyId: string; posting: Posting; apiFail?: boolean }>()
 const emit = defineEmits<{ change: []; review: [] }>()
@@ -61,12 +62,6 @@ function evidenceTo(q: Question) {
   return q.evidence ? { query: { ...route.query, step: '1', card: q.card_id } } : undefined
 }
 
-const kept = computed(() => new Set(result.value?.kept ?? []))
-
-/** 인쇄·전체 복사 순서: "면접에서 쓸 것 같아요"를 누른 질문이 맨 위, 나머지는 화면 순서(H1-14) */
-const sheetOrder = computed(() => keptFirst(questions.value, (q) => kept.value.has(q.card_id)))
-const printNoOf = (q: Question): number => sheetOrder.value.indexOf(q) + 1
-
 /** 최종 질문을 만든 뒤 1차를 다시 만들었으면 최종 질문은 그 전 1차 기준이다(H2-04 ④) */
 const finalBehind = computed(() => store.finalBehindFirst(props.applyId))
 
@@ -106,11 +101,16 @@ const droppedLine = computed(() => {
   return list.length > DROPPED_SHOWN ? `${shown} 외 ${list.length - DROPPED_SHOWN}개` : shown
 })
 
-// 복사 글은 면접장에 들고 가는 메모라 유형 꼬리표("[차이 확인]")를 붙이지 않는다(H2-01 ②)
+// 화면 순서 그대로, 더 알아볼 질문은 끝에 소제목 아래(RS-04). 인쇄 한 장에는 더 알아볼 질문을 넣지 않는다(Q-02)
 function copyAll(): void {
   const head = `${props.posting.corpNm} · ${props.posting.wantedTitle}\n1차·기술 면접 질문`
-  const body = sheetOrder.value.map((q, i) => `${i + 1}. ${q.text}`).join('\n')
-  void copy(`${head}\n\n${body}`)
+  void copy(
+    firstCopyText(
+      head,
+      questions.value.map((q) => q.text),
+      explores.value.map((e) => e.text),
+    ),
+  )
 }
 
 function printSheet(): void {
@@ -159,7 +159,6 @@ function printSheet(): void {
               v-for="q in questions"
               :key="q.card_id"
               :rank="q.rank"
-              :print-no="printNoOf(q)"
               :type-label="typeLabel(q.type)"
               :tone="FIRST_TONES[q.type]"
               :meta-name="firstMetaParts(q.card_id, q.type, !!q.evidence).name"
@@ -167,15 +166,12 @@ function printSheet(): void {
               :text="q.text"
               :has-exp="q.has_exp"
               :template="q.source === 'template'"
-              :kept="kept.has(q.card_id)"
               :basis="q.basis"
               :evidence-label="evidenceLabel(q.evidence)"
               :evidence-to="evidenceTo(q)"
               :watch-out="q.watch_out"
               :good-sign="q.good_sign"
               :type-note="firstTypeNote(q.type)"
-              @copy="copy(q.text)"
-              @keep="store.toggleKept(applyId, q.card_id)"
             />
           </ol>
           <!-- 5개 한도로 빠진 카드(A2-13). 오른쪽 상자(sticky)에 넣으면 1440×900에서 상자가 화면 아래끝까지 늘어나
@@ -194,9 +190,6 @@ function printSheet(): void {
                   <span v-if="e.inPosting" class="explore-in">공고에 나온 일</span>
                 </p>
                 <p class="explore-text">{{ e.text }}</p>
-                <button type="button" class="btn btn-tertiary explore-copy" :aria-label="`${e.label} 질문 복사`" @click="copy(e.text)">
-                  복사
-                </button>
               </li>
             </ul>
           </section>
@@ -205,8 +198,18 @@ function printSheet(): void {
           </p>
         </div>
 
-        <aside class="result-side" aria-labelledby="side-title" data-print="hide">
-          <div class="side-box">
+        <!-- 오른쪽 상자 둘: 데스크톱은 함께 오른쪽에서 따라오고(sticky), 쌓이는 폭(1100px 이하)에서는 묶음을 풀어
+             복사·인쇄 상자만 질문 위로 올린다(RS-03). 버튼은 화면 전체에서 하나씩이라 두 번 그리지 않는다 -->
+        <div class="side-col" data-print="hide">
+          <aside class="side-box side-tools" aria-label="복사·인쇄" data-print="hide">
+            <div class="side-actions">
+              <button type="button" class="btn btn-tertiary side-btn" @click="copyAll">전체 복사</button>
+              <button type="button" class="btn btn-tertiary side-btn" @click="printSheet">면접에 들고 갈 한 장 인쇄</button>
+            </div>
+            <!-- 실제로는 한두 개만 물을 수 있다는 안내와 꺼낼 순서(H1-14·H2-15 ③) -->
+            <p class="side-line side-tip">면접에서는 보통 한두 개만 물을 수 있어요. 기대되는 일을 묻는 질문부터 꺼내도 좋아요.</p>
+          </aside>
+          <aside class="side-box side-more" aria-labelledby="side-title" data-print="hide">
             <h3 id="side-title" class="side-title">내가 고른 것</h3>
             <p class="side-line">
               <template v-for="(part, i) in breakdown" :key="part">
@@ -216,18 +219,10 @@ function printSheet(): void {
             </p>
             <p v-if="selection.experience" class="side-line side-exp">경험: {{ selection.experience }}</p>
             <button type="button" class="btn btn-tertiary side-btn" @click="emit('change')">선택 바꾸기</button>
-          </div>
-          <div class="side-box">
-            <!-- 실제로는 한두 개만 물을 수 있다는 안내와 꺼낼 순서(H1-14·H2-15 ③) -->
-            <p class="side-line side-tip">
-              면접에서는 보통 한두 개만 물을 수 있어요. 기대되는 일을 묻는 질문부터 꺼내도 좋아요. 꼭 물을 질문에 "면접에서 쓸 것
-              같아요"를 누르면 인쇄·복사 때 맨 위에 와요.
-            </p>
-            <button type="button" class="btn btn-tertiary side-btn" @click="printSheet">면접에 들고 갈 한 장 인쇄</button>
             <button type="button" class="btn btn-tertiary side-btn" @click="make">AI로 다시 만들기</button>
             <RouterLink class="about-link tap-target" to="/about-ai">이 질문은 어떻게 만들어지나요</RouterLink>
-          </div>
-        </aside>
+          </aside>
+        </div>
       </div>
 
       <section class="next-box" aria-labelledby="next-title" data-print="hide">
@@ -238,14 +233,11 @@ function printSheet(): void {
         </p>
       </section>
 
-      <!-- 아래 고정 바(①②와 같은 모양, F-05): 지금 할 일(전체 복사)과 다음 단계(면접 다녀왔어요). 채운 버튼은 다음 단계 하나 -->
+      <!-- 아래 고정 바(①②와 같은 모양, F-05·RS-02): 다음 단계 "면접 다녀왔어요" 하나. 이 화면의 채운 버튼은 이것 하나(Q-04) -->
       <div class="result-bar" data-print="hide">
         <!-- 질문을 만든 바로 그 화면의 채운 버튼이라 잘못 누르지 않게 언제 누르는지 적는다(데스크톱, H2-18 가) -->
         <p class="result-bar-note"><strong>면접 다녀왔어요</strong>는 면접에 다녀온 뒤 눌러 주세요</p>
-        <div class="result-bar-actions">
-          <button type="button" class="btn btn-tertiary btn-lg" @click="copyAll">전체 복사</button>
-          <button type="button" class="btn btn-accent btn-lg" @click="emit('review')">면접 다녀왔어요</button>
-        </div>
+        <button type="button" class="btn btn-accent btn-lg result-bar-btn" @click="emit('review')">면접 다녀왔어요</button>
       </div>
     </template>
 
@@ -326,11 +318,17 @@ function printSheet(): void {
   gap: 1.2rem;
 }
 
-.result-side {
+/* 데스크톱: 오른쪽 상자 둘이 함께 따라온다(질문을 내려 읽는 동안 복사·인쇄가 손 닿는 곳에) */
+.side-col {
   position: sticky;
   top: 1.6rem;
   display: grid;
   gap: 1rem;
+}
+
+.side-actions {
+  display: grid;
+  gap: 0.6rem;
 }
 
 .side-box {
@@ -446,10 +444,6 @@ function printSheet(): void {
   color: var(--krds-light-color-text-bolder);
 }
 
-.explore-copy {
-  justify-self: start;
-}
-
 @media (max-width: 767px) {
   .explore-box {
     padding: 1.4rem;
@@ -516,10 +510,7 @@ function printSheet(): void {
   color: var(--rq-accent-strong);
 }
 
-.result-bar-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.8rem;
+.result-bar-btn {
   margin-left: auto;
 }
 
@@ -541,31 +532,82 @@ function printSheet(): void {
   gap: 0.8rem;
 }
 
+/*
+ * 쌓이는 폭: 묶음(.side-col)을 풀어 두 상자를 바로 격자 칸으로 만들고, 복사·인쇄 상자만 질문 위로(RS-03, 세진 2-2).
+ * 그 상자는 버튼 한 줄 + 안내로 낮게 — 960×600에서도 ③으로 옮긴 직후 1번 질문 전체와 2번 칩이 보이게(V-06)
+ */
 @media (max-width: 1100px) {
   .result-layout {
     grid-template-columns: minmax(0, 1fr);
+    gap: 1.2rem;
   }
 
-  .result-side {
-    position: static;
-    grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr));
+  .side-col {
+    display: contents;
+  }
+
+  .side-tools {
+    order: -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 1.6rem;
+    padding: 1rem 1.2rem;
+  }
+
+  .side-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+  }
+
+  .side-tools .side-btn {
+    width: auto;
+  }
+
+  .side-tools .side-tip {
+    flex: 1 1 24rem;
+  }
+
+  .side-more {
+    justify-items: start;
+  }
+
+  .side-more .side-btn {
+    width: auto;
   }
 }
 
 @media (max-width: 767px) {
-  .result-side {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .side-btn {
     min-height: var(--rq-touch);
+  }
+
+  /* 휴대폰: 두 버튼을 한 줄에(인쇄가 더 넓게) */
+  .side-tools .side-actions {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .side-tools .side-btn {
+    width: 100%;
+    padding: 0 1rem;
+  }
+
+  .side-more .side-btn {
+    width: 100%;
+  }
+
+  .side-more {
+    justify-items: stretch;
   }
 
   .next-box {
     padding: 1.4rem 1.6rem;
   }
 
-  /* 휴대폰: 바가 화면을 덜 가리게 버튼 두 개만 한 줄로 */
+  /* 휴대폰: 바가 화면을 덜 가리게 버튼 하나만 */
   .result-bar {
     padding: 1rem;
   }
@@ -574,17 +616,10 @@ function printSheet(): void {
     display: none;
   }
 
-  .result-bar-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  .result-bar-btn {
     width: 100%;
-    margin-left: 0;
-  }
-
-  .result-bar-actions .btn {
     min-height: var(--rq-touch);
-    padding: 0 0.8rem;
-    font-size: var(--krds-pc-font-size-label-small);
+    margin-left: 0;
   }
 }
 

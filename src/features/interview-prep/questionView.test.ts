@@ -1,8 +1,7 @@
-/** 질문 카드에 보일 글(H2-01 인쇄 꼬리, H1-16 공고에 없음)과 인쇄·복사 순서(H1-14) */
+/** 질문 카드에 보일 글(H2-01 인쇄 꼬리, H1-16 공고에 없음). 인쇄·복사 순서는 화면 순서(RS-04, copyText.test.ts) */
 import { describe, expect, it } from 'vitest'
 import { getAnalysis } from '@shared/catalog'
 import type { FinalQuestion } from '@shared/contract'
-import { keptFirst } from './printOrder'
 import { NO_EVIDENCE_TAG, finalMetaParts, firstMetaParts } from './questionView'
 
 describe('H2-01·H1-16 질문 칩 옆 설명: 이름(인쇄에 남음)과 꼬리(화면에만)', () => {
@@ -21,12 +20,5 @@ describe('H2-01·H1-16 질문 칩 옆 설명: 이름(인쇄에 남음)과 꼬리
     const offer = { topic: 'workHours', type: 'offer' } as unknown as FinalQuestion
     expect(blank).toBeDefined()
     expect(finalMetaParts(offer, null, undefined, blank)).toEqual({ name: '근로시간', tail: '공고에 없음' })
-  })
-})
-
-describe('H1-14 인쇄·복사 순서: "면접에서 쓸 것 같아요"를 누른 질문이 맨 위, 나머지는 화면 순서', () => {
-  it('누른 것만 앞으로, 각자의 순서는 그대로', () => {
-    expect(keptFirst([1, 2, 3, 4, 5], (n) => n === 4 || n === 2)).toEqual([2, 4, 1, 3, 5])
-    expect(keptFirst([1, 2, 3], () => false)).toEqual([1, 2, 3])
   })
 })

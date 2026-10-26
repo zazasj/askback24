@@ -136,7 +136,6 @@ describe('H2-04 다시 들어올 때 면접 종류는 내 준비 진행(저장�
     const store = useQuestionsStore()
     store.finals[ROW1.apply_id] = {
       response: { mode: 'final', final_questions: [], card_states: [], summary: { confirmed: 0, mismatch: 0, still_unknown: 0, company_signal: 0 } },
-      kept: [],
       made_at: '2026-10-25T10:00:00.000Z',
     } as never
     const saved = (m: 'first' | 'final') => store.hasSaved(ROW1.apply_id, m)
@@ -149,12 +148,62 @@ describe('H2-04 다시 들어올 때 면접 종류는 내 준비 진행(저장�
     usePrepStore().fillPreset(ROW1.apply_id, 'A')
     store.finals[ROW1.apply_id] = {
       response: { mode: 'final', final_questions: [], card_states: [], summary: { confirmed: 0, mismatch: 0, still_unknown: 0, company_signal: 0 } },
-      kept: [],
       made_at: '2000-01-01T00:00:00.000Z',
     } as never
     expect(store.finalBehindFirst(ROW1.apply_id)).toBe(false)
     void store.makeFirst(ROW1.apply_id, ROW1.wantedAuthNo)
     await vi.advanceTimersByTimeAsync(MIN_LOADING_MS)
     expect(store.finalBehindFirst(ROW1.apply_id)).toBe(true)
+  })
+})
+
+describe('RS-01 "면접에서 쓸 것 같아요"를 없앤 뒤: 옛 저장값의 kept 칸은 읽지 않고 무시한다', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  /** 브라우저 저장소 흉내(시험 환경은 node라 window가 없다) */
+  function fakeStorage(seed: Record<string, unknown>): Map<string, string> {
+    const mem = new Map(Object.entries(seed).map(([k, v]) => [k, JSON.stringify(v)]))
+    const storage = {
+      getItem: (k: string) => mem.get(k) ?? null,
+      setItem: (k: string, v: string) => void mem.set(k, v),
+      removeItem: (k: string) => void mem.delete(k),
+      key: (i: number) => [...mem.keys()][i] ?? null,
+      get length() {
+        return mem.size
+      },
+    }
+    vi.stubGlobal('window', { localStorage: storage })
+    return mem
+  }
+
+  const SUMMARY = { confirmed: 0, mismatch: 0, still_unknown: 0, company_signal: 0 }
+
+  it('kept가 남은 1차·최종 결과를 버리지 않고 그대로 읽는다(새로고침해도 질문이 그대로, S4-20)', () => {
+    fakeStorage({
+      'rq:v1:questions': { [ROW1.apply_id]: { request_key: 'old', response: { mode: 'first', questions: [] }, kept: ['BE15'], made_at: '2026-10-25T10:00:00.000Z' } },
+      'rq:v1:final-questions': {
+        [ROW1.apply_id]: { response: { mode: 'final', final_questions: [], card_states: [], summary: SUMMARY }, kept: ['offer:workHours'], made_at: '2026-10-25T11:00:00.000Z' },
+      },
+    })
+    const store = useQuestionsStore()
+    expect(store.hasSaved(ROW1.apply_id, 'first')).toBe(true)
+    expect(store.hasSaved(ROW1.apply_id, 'final')).toBe(true)
+    expect(store.firstOf(ROW1.apply_id)?.request_key).toBe('old')
+  })
+
+  it('kept가 없는 값도 읽고, 새로 만든 결과에는 kept를 저장하지 않는다', async () => {
+    const mem = fakeStorage({
+      'rq:v1:final-questions': { [ROW1.apply_id]: { response: { mode: 'final', final_questions: [], card_states: [], summary: SUMMARY }, made_at: '2026-10-25T11:00:00.000Z' } },
+    })
+    const store = useQuestionsStore()
+    expect(store.hasSaved(ROW1.apply_id, 'final')).toBe(true)
+    usePrepStore().fillPreset(ROW1.apply_id, 'A')
+    void store.makeFirst(ROW1.apply_id, ROW1.wantedAuthNo)
+    await vi.advanceTimersByTimeAsync(MIN_LOADING_MS)
+    const saved = JSON.parse(mem.get('rq:v1:questions') ?? '{}') as Record<string, Record<string, unknown>>
+    expect(saved[ROW1.apply_id]?.response).toBeDefined()
+    expect(saved[ROW1.apply_id]).not.toHaveProperty('kept')
   })
 })

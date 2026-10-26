@@ -2,7 +2,8 @@
 /**
  * S4 최종 ③ 최종 면접·처우 질문. 요약(확인됨·기대와 다름·아직 모름·회사가 먼저 물은 것 개수) + 순서 규칙대로 고른 질문.
  * 확인된 질문은 빠지고 처우 질문이 올라온다(추가 개발 노트 6·12절). 결과는 지원 건마다 저장되어 새로고침해도 그대로다.
- * 질문 카드·펼침·복사·👍는 1차와 같은 부품(QuestionCard)을 쓴다.
+ * 질문 카드·펼침은 1차와 같은 부품(QuestionCard)을 쓴다. 아래 고정 바는 없고(RS-02, D-196을 뒤집음)
+ * "전체 복사"·인쇄는 1차처럼 오른쪽 상자에 하나씩, 쌓이는 폭에서는 질문 위로(RS-03).
  */
 import { computed, nextTick, useTemplateRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -13,10 +14,10 @@ import { useCopy } from '@/composables/useCopy'
 import { usePrepStore } from '@/stores/prep'
 import { finalKey, useQuestionsStore } from '@/stores/questions'
 import { useReviewStore } from '@/stores/review'
+import { finalCopyText } from './copyText'
 import GeneratingView from './GeneratingView.vue'
 import { prefOf } from './picks'
 import QuestionCard from './QuestionCard.vue'
-import { keptFirst } from './printOrder'
 import { FINAL_TONES, evidenceLabel, finalMetaParts, finalTypeLabel, finalTypeNote, type MetaParts } from './questionView'
 import { MOOD_LABELS, STATE_LABELS, isTouched, ruleJudgedAskedCount } from './review'
 
@@ -105,24 +106,14 @@ const groups = computed<QuestionGroup[]>(() => {
   const asks = questions.value.filter((q) => q.type !== 'offer')
   const offers = questions.value.filter((q) => q.type === 'offer')
   const out: QuestionGroup[] = [
-    { key: 'interview', title: '최종 면접에서 물을 것', note: '최종 면접에서는 보통 한두 개만 물을 수 있어요. 꼭 물을 질문부터 골라 두세요.', items: [] },
+    // "보통 한두 개만…"은 오른쪽 상자 안내로 옮겼다(RS-05) — 같은 문장이 바로 옆에 두 번 보이지 않게
+    { key: 'interview', title: '최종 면접에서 물을 것', note: '1차 면접에서 남은 것과 회사가 먼저 물은 업무를 확인해요.', items: [] },
     { key: 'offer', title: '처우 협의 때 물을 것', note: '근로조건은 합격 뒤 처우 협의 자리에서 물어도 돼요.', items: [] },
   ]
   let no = 0
   for (const q of asks) out[0]?.items.push({ q, no: ++no })
   for (const q of offers) out[1]?.items.push({ q, no: ++no })
   return out.filter((g) => g.items.length > 0)
-})
-
-/** 인쇄·전체 복사 순서: 묶음마다 "면접에서 쓸 것 같아요"를 누른 질문이 맨 위(H1-14) */
-const sheetGroups = computed(() =>
-  groups.value.map((g) => ({ ...g, items: keptFirst(g.items, (it) => kept.value.has(finalKey(it.q))) })),
-)
-const printNoOf = computed(() => {
-  const map = new Map<string, number>()
-  let n = 0
-  for (const g of sheetGroups.value) for (const it of g.items) map.set(finalKey(it.q), ++n)
-  return map
 })
 
 /** 최종 질문을 만든 뒤 1차를 다시 만들었으면 최종 질문은 그 전 1차 기준이다(H2-04 ④) */
@@ -135,8 +126,6 @@ function evidenceTo(q: FinalQuestion) {
   return marked ? { query: { ...route.query, step: '1', card: q.card_id } } : undefined
 }
 
-const kept = computed(() => new Set(result.value?.kept ?? []))
-
 const moodNote = computed(() => {
   const mood = draft.value.mood
   if (mood === 'pressured') return `면접 분위기가 "${MOOD_LABELS.pressured}"라고 해서 조심스럽게 여쭙는 문장을 앞에 붙였어요.`
@@ -144,12 +133,10 @@ const moodNote = computed(() => {
   return ''
 })
 
-// 복사 글에는 유형 꼬리표("[처우 확인]")를 붙이지 않고 소제목만 둔다(H2-01 ②·H1-12)
+// 복사 글에는 유형 꼬리표("[처우 확인]")를 붙이지 않고 소제목만 둔다(H2-01 ②·H1-12). 순서는 화면 순서(RS-04)
 function copyAll(): void {
   const head = `${props.posting.corpNm} · ${props.posting.wantedTitle}\n최종 면접·처우 질문`
-  let n = 0
-  const body = sheetGroups.value.map((g) => [g.title, ...g.items.map((it) => `${++n}. ${it.q.text}`)].join('\n')).join('\n\n')
-  void copy(`${head}\n\n${body}`)
+  void copy(finalCopyText(head, groups.value.map((g) => ({ title: g.title, texts: g.items.map((it) => it.q.text) }))))
 }
 
 function printSheet(): void {
@@ -232,7 +219,6 @@ const STANDARD_CONTRACT_URL = 'https://www.moel.go.kr/policy/policydata/view.do?
                 v-for="it in g.items"
                 :key="finalKey(it.q)"
                 :rank="it.no"
-                :print-no="printNoOf.get(finalKey(it.q))"
                 :type-label="finalTypeLabel(it.q.type)"
                 :tone="FINAL_TONES[it.q.type]"
                 :meta-name="metaOf(it.q).name"
@@ -240,40 +226,46 @@ const STANDARD_CONTRACT_URL = 'https://www.moel.go.kr/policy/policydata/view.do?
                 :text="it.q.text"
                 :has-exp="false"
                 :template="it.q.source === 'template'"
-                :kept="kept.has(finalKey(it.q))"
                 :basis="it.q.basis"
                 :evidence-label="evidenceLabel(it.q.evidence)"
                 :evidence-to="evidenceTo(it.q)"
                 :watch-out="it.q.watch_out"
                 :good-sign="it.q.good_sign"
                 :type-note="finalTypeNote(it.q.type)"
-                @copy="copy(it.q.text)"
-                @keep="store.toggleFinalKept(applyId, finalKey(it.q))"
               />
             </ol>
           </section>
         </div>
 
-        <aside class="result-side" aria-labelledby="final-side-title" data-print="hide">
-          <div class="side-box">
-            <h3 id="final-side-title" class="side-title">1차 면접 정리</h3>
-            <p v-if="moodNote" class="side-line side-mood">{{ moodNote }}</p>
-            <p class="side-line">정리를 고치면 최종 질문을 다시 만들 수 있어요.</p>
-            <button type="button" class="btn btn-tertiary side-btn" @click="emit('edit')">1차 면접 정리 고치기</button>
-            <button v-if="canRemake" type="button" class="btn btn-tertiary side-btn" @click="emit('remake')">AI로 다시 만들기</button>
-          </div>
-          <div class="side-box">
-            <p class="side-line">꼭 물을 질문에 "면접에서 쓸 것 같아요"를 누르면 인쇄·복사 때 맨 위에 와요.</p>
-            <RouterLink class="about-link tap-target" to="/about-ai">이 질문은 어떻게 만들어지나요</RouterLink>
-          </div>
-          <!-- 처우 질문 뒤 공공 정보로 잇는다(H1-21). 이 상자는 인쇄하지 않아 링크 주소도 종이에 찍히지 않는다 -->
-          <div class="side-box">
-            <p class="side-line">근로계약서에 꼭 적혀야 할 항목(임금·근로시간·휴일 등)은 표준근로계약서에서 볼 수 있어요.</p>
-            <a class="about-link tap-target" :href="STANDARD_CONTRACT_URL" target="_blank" rel="noopener noreferrer">
-              고용노동부 표준근로계약서<span class="sr-only"> (새 창)</span>
-            </a>
-          </div>
-        </aside>
+        <!-- 1차 ③과 같은 짜임: 데스크톱은 오른쪽 상자들이 함께 따라오고, 쌓이는 폭에서는 복사·인쇄 상자만 질문 위로(RS-03) -->
+        <div class="side-col" data-print="hide">
+          <!-- 이 화면의 주 행동은 면접에 들고 갈 한 장이라 인쇄를 채운 버튼 하나로 둔다(Q-04 원칙, 아래 바가 없어짐) -->
+          <aside class="side-box side-tools" aria-label="복사·인쇄" data-print="hide">
+            <div class="side-actions">
+              <button type="button" class="btn btn-tertiary side-btn" @click="copyAll">전체 복사</button>
+              <button type="button" class="btn btn-accent side-btn" @click="printSheet">면접에 들고 갈 한 장 인쇄</button>
+            </div>
+            <!-- 실제로는 한두 개만 물을 수 있다는 안내(H1-14·H1-12, RS-05). 1차 ③ 오른쪽 상자와 같은 자리 -->
+            <p class="side-line side-tip">면접에서는 보통 한두 개만 물을 수 있어요. 꼭 물을 질문부터 골라 두세요.</p>
+          </aside>
+          <aside class="side-more" aria-labelledby="final-side-title" data-print="hide">
+            <div class="side-box">
+              <h3 id="final-side-title" class="side-title">1차 면접 정리</h3>
+              <p v-if="moodNote" class="side-line side-mood">{{ moodNote }}</p>
+              <p class="side-line">정리를 고치면 최종 질문을 다시 만들 수 있어요.</p>
+              <button type="button" class="btn btn-tertiary side-btn" @click="emit('edit')">1차 면접 정리 고치기</button>
+              <button v-if="canRemake" type="button" class="btn btn-tertiary side-btn" @click="emit('remake')">AI로 다시 만들기</button>
+              <RouterLink class="about-link tap-target" to="/about-ai">이 질문은 어떻게 만들어지나요</RouterLink>
+            </div>
+            <!-- 처우 질문 뒤 공공 정보로 잇는다(H1-21). 이 상자는 인쇄하지 않아 링크 주소도 종이에 찍히지 않는다 -->
+            <div class="side-box">
+              <p class="side-line">근로계약서에 꼭 적혀야 할 항목(임금·근로시간·휴일 등)은 표준근로계약서에서 볼 수 있어요.</p>
+              <a class="about-link tap-target" :href="STANDARD_CONTRACT_URL" target="_blank" rel="noopener noreferrer">
+                고용노동부 표준근로계약서<span class="sr-only"> (새 창)</span>
+              </a>
+            </div>
+          </aside>
+        </div>
       </div>
 
       <!-- 질문 7~8개로 끝나지 않게 다음 할 일을 둔다(H2-13). 1차 ③ "1차 면접을 다녀오면"과 같은 모양, 인쇄하지 않음 -->
@@ -284,15 +276,6 @@ const STANDARD_CONTRACT_URL = 'https://www.moel.go.kr/policy/policydata/view.do?
           적혔는지 확인해 보세요.
         </p>
       </section>
-
-      <!-- 아래 고정 바(1차 ③ .result-bar와 같은 모양, H2-08 나): "전체 복사"는 1차와 같은 자리, 채운 버튼은 면접에 들고 갈 한 장 -->
-      <div class="result-bar" data-print="hide">
-        <p class="result-bar-note">최종 질문 <strong>{{ questions.length }}개</strong>를 만들었어요</p>
-        <div class="result-bar-actions">
-          <button type="button" class="btn btn-tertiary btn-lg" @click="copyAll">전체 복사</button>
-          <button type="button" class="btn btn-accent btn-lg" @click="printSheet">면접에 들고 갈 한 장 인쇄</button>
-        </div>
-      </div>
     </template>
 
     <div v-else-if="firstGenerating" class="empty">
@@ -554,44 +537,22 @@ const STANDARD_CONTRACT_URL = 'https://www.moel.go.kr/policy/policydata/view.do?
   color: var(--krds-light-color-text-basic);
 }
 
-/* ── 아래 고정 바(1차 ③ .result-bar와 같은 모양) ───────── */
-.result-bar {
-  position: sticky;
-  bottom: 0.8rem;
-  z-index: 10;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem 2rem;
-  padding: 1.2rem 1.6rem 1.2rem 2rem;
-  border: 1px solid var(--rq-accent-border);
-  border-radius: var(--krds-radius-large1);
-  background: var(--krds-light-color-surface-white);
-  box-shadow: var(--rq-shadow-pop);
-}
-
-.result-bar-note {
-  font-size: var(--krds-pc-font-size-body-small);
-  color: var(--krds-light-color-text-subtle);
-}
-
-.result-bar-note strong {
-  color: var(--rq-accent-strong);
-}
-
-.result-bar-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.8rem;
-  margin-left: auto;
-}
-
-.result-side {
+/* 데스크톱: 오른쪽 상자들이 함께 따라온다(1차 ③과 같음) */
+.side-col {
   position: sticky;
   top: 1.6rem;
   display: grid;
   gap: 1.2rem;
+}
+
+.side-more {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.side-actions {
+  display: grid;
+  gap: 0.6rem;
 }
 
 .side-box {
@@ -663,12 +624,40 @@ const STANDARD_CONTRACT_URL = 'https://www.moel.go.kr/policy/policydata/view.do?
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  /* 쌓이는 폭: 묶음을 풀어 복사·인쇄 상자만 질문 위로(RS-03, 1차 ③과 같음) */
   .result-layout {
     grid-template-columns: minmax(0, 1fr);
+    gap: 1.2rem;
   }
 
-  .result-side {
-    position: static;
+  .side-col {
+    display: contents;
+  }
+
+  .side-tools {
+    order: -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 1.6rem;
+    padding: 1rem 1.2rem;
+  }
+
+  .side-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+  }
+
+  .side-tools .side-btn {
+    width: auto;
+  }
+
+  .side-tools .side-tip {
+    flex: 1 1 24rem;
+  }
+
+  .side-more {
     grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr));
   }
 }
@@ -686,7 +675,7 @@ const STANDARD_CONTRACT_URL = 'https://www.moel.go.kr/policy/policydata/view.do?
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .result-side {
+  .side-more {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -694,30 +683,20 @@ const STANDARD_CONTRACT_URL = 'https://www.moel.go.kr/policy/policydata/view.do?
     min-height: var(--rq-touch);
   }
 
+  /* 휴대폰: 두 버튼을 한 줄에(인쇄가 더 넓게) */
+  .side-tools .side-actions {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .side-tools .side-btn {
+    width: 100%;
+    padding: 0 1rem;
+  }
+
   .next-box {
     padding: 1.4rem 1.6rem;
-  }
-
-  /* 휴대폰: 바가 화면을 덜 가리게 버튼 두 개만 한 줄로(1차 ③과 같음) */
-  .result-bar {
-    padding: 1rem;
-  }
-
-  .result-bar-note {
-    display: none;
-  }
-
-  .result-bar-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
-    width: 100%;
-    margin-left: 0;
-  }
-
-  .result-bar-actions .btn {
-    min-height: var(--rq-touch);
-    padding: 0 0.8rem;
-    font-size: var(--krds-pc-font-size-label-small);
   }
 }
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * 질문 한 장(1차·최종 공용). 질문 문장이 가장 크고, 근거·주의할 답·좋은 신호는 "왜 이 질문인가요"에 접어 둔다.
- * 검수 문장(source: template)은 감추지 않고 라벨을 단다.
+ * 검수 문장(source: template)은 감추지 않고 라벨을 단다. 질문마다의 버튼은 두지 않는다 — 복사·인쇄는 오른쪽 상자에 하나씩(RS-01·RS-02).
  */
 import { useId } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
@@ -9,10 +9,8 @@ import type { ChipTone } from './questionView'
 import TypeChip from './TypeChip.vue'
 
 defineProps<{
-  /** 화면에 보이는 번호 */
+  /** 화면에 보이는 번호(인쇄·복사도 이 순서, RS-04) */
   rank: number
-  /** 인쇄할 때의 번호와 자리("면접에서 쓸 것 같아요"를 누른 질문이 맨 위, H1-14). 없으면 화면과 같다 */
-  printNo?: number
   typeLabel: string
   tone: ChipTone
   /** 카드(근로조건) 이름 "고객사 상주 개발" — 인쇄에도 남는다 */
@@ -22,7 +20,6 @@ defineProps<{
   text: string
   hasExp: boolean
   template: boolean
-  kept: boolean
   basis: string
   /** "우대조건 '고객사 상주 가능자'" */
   evidenceLabel?: string
@@ -34,22 +31,15 @@ defineProps<{
   typeNote?: string
 }>()
 
-const emit = defineEmits<{ copy: []; keep: [] }>()
-
-// 질문마다 같은 이름인 버튼(복사·면접에서 쓸 것 같아요·근거 보기)이 몇 번 질문 것인지 화면낭독기에 알린다(H2-19)
+// 질문마다 같은 이름인 "근거 보기"가 몇 번 질문 것인지 화면낭독기에 알린다(H2-19, V-10)
 const noId = `q-no-${useId()}`
 </script>
 
 <template>
-  <li
-    class="question"
-    :class="{ 'is-template': template, 'has-print-no': printNo !== undefined }"
-    :style="printNo !== undefined ? { '--print-order': printNo } : undefined"
-  >
+  <li class="question" :class="{ 'is-template': template }">
     <!-- 인쇄물(면접장에 들고 가는 종이)에는 번호·카드 이름·질문·"들은 답" 칸만. 유형 칩·내 선택·판정 꼬리는 화면에만(H2-01) -->
     <div class="q-head">
       <span class="num" aria-hidden="true">{{ rank }}</span>
-      <span v-if="printNo !== undefined" class="num print-num" aria-hidden="true">{{ printNo }}</span>
       <span :id="noId" class="sr-only">{{ rank }}번 질문</span>
       <TypeChip :label="typeLabel" :tone="tone" data-print="hide" />
       <span v-if="metaName || metaTail" class="q-meta">
@@ -61,18 +51,6 @@ const noId = `q-no-${useId()}`
     </div>
 
     <p class="q-text">{{ text }}</p>
-
-    <div class="q-actions" data-print="hide">
-      <button type="button" class="btn btn-tertiary btn-sm" :aria-describedby="noId" @click="emit('copy')">복사</button>
-      <button type="button" class="btn btn-sm keep" :aria-pressed="kept" :aria-describedby="noId" @click="emit('keep')">
-        <svg class="keep-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-          <path
-            d="M6 9v8H3V9h3Zm2 8V9.2l3.6-5.9a1.4 1.4 0 0 1 2.6.9L13.6 8H17a1.5 1.5 0 0 1 1.5 1.8l-1.3 5.9A1.8 1.8 0 0 1 15.4 17H8Z"
-          />
-        </svg>
-        면접에서 쓸 것 같아요
-      </button>
-    </div>
 
     <details class="why" data-print="hide">
       <summary>왜 이 질문인가요</summary>
@@ -149,10 +127,6 @@ const noId = `q-no-${useId()}`
   white-space: nowrap;
 }
 
-.print-num {
-  display: none;
-}
-
 .exp-tag {
   background: var(--rq-accent-subtle);
   color: var(--rq-accent-strong);
@@ -176,46 +150,11 @@ const noId = `q-no-${useId()}`
   color: var(--krds-light-color-text-bolder);
 }
 
-.q-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.8rem;
-}
-
-.keep {
-  border-color: var(--krds-light-color-button-tertiary-border);
-  background: var(--krds-light-color-surface-white);
-  color: var(--krds-light-color-text-basic);
-}
-
-.keep:hover {
-  border-color: var(--rq-accent);
-}
-
-.keep[aria-pressed='true'] {
-  border-color: var(--rq-accent);
-  background: var(--rq-accent-subtle);
-  color: var(--rq-accent-strong);
-  font-weight: 700;
-}
-
-.keep-icon {
-  width: 1.6rem;
-  height: 1.6rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  stroke-linejoin: round;
-}
-
-.keep[aria-pressed='true'] .keep-icon {
-  fill: currentColor;
-}
-
 /* ── 왜 이 질문인가요 ─────────────────────────────── */
+/* 버튼 줄이 빠져 문장 바로 아래 구분선과 펼침이 온다(RS-06). 펼침 줄 아래는 카드 안쪽 여백뿐 */
 .why {
   border-top: 1px solid var(--krds-light-color-border-gray-light);
-  padding-top: 0.6rem;
+  padding-top: 0.4rem;
 }
 
 .why summary {
@@ -331,10 +270,6 @@ const noId = `q-no-${useId()}`
     font-size: var(--krds-pc-font-size-body-medium);
   }
 
-  .q-actions .btn {
-    min-height: var(--rq-touch);
-  }
-
   .why summary {
     min-height: var(--rq-touch);
   }
@@ -347,18 +282,9 @@ const noId = `q-no-${useId()}`
 
 @media print {
   .question {
-    order: var(--print-order, 0);
     gap: 0.6rem;
     padding: 1rem 1.2rem;
     break-inside: avoid;
-  }
-
-  .question.has-print-no .num:not(.print-num) {
-    display: none;
-  }
-
-  .question.has-print-no .print-num {
-    display: inline-flex;
   }
 
   /* 종이에는 카드 이름만 남는다(유형 칩·꼬리는 data-print="hide") */
