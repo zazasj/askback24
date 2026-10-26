@@ -27,6 +27,10 @@
     "still_unknown": "아직 모름",
     "company_signal": "회사가 먼저 물은 것"
   },
+  "mismatch_avoid": {
+    "state_label": "걱정한 대로",
+    "scope_description": "들은 답이 걱정한 대로라 맡을 범위를 확인해요"
+  },
   "final_rules": [
     { "state": "still_unknown", "preference": ["avoid"], "type": "recheck", "priority": 0.5 },
     { "state": "company_signal", "preference": ["avoid"], "type": "signal", "priority": 1.0 },
@@ -53,6 +57,7 @@
     },
     "received": "회사가 면접에서 이 업무를 먼저 물었어요. 실제로 맡게 될 수 있어요",
     "mismatch": "들은 답이 이 카드의 주의할 답과 맞아 내 기대와 달라요",
+    "mismatch_avoid": "들은 답이 이 카드의 주의할 답과 맞아 걱정한 대로예요",
     "good_sign": "들은 답이 이 카드의 좋은 신호와 맞아 확인됐어요"
   },
   "templates": {

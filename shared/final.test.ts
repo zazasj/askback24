@@ -445,3 +445,14 @@ describe('D-179 최종 질문 문장도 면접 비즈니스체', () => {
     }
   })
 })
+
+describe('H3-r2-02 걱정돼요 카드의 "기대와 다름" 근거는 "걱정한 대로"', () => {
+  it('R-04 예시: BE07(걱정돼요)은 상태 mismatch 그대로(요약 개수 그대로), 근거는 걱정한 대로', async () => {
+    const res = await generateFinal(reqR04(), { provider: createMockProvider() })
+    const be07 = res.card_states.find((s) => s.card_id === 'BE07')
+    expect(be07?.state).toBe('mismatch')
+    expect(res.summary.mismatch).toBe(1)
+    expect(be07?.basis.startsWith(FINAL_BOOK.basis.mismatch_avoid), be07?.basis).toBe(true)
+    expect(be07?.basis).not.toContain('내 기대와 달라요')
+  })
+})

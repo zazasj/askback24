@@ -204,7 +204,7 @@ function onMain(): void {
 
 /**
  * "다른 화면 안내도 그만 보기" = 시연 도구 "안내 끄기"(A3-r1-10). 끄는 길이 시연 도구 안에만 있어 상자 안에서 찾을 수 없었다.
- * 지금 안내는 본 것으로 닫는다. "시연 초기화"가 끄기를 푸는 것(TR-05)은 그대로
+ * 지금 안내는 본 것으로 닫는다. "시연 초기화"도 끄기를 풀지 않는다(H3-r1-03)
  */
 function stopAll(): void {
   tour.setOff(true)
@@ -297,6 +297,7 @@ function reveal(): void {
     moveTimer = setTimeout(() => (moving.value = false), MOVE_MS + 50)
   }
   const t = findTarget(step.value?.target)
+  tour.spot = t
   if (t && !isPinned(t)) {
     t.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' })
     const v = view()

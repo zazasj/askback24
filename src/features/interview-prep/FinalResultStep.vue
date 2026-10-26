@@ -20,7 +20,7 @@ import { finalCopyText } from './copyText'
 import GeneratingView from './GeneratingView.vue'
 import { prefOf } from './picks'
 import QuestionCard from './QuestionCard.vue'
-import { FINAL_TONES, evidenceLabel, finalMetaParts, finalTypeLabel, finalTypeNote, type MetaParts } from './questionView'
+import { FINAL_TONES, evidenceLabel, finalMetaParts, finalStateLabel, finalTypeLabel, finalTypeNote, type MetaParts } from './questionView'
 import { MOOD_LABELS, STATE_LABELS, isTouched, ruleJudgedAskedCount } from './review'
 
 const props = defineProps<{ applyId: string; posting: Posting }>()
@@ -65,7 +65,7 @@ watch(generating, async () => {
 // ── 요약 ─────────────────────────────────────────────
 const SUMMARY_NOTES: Record<ReviewState, string> = {
   confirmed: '질문에서 뺐어요',
-  mismatch: '범위를 다시 확인해요',
+  mismatch: '범위를 다시 확인해요(걱정한 일이 맞은 것도 여기에 세요)',
   still_unknown: '한 번 더 물어요',
   company_signal: '맡게 될지 확인해요',
 }
@@ -90,7 +90,7 @@ const analysis = computed(() => getAnalysis(props.posting.wantedAuthNo))
 const picks = computed(() => prep.selectionOf(props.applyId).picks)
 const stateLabelOf = (cardId: string) => {
   const s = result.value?.response.card_states.find((c) => c.card_id === cardId)?.state
-  return s ? STATE_LABELS[s] : undefined
+  return s ? finalStateLabel(s, prefOf(picks.value, cardId)) : undefined
 }
 function metaOf(q: FinalQuestion): MetaParts {
   const blank = q.card_id ? undefined : analysis.value?.blanks.find((b) => b.topic === q.topic)
@@ -236,7 +236,7 @@ const STANDARD_CONTRACT_URL = 'https://www.moel.go.kr/policy/policydata/view.do?
                 :evidence-to="evidenceTo(it.q)"
                 :watch-out="it.q.watch_out"
                 :good-sign="it.q.good_sign"
-                :type-note="finalTypeNote(it.q.type)"
+                :type-note="finalTypeNote(it.q.type, it.q.card_id ? prefOf(picks, it.q.card_id) : null)"
               />
             </ol>
           </section>

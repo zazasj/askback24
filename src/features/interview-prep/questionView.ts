@@ -1,6 +1,6 @@
 /** 질문 카드에 보일 글·색(1차·최종 공용). 판단은 하지 않고 형식만 바꾼다 */
 import { CARD_BOOK, FINAL_BOOK, getCard } from '@shared/catalog'
-import type { Evidence, EvidenceField, FinalQType, FinalQuestion, OfferBlank, Pref, QType } from '@shared/contract'
+import type { Evidence, EvidenceField, FinalQType, FinalQuestion, OfferBlank, Pref, QType, ReviewState } from '@shared/contract'
 import { BLANK_TAGS } from './checkpoints'
 
 /**
@@ -94,6 +94,13 @@ export function firstTypeNote(type: QType): string {
   return `${CARD_BOOK.type_labels[type]}: ${CARD_BOOK.type_descriptions[type]}`
 }
 
-export function finalTypeNote(type: FinalQType): string {
-  return `${FINAL_BOOK.type_labels[type]}: ${FINAL_BOOK.type_descriptions[type]}`
+/** 걱정돼요 카드의 "범위 확인"은 걱정이 맞아 묻는 것이라 뜻 문장을 바꾼다(H3-r2-02) */
+export function finalTypeNote(type: FinalQType, pref?: Pref | null): string {
+  const desc = type === 'scope' && pref === 'avoid' ? FINAL_BOOK.mismatch_avoid.scope_description : FINAL_BOOK.type_descriptions[type]
+  return `${FINAL_BOOK.type_labels[type]}: ${desc}`
+}
+
+/** 질문 옆 판정 글: 걱정돼요 카드의 "기대와 다름"은 "걱정한 대로"(H3-r2-02). 요약 칸 이름은 그대로 */
+export function finalStateLabel(state: ReviewState, pref: Pref | null): string {
+  return state === 'mismatch' && pref === 'avoid' ? FINAL_BOOK.mismatch_avoid.state_label : FINAL_BOOK.state_labels[state]
 }

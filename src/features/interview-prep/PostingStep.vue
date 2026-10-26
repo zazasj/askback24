@@ -117,6 +117,7 @@ const DRAW_GAP_MS = 250
 const STROKE_MS = 400
 
 const intro = usePostingIntroStore()
+const tour = useTourStore()
 // 들어올 때 한 번 정한다: 칠하는 중에 부모가 draw 를 내려도 남은 것을 마저 칠한다
 const animate = props.draw === true
 const drawn = reactive(new Set<string>())
@@ -138,6 +139,8 @@ function drawMark(key: string): void {
 const nextToDraw = (): string | undefined => spots.value.find((s) => seenMarks.has(s.key) && !drawn.has(s.key))?.key
 
 function pumpDraw(): void {
+  // 안내가 떠 있는 동안에는 차례 칠하기를 멈춘다. 안내가 비춘 형광펜만 그때 긋는다(H3-r1-02, 아래)
+  if (tour.activeKey) return
   if (drawTimer !== undefined) return
   if (!nextToDraw()) {
     // 마지막 한 개가 다 칠해질 때까지 칠하는 중으로 둔다(안내 T5가 기다림)
@@ -166,6 +169,24 @@ function pumpDraw(): void {
   )
 }
 
+/** 아래 고정 바가 덮는 높이 */
+function barCover(): number {
+  const bar = root.value?.querySelector<HTMLElement>('.step-bar')
+  return bar ? Math.ceil(bar.getBoundingClientRect().height + (parseFloat(getComputedStyle(bar).bottom) || 0)) : 0
+}
+
+/** 안내를 닫은 뒤: 안내가 스크롤하며 지나간 형광펜은 줄에서 빼고, 지금 화면에 보이는 것부터 다시 차례로 칠한다 */
+function resumeDrawing(): void {
+  const cover = barCover()
+  seenMarks.clear()
+  root.value?.querySelectorAll<HTMLElement>('mark[data-mark-key]').forEach((el) => {
+    const r = el.getBoundingClientRect()
+    if (el.dataset.markKey && r.bottom > 0 && r.top < window.innerHeight - cover) seenMarks.add(el.dataset.markKey)
+  })
+  nextDrawAt = performance.now() + DRAW_START_MS
+  pumpDraw()
+}
+
 function startDrawing(): void {
   const marks = root.value?.querySelectorAll<HTMLElement>('mark[data-mark-key]') ?? []
   if (typeof IntersectionObserver === 'undefined') {
@@ -180,8 +201,7 @@ function startDrawing(): void {
     if (el.dataset.markKey && r.bottom > 0 && r.top < window.innerHeight) seenMarks.add(el.dataset.markKey)
   })
   // 스크롤로 들어오는 것은 아래 고정 바 위로 올라왔을 때 줄에 세운다(바 밑에서 칠해져 긋는 모습을 못 보는 일이 없게)
-  const bar = root.value?.querySelector<HTMLElement>('.step-bar')
-  const cover = bar ? Math.ceil(bar.getBoundingClientRect().height + (parseFloat(getComputedStyle(bar).bottom) || 0)) : 0
+  const cover = barCover()
   observer = new IntersectionObserver(
     (entries) => {
       for (const e of entries) {
@@ -205,14 +225,23 @@ if (animate) {
 
 // ── 처음 온 사람 안내(TR-02): 로딩·첫 화면 형광펜 칠하기가 끝난 뒤 뜬다(TR-08, TourHost 가 intro.busy 를 기다림) ──
 useScreenTour('prep-posting', () => postingTour(props.nextLabel), { titleId: 'posting-step-title' })
-// 안내는 화면을 어둡게 덮고 대상을 찾아 스크롤하므로, 남은 형광펜은 긋는 모습 대신 다 칠한 모양으로 둔다
-// (막 아래에서 칠하면 보이지 않고, 안내 첫 화면에 칠하지 않은 형광펜이 남지 않게)
-const tour = useTourStore()
+// 안내가 형광펜을 비추면 그 형광펜만 그때 긋는다(H3-r1-02, D-259 대체). 첫 화면에 형광펜이 없어 안내가 먼저 뜨는
+// 첫 방문에서도 긋는 모습을 한 번 보이고, 막 아래에서는 칠하지 않는다. 안내를 닫으면 보이는 것부터 다시 차례로 칠한다
+const SPOT_DELAY_MS = 250 // 비춤 구멍이 옮겨 간 뒤(TourHost MOVE_MS 200) 긋는다
+let spotTimer: ReturnType<typeof setTimeout> | undefined
 if (animate) {
   watch(
+    () => tour.spot,
+    (el) => {
+      clearTimeout(spotTimer)
+      const key = el instanceof HTMLElement && el.matches('mark[data-mark-key]') ? el.dataset.markKey : undefined
+      if (key && !drawn.has(key)) spotTimer = setTimeout(() => drawMark(key), SPOT_DELAY_MS)
+    },
+  )
+  watch(
     () => tour.activeKey,
-    (k) => {
-      if (k) spots.value.forEach((s) => drawMark(s.key))
+    (k, before) => {
+      if (!k && before) resumeDrawing()
     },
   )
 }
@@ -224,6 +253,7 @@ onBeforeUnmount(() => {
   observer?.disconnect()
   clearTimeout(drawTimer)
   clearTimeout(idleTimer)
+  clearTimeout(spotTimer)
   if (animate) intro.drawing = false
   intro.bubble = false
 })

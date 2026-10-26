@@ -183,6 +183,11 @@ export interface FinalBook {
   type_labels: Record<FinalQType, string>
   type_descriptions: Record<FinalQType, string>
   state_labels: Record<ReviewState, string>
+  /**
+   * 걱정돼요 카드의 mismatch(걱정이 맞음)는 질문 옆 글·"범위 확인" 설명에서 "걱정한 대로"로 말한다(H3-r2-02).
+   * 요약 칸 이름·개수는 state_labels.mismatch("기대와 다름") 그대로
+   */
+  mismatch_avoid: { state_label: string; scope_description: string }
   final_rules: FinalRule[]
   offer_priority: number
   offer_status_order: Array<OfferBlank['status']>
@@ -196,6 +201,8 @@ export interface FinalBook {
     not_asked: Record<NotAskedReason | 'unmarked', string>
     received: string
     mismatch: string
+    /** 걱정돼요 카드가 "기대와 다름"(걱정이 맞음)일 때 근거(H3-r2-02) */
+    mismatch_avoid: string
     good_sign: string
   }
   templates: {

@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { getAnalysis } from '@shared/catalog'
 import type { FinalQuestion } from '@shared/contract'
-import { NO_EVIDENCE_TAG, finalMetaParts, firstMetaParts } from './questionView'
+import { NO_EVIDENCE_TAG, finalMetaParts, finalStateLabel, finalTypeNote, firstMetaParts } from './questionView'
 
 describe('H2-01·H1-16 질문 칩 옆 설명: 이름(인쇄에 남음)과 꼬리(화면에만)', () => {
   it('1차: 이름 = 카드 이름, 꼬리 = 내 선택, 공고에 근거가 없으면 "공고에 없음"', () => {
@@ -20,5 +20,20 @@ describe('H2-01·H1-16 질문 칩 옆 설명: 이름(인쇄에 남음)과 꼬리
     const offer = { topic: 'workHours', type: 'offer' } as unknown as FinalQuestion
     expect(blank).toBeDefined()
     expect(finalMetaParts(offer, null, undefined, blank)).toEqual({ name: '근로시간', tail: '공고에 없음' })
+  })
+})
+
+describe('H3-r2-02 걱정돼요 카드에서 걱정이 맞으면 "걱정한 대로"', () => {
+  it('질문 옆 판정 글: 걱정돼요 × 기대와 다름 → "걱정한 대로", 나머지는 요약 칸 이름 그대로', () => {
+    expect(finalStateLabel('mismatch', 'avoid')).toBe('걱정한 대로')
+    expect(finalStateLabel('mismatch', 'want')).toBe('기대와 다름')
+    expect(finalStateLabel('mismatch', null)).toBe('기대와 다름')
+    expect(finalStateLabel('still_unknown', 'avoid')).toBe('아직 모름')
+  })
+
+  it('"범위 확인" 뜻 문장: 걱정돼요 카드는 걱정이 맞아 묻는다고 말한다', () => {
+    expect(finalTypeNote('scope', 'avoid')).toBe('범위 확인: 들은 답이 걱정한 대로라 맡을 범위를 확인해요')
+    expect(finalTypeNote('scope', 'want')).toBe('범위 확인: 들은 답이 내 기대와 달라 맡을 범위를 확인해요')
+    expect(finalTypeNote('recheck', 'avoid')).not.toContain('걱정한 대로')
   })
 })

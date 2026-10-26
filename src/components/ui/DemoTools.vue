@@ -60,7 +60,8 @@ async function resetDemo(): Promise<void> {
   close(true)
   tools.resetAll()
   await router.push('/mypage/applications')
-  toast.show('시연을 처음 상태로 되돌렸어요')
+  // 초기화는 안내 끄기를 풀지 않는다(H3-r1-03). 끈 채면 그렇다고 알린다
+  toast.show(tour.off ? '시연을 처음 상태로 되돌렸어요. 안내는 꺼진 채예요' : '시연을 처음 상태로 되돌렸어요')
   busy.value = false
 }
 </script>

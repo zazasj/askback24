@@ -10,6 +10,7 @@ import { computed, nextTick, onMounted, useTemplateRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { CARD_BOOK, getAnalysis, getCard } from '@shared/catalog'
 import type { Posting, Question } from '@shared/contract'
+import { interviewRounds } from '@shared/interviews'
 import { QUESTION_LIMIT, pickExplore, typeLabel } from '@shared/rules'
 import { API_MODE } from '@/api/client'
 import MockModeTag from '@/components/ui/MockModeTag.vue'
@@ -38,6 +39,8 @@ const generating = computed(() => store.isGenerating(props.applyId))
 const result = computed(() => store.firstOf(props.applyId))
 const questions = computed<Question[]>(() => result.value?.response.questions ?? [])
 const failed = computed(() => store.hasFailed(props.applyId))
+/** 면접이 한 번인 공고(H3-r2-03) */
+const singleInterview = computed(() => interviewRounds(props.posting.selMthd) === 1)
 const stale = computed(() => !!result.value && !store.isCurrent(props.applyId, props.posting.wantedAuthNo))
 
 const seeded = computed(() => result.value?.seed === true)
@@ -233,8 +236,13 @@ function printSheet(): void {
       </div>
 
       <section class="next-box" aria-labelledby="next-title" data-print="hide">
-        <h3 id="next-title" class="next-title">1차 면접을 다녀오면</h3>
-        <p>
+        <!-- 면접이 한 번인 공고(전형 방법에 "면접"이 한 단계)는 "1차·최종"이라 하지 않고 사실대로(H3-r2-03). 흐름은 그대로 -->
+        <h3 id="next-title" class="next-title">{{ singleInterview ? '면접을 다녀오면' : '1차 면접을 다녀오면' }}</h3>
+        <p v-if="singleInterview">
+          이 공고는 면접이 한 번이에요. 면접에서 못 물은 것과 처우는 합격 뒤 처우 협의 때 물어보세요. 면접에 다녀와 아래
+          "면접 다녀왔어요"를 누르면 그때 물을 질문을 만들어 드려요.
+        </p>
+        <p v-else>
           아래 "면접 다녀왔어요"를 눌러 물어본 질문과 들은 답을 정리해 주세요. 확인된 것은 빼고, 남은 것과 처우를 최종 면접
           질문으로 만들어 드려요.
         </p>

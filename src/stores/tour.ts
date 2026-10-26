@@ -1,5 +1,6 @@
 /**
- * 처음 온 사람 안내(스포트라이트, TR). 안내한 화면과 "안내 끄기"를 브라우저에 둔다(rq:v1:tour — "시연 초기화"가 지움).
+ * 처음 온 사람 안내(스포트라이트, TR). 안내한 화면과 "안내 끄기"를 브라우저에 둔다(rq:v1:tour).
+ * "시연 초기화"는 안내한 화면 기록만 지우고 "안내 끄기"는 그대로 둔다(H3-r1-03 — 발표 중 초기화해도 안내가 뜨지 않게).
  * 화면마다 useScreenTour 가 그 화면의 단계 목록을 올리고, 앱 전체에 하나 있는 TourHost 가 띄운다.
  * 시험 전용 스위치 rq:test:tour-off = "1"이면 저절로 띄우지 않는다(TR-09). 앞붙임이 달라 "시연 초기화"가 지우지 않는다.
  */
@@ -62,6 +63,8 @@ export const useTourStore = defineStore('tour', () => {
   const replay = ref<TourKey | null>(null)
   /** 지금 떠 있는 안내(없으면 null) */
   const activeKey = ref<TourKey | null>(null)
+  /** 지금 비추는 대상(대상 없는 상자면 null). ① 형광펜이 비춰질 때 그때 긋는다(H3-r1-02) */
+  const spot = shallowRef<HTMLElement | null>(null)
   let seq = 0
 
   const off = computed(() => saved.value.off)
@@ -75,8 +78,9 @@ export const useTourStore = defineStore('tour', () => {
     return s.key
   })
 
+  // 초기화는 본 기록만(H3-r1-03). clearAllKeys 가 저장값을 먼저 지우므로 끄기 값을 다시 써 둔다
   onDemoReset(() => {
-    saved.value = { seen: [], off: false }
+    saved.value = { seen: [], off: saved.value.off }
     replay.value = null
   })
 
@@ -116,7 +120,8 @@ export const useTourStore = defineStore('tour', () => {
 
   function ended(): void {
     activeKey.value = null
+    spot.value = null
   }
 
-  return { saved, screen, replay, activeKey, off, due, hasSeen, markSeen, setOff, register, unregister, requestReplay, started, ended }
+  return { saved, screen, replay, activeKey, spot, off, due, hasSeen, markSeen, setOff, register, unregister, requestReplay, started, ended }
 })

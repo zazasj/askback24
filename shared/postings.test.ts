@@ -4,6 +4,7 @@ import { POSTINGS, PRESETS, REVIEW_EXAMPLE, getAnalysis } from './catalog'
 import type { FirstQuestionsRequest, InterviewReview } from './contract'
 import { generateFinal, generateFirst, type GenerateReport } from './generate'
 import { createMockProvider } from './providers/mock'
+import { interviewRounds } from './interviews'
 
 const SEEDED = ['K-MOCK-0001', 'K-MOCK-0002']
 
@@ -102,3 +103,23 @@ function reviewFor(cardIds: readonly string[]): InterviewReview {
   review.received = REVIEW_EXAMPLE.received.map((card_id) => ({ card_id }))
   return review
 }
+
+describe('H3-r2-03 공고의 면접 횟수(전형 방법 selMthd)', () => {
+  it('모의 공고 7건: OO소프트·△△커머스·☆☆페이·◁◁로지스는 두 번, ◇◇데이터·▽▽정보기술·◎◎헬스케어는 한 번', () => {
+    const rounds = Object.fromEntries(POSTINGS.map((p) => [p.wantedAuthNo, interviewRounds(p.selMthd)]))
+    expect(rounds).toEqual({
+      'K-MOCK-0001': 2,
+      'K-MOCK-0002': 2,
+      'K-MOCK-0003': 1,
+      'K-MOCK-0004': 2,
+      'K-MOCK-0005': 1,
+      'K-MOCK-0006': 1,
+      'K-MOCK-0007': 2,
+    })
+  })
+
+  it('면접이 없거나 화살표로 나눈 전형도 센다', () => {
+    expect(interviewRounds('서류전형')).toBe(0)
+    expect(interviewRounds('서류전형 → 1차 면접 → 최종 면접 → 합격')).toBe(2)
+  })
+})

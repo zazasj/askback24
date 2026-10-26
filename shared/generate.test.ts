@@ -341,3 +341,18 @@ describe('보류 의견 결정(2026-10-25) — 공고별 질문 틀·인용 검�
     expect(fallback.questions.find((q) => q.card_id === 'BE15')?.text).toBe(own)
   })
 })
+
+describe('H3-r2-01 한 결과에 같은 대상의 "비중" 질문이 두 번 나오지 않는다', () => {
+  // "기존 시스템 유지보수"(BE07)와 "신규 API 개발"(BE01)을 둘 다 걱정하는 것은 신입이 흔히 고르는 조합이다
+  const SAME_TARGET = /새 기능.*비중|비중.*새 기능/
+  it('공고 7건 × BE01·BE07 둘 다 "걱정돼요"(나머지 예시 A 그대로), 변형 0·1', async () => {
+    const picks = PRESETS.A.picks.map((p) => (p.card_id === 'BE01' || p.card_id === 'BE07' ? { ...p, pref: 'avoid' as const, has_exp: false } : p))
+    for (const a of ANALYSES) {
+      for (const variant of [0, 1]) {
+        const res = await generateFirst({ mode: 'first', wantedAuthNo: a.wantedAuthNo, picks }, { provider: createMockProvider({ variant }) })
+        const same = res.questions.filter((q) => SAME_TARGET.test(q.text))
+        expect(same.length, `${a.wantedAuthNo} v${variant}: ${same.map((q) => q.text).join(' / ')}`).toBeLessThanOrEqual(1)
+      }
+    }
+  })
+})

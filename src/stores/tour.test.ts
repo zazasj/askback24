@@ -78,15 +78,23 @@ describe('띄울 안내(due)', () => {
   })
 })
 
-describe('"시연 초기화"(TR-03·TR-05)', () => {
-  it('안내한 화면 기록과 끄기를 모두 처음으로 돌린다', () => {
+describe('"시연 초기화"(TR-03·TR-05, H3-r1-03)', () => {
+  it('안내한 화면 기록을 처음으로 돌린다(켜 둔 채면 S1 서비스 안내가 다시)', () => {
     const { tour } = onScreen('s1')
     tour.markSeen('s1')
     tour.markSeen('jobs')
-    tour.setOff(true)
     useDemoToolsStore().resetAll()
     expect(tour.saved).toEqual({ seen: [], off: false })
     expect(tour.due).toBe('s1')
+  })
+
+  it('"안내 끄기"는 풀지 않는다 — 본 기록만 지우고 끈 채로 둔다', () => {
+    const { tour } = onScreen('s1')
+    tour.markSeen('s1')
+    tour.setOff(true)
+    useDemoToolsStore().resetAll()
+    expect(tour.saved).toEqual({ seen: [], off: true })
+    expect(tour.due).toBeNull()
   })
 })
 

@@ -148,7 +148,11 @@ export function mockJudgement(item: JudgeItem): Judgement | null {
   const fixed = REVIEW_EXAMPLE.asked.find(
     (e) => e.card_id === item.card_id && e.heard === item.heard.trim() && e.clarity === item.clarity && e.state,
   )
-  if (fixed?.state === 'mismatch') return { card_id: item.card_id, state: 'mismatch', basis: `${B.mismatch} · 주의할 답: ${item.watch_out}` }
+  if (fixed?.state === 'mismatch') {
+    // 걱정한 카드에서 걱정이 맞은 것은 "걱정한 대로"로 말한다(H3-r2-02)
+    const said = item.pref === 'avoid' ? B.mismatch_avoid : B.mismatch
+    return { card_id: item.card_id, state: 'mismatch', basis: `${said} · 주의할 답: ${item.watch_out}` }
+  }
   if (fixed?.state === 'confirmed') return { card_id: item.card_id, state: 'confirmed', basis: `${B.good_sign} · 좋은 신호: ${item.good_sign}` }
   if (fixed?.state === 'still_unknown') return { card_id: item.card_id, state: 'still_unknown', basis: B.asked_vague }
   return null

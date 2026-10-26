@@ -131,7 +131,7 @@ flowchart LR
 | `clarity` | `clear` 구체적이었어요 · `vague` 모호했어요(안 골랐으면 키가 없음) |
 | `watch_out` · `good_sign` | 주의할 답(기대와 다르거나 걱정이 맞는 답) · 좋은 신호 |
 
-**응답** `{ "judgements": [ { "card_id", "state", "basis" } ], "model"?: string }` — `state`는 `confirmed` 확인됨 · `mismatch` 기대와 다름 · `still_unknown` 아직 모름, `basis`는 판정 근거 한 줄(1~160자, 해요체, 화면에 보임)입니다. `basis`에는 들은 답을 바꿔 쓴 글이 들어 있을 수 있음 — 기록 금지. "기대와 다름"은 AI만 낼 수 있습니다. 판단이 어려운 카드는 빼도 됩니다(그 카드는 단순 판정).
+**응답** `{ "judgements": [ { "card_id", "state", "basis" } ], "model"?: string }` — `state`는 `confirmed` 확인됨 · `mismatch` 기대와 다름 · `still_unknown` 아직 모름, `basis`는 판정 근거 한 줄(1~160자, 해요체, 화면에 보임)입니다. `basis`에는 들은 답을 바꿔 쓴 글이 들어 있을 수 있음 — 기록 금지. "기대와 다름"은 AI만 낼 수 있습니다. `mismatch`는 기대(`pref: "want"`)와 다른 답이거나 걱정(`pref: "avoid"`)이 맞는 답입니다. 걱정한 카드면 `basis`도 그 뜻으로 써 주세요(예: "…걱정한 대로예요"). 화면은 그 카드의 판정 글을 "걱정한 대로"로 보이고, 요약 칸 "기대와 다름" 개수에는 그대로 셉니다. 판단이 어려운 카드는 빼도 됩니다(그 카드는 단순 판정).
 
 ### 문장 `POST /v1/final-questions`
 

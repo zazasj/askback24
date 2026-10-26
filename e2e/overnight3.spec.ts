@@ -107,6 +107,8 @@ import {
   printButton,
   readRepoText,
   readTourStep,
+  tourStepNumber,
+  TOUR_BUTTONS,
   resultSide,
   sentenceToWhyGeometry,
   skipTour,
@@ -1345,6 +1347,38 @@ test.describe('TR — 처음 온 사람 안내(시험 스위치 rq:test:tour-off
     await expectNoTour(page, '없는 주소')
   })
 
+  test('LD-03 안내가 켜진 첫 방문: ① 안내 "형광펜" 단계가 비추는 형광펜 하나를 그때 긋고, 안내를 닫으면 보이는 형광펜을 차례로 긋는다(H3-r1-02)', async ({ page }) => {
+    acceptDialogs(page)
+    await page.goto('/mypage/applications')
+    await waitTour(page, 'S1 서비스 안내')
+    await skipTour(page)
+    await enterFirstFromS1(page)
+    await waitTour(page, '① 공고 확인', 20_000)
+    const count = (drawn: 'true' | 'false') => page.locator(`mark[data-drawn="${drawn}"]`).count()
+    await page.waitForTimeout(600)
+    const before = await count('true')
+    expect(await count('false'), '안내가 떠도 남은 형광펜을 한꺼번에 칠하지 않는다').toBeGreaterThan(0)
+    await tourDialog(page).getByRole('button', { name: TOUR_BUTTONS.next, exact: true }).click()
+    await expect.poll(async () => (await tourStepNumber(page))?.n, { message: '"다음" 뒤 2단계 "형광펜"' }).toBe(2)
+    await expect.poll(() => count('true'), { message: '"형광펜" 단계: 비춘 형광펜 하나를 그때 긋는다', timeout: 2_000 }).toBe(before + 1)
+    await page.waitForTimeout(800)
+    expect(await count('true'), '막 아래의 다른 형광펜은 칠하지 않는다').toBe(before + 1)
+    await skipTour(page)
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () =>
+              Array.from(document.querySelectorAll('mark')).filter((m) => {
+                const r = m.getBoundingClientRect()
+                return r.width > 0 && r.bottom > 0 && r.top < window.innerHeight - 120 && m.getAttribute('data-drawn') === 'false'
+              }).length,
+          ),
+        { message: '안내를 닫으면 화면에 보이는 형광펜을 차례로 긋는다', timeout: 5_000 },
+      )
+      .toBe(0)
+  })
+
   test('TR-03 한 번 안내한 화면은 다시 들어와도 뜨지 않는다(Esc·건너뛰기·끝까지 · 새로고침·새 탭) · "시연 초기화"면 모두 처음 상태로, S1 서비스 안내가 다시', async ({ page, context }) => {
     acceptDialogs(page)
     await page.goto('/mypage/applications')
@@ -1414,7 +1448,7 @@ test.describe('TR — 처음 온 사람 안내(시험 스위치 rq:test:tour-off
     await expectNoTour(page, '채용정보 목록(다른 화면 기록은 그대로)')
   })
 
-  test('TR-05 시연 도구 "안내 끄기" → 어느 화면에서도 저절로 뜨지 않고 버튼은 "안내 켜기" · "시연 초기화"는 끄기도 풀어 처음 상태로', async ({ page }) => {
+  test('TR-05 시연 도구 "안내 끄기" → 어느 화면에서도 저절로 뜨지 않고 버튼은 "안내 켜기" · "시연 초기화"는 끄기를 풀지 않는다(H3-r1-03)', async ({ page }) => {
     acceptDialogs(page)
     await page.goto('/mypage/applications')
     await waitTour(page, 'S1')
@@ -1431,10 +1465,16 @@ test.describe('TR — 처음 온 사람 안내(시험 스위치 rq:test:tour-off
     await expectNoTour(page, '안내 끈 뒤 ① 공고 확인', 4_000)
 
     await demoMenuClick(page, '시연 초기화')
+    await expect(page.getByText('시연을 처음 상태로 되돌렸어요. 안내는 꺼진 채예요')).toBeVisible()
     await page.goto('/mypage/applications')
-    await waitTour(page, '"시연 초기화" 뒤 S1(끄기도 풀림)')
+    await expect(heading(page, S1_TITLE)).toBeVisible()
+    await expectNoTour(page, '"시연 초기화" 뒤 S1(끈 채로 둠)')
+    expect(await demoMenuHas(page, '안내 켜기'), '"시연 초기화" 뒤에도 버튼은 "안내 켜기"').toBe(true)
+    // 다시 켜면 초기화로 지운 기록대로 S1 서비스 안내부터 뜬다
+    await demoMenuClick(page, '안내 켜기')
+    await page.goto('/mypage/applications')
+    await waitTour(page, '다시 켠 뒤 S1(초기화로 본 기록이 지워짐)')
     await skipTour(page)
-    expect(await demoMenuHas(page, '안내 끄기'), '"시연 초기화" 뒤 버튼은 다시 "안내 끄기"').toBe(true)
   })
 
   test('TR-05 주소에 ?tour=off를 붙여 들어오면 끈 것과 같다(이 브라우저에 저장: 다른 화면·새 탭도)', async ({ page, context }) => {
@@ -1584,4 +1624,30 @@ test('TR-09 시험 스위치 rq:test:tour-off="1"이면 안내가 저절로 뜨�
   await gotoApplications(page)
   expect(await page.evaluate((k) => localStorage.getItem(k), TOUR_OFF_KEY), '"시연 초기화"는 시험 스위치를 지우지 않는다').toBe('1')
   await expectNoTour(page, '"시연 초기화" 뒤 스위치 켬 S1')
+})
+
+// ═══ HD — 3차 보류 결정(2026-10-27, 세진 "추천대로") ═════════════════
+
+test('HD-02 최종 ③: "걱정돼요" 카드에서 걱정이 맞으면 질문 옆 판정 글·"범위 확인" 뜻·근거가 "걱정한 대로", 요약 칸은 "기대와 다름" 그대로(H3-r2-02)', async ({ page }) => {
+  await makeFinalQuestions(page)
+  await expect(page.getByText('기대와 다름', { exact: true }).first(), '요약 칸 이름은 그대로').toBeVisible()
+  const item = questionItems(page).filter({ hasText: '걱정한 대로' }).first()
+  await expect(item, '걱정이 맞은 카드 질문').toBeVisible()
+  expect(normalize(await item.innerText()), '질문 옆 판정 글').toContain('걱정돼요 · 걱정한 대로')
+  await item.getByText('왜 이 질문인가요', { exact: true }).click()
+  await expect(item.getByText('범위 확인: 들은 답이 걱정한 대로라 맡을 범위를 확인해요', { exact: true })).toBeVisible()
+  await expect(item.getByText(/걱정한 대로예요/).first(), '근거 문장').toBeVisible()
+  expect(normalize(await item.innerText()), '이 카드 어디에도 "내 기대와 달라"가 없다').not.toContain('내 기대와 달라')
+})
+
+test('HD-03 면접이 한 번인 공고((주)◇◇데이터) 1차 ③ 아래 상자는 "면접을 다녀오면"과 "이 공고는 면접이 한 번이에요", 두 번인 공고((주)OO소프트)는 "1차 면접을 다녀오면" 그대로(H3-r2-03)', async ({ page }) => {
+  await makeFirstQuestions(page, 'data')
+  await expect(page.getByRole('heading', { name: '면접을 다녀오면', exact: true })).toBeVisible()
+  await expect(page.getByText(/이 공고는 면접이 한 번이에요/)).toBeVisible()
+  await expect(page.getByRole('heading', { name: '1차 면접을 다녀오면', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: WENT_BUTTON, exact: true }), '흐름은 그대로').toBeVisible()
+
+  await makeFirstQuestions(page, 'oo')
+  await expect(page.getByRole('heading', { name: '1차 면접을 다녀오면', exact: true })).toBeVisible()
+  await expect(page.getByText(/이 공고는 면접이 한 번이에요/)).toHaveCount(0)
 })
