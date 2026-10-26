@@ -1,7 +1,7 @@
 /**
  * 공용 도우미. docs/ACCEPTANCE.md 「정확한 문구」와 접근성 이름만으로 화면을 찾는다.
  * 구현 코드를 보지 않고 쓴 독립 시험이라 화면 구조는 역할(role)·이름·글자로만 가정한다.
- * CSS 클래스·data-testid는 쓰지 않는다(예외: <mark>, data-active, aria-current, aria-pressed).
+ * CSS 클래스·data-testid·data-tour는 쓰지 않는다(예외: <mark>, data-active, data-drawn, aria-current, aria-*, role=dialog/status).
  */
 import { expect, type Locator, type Page } from '@playwright/test'
 import { AxeBuilder } from '@axe-core/playwright'
@@ -43,6 +43,16 @@ export type Mode = typeof MODE_FIRST | typeof MODE_FINAL
 export const FIRST_STEPS = ['공고 확인', '내 기대·걱정', '질문 받기'] as const
 export const FINAL_STEPS = ['공고 확인', '1차 면접 정리', '최종 질문 받기'] as const
 export const LOADING_TEXTS = ['공고 근거 확인', '질문 순서 정하기', 'AI가 문장 쓰는 중'] as const
+/** 6차 LD-01: S4 ①에 처음 들어갈 때 공고 분석 로딩(role=status) 제목과 단계 3줄 */
+export const POSTING_LOADING_TITLE = 'AI가 분석한 공고를 펼치고 있어요'
+export const POSTING_LOADING_STEPS = ['공고 원문 확인', '업무 카드와 맞춰 보기', '확인할 곳 표시'] as const
+/** ① 내용이 그려졌다는 표시(F-04 상자 제목 · S4 ① 소제목) */
+const POSTING_READY_TEXT = 'AI 분석 요약'
+const POSTING_READY_HEADING = 'AI가 찾은 확인할 점'
+/** 6차 RS-01: 질문마다 남는 펼침 */
+export const WHY_TEXT = '왜 이 질문인가요'
+/** 6차 TR: 안내(스포트라이트) 설명 상자의 단계 표시 "N/M" */
+export const TOUR_STEP_RE = /(?<![\d/])(\d{1,2})\s*\/\s*(\d{1,2})(?![\d/])/
 
 export const CHOICES = ['기대돼요', '걱정돼요', '모르겠어요'] as const
 export const FIRST_TYPES = ['차이 확인', '기회 확인', '깊이 확인', '미리 확인', '탐색'] as const
@@ -179,13 +189,28 @@ export async function entryField(entry: Locator, label: EntryField): Promise<str
   return m[1] ?? ''
 }
 
-/** S1에서 해당 회사의 면접 준비 버튼을 눌러 S4로 간다. 반환값은 S4 주소의 경로(쿼리 제외). */
+/**
+ * 6차 LD-01·02: 지원 건마다 처음 ①에 들어가면 공고 분석 로딩(최대 2.5초)이 ① 내용보다 먼저 나온다.
+ * ① 내용("AI 분석 요약" 또는 "AI가 찾은 확인할 점")이 보이고 로딩 제목이 사라질 때까지 기다린다(확인 내용은 그대로).
+ */
+export async function waitPostingReady(page: Page, timeout = 10_000): Promise<void> {
+  const ready = page
+    .getByText(POSTING_READY_TEXT, { exact: true })
+    .or(page.getByRole('heading', { name: POSTING_READY_HEADING }))
+    .filter({ visible: true })
+    .first()
+  await expect(ready, '① 내용(공고 분석 로딩이 끝난 뒤)').toBeVisible({ timeout })
+  await expect(page.getByText(POSTING_LOADING_TITLE).filter({ visible: true }), '① 공고 분석 로딩이 끝나야 한다').toHaveCount(0, { timeout })
+}
+
+/** S1에서 해당 회사의 면접 준비 버튼을 눌러 S4로 간다. ①로 열리면 로딩이 끝날 때까지 기다린다. 반환값은 S4 주소의 경로(쿼리 제외). */
 export async function openPrep(page: Page, key: CompanyKey): Promise<string> {
   await gotoApplications(page)
   const entry = applicationEntries(page).filter({ hasText: COMPANY[key] }).first()
   await entry.getByRole('button', { name: PREP_BUTTON }).click()
   await page.waitForURL(PREP_URL)
   await expect(heading(page, S4_TITLE)).toBeVisible()
+  if (STEP_RE(1).test(page.url())) await waitPostingReady(page)
   return new URL(page.url()).pathname
 }
 
@@ -211,9 +236,11 @@ export async function stepText(page: Page): Promise<string> {
   return normalize(await currentStep(page).first().innerText())
 }
 
+/** 현재 단계 확인. ① "공고 확인"이면 공고 분석 로딩(LD-01)이 끝나 ① 내용이 보일 때까지 기다린다. */
 export async function expectCurrentStep(page: Page, name: string): Promise<void> {
   await expect(currentStep(page)).toHaveCount(1)
   await expect(currentStep(page)).toContainText(name)
+  if (name === '공고 확인') await waitPostingReady(page)
 }
 
 export async function switchMode(page: Page, label: Mode): Promise<void> {
@@ -300,15 +327,14 @@ export async function fillPresetA(page: Page): Promise<void> {
 }
 
 // ── S4 ③ 질문 ─────────────────────────────────────────────────
-function copyButton(scope: Page | Locator): Locator {
-  return scope.getByRole('button', { name: '복사', exact: true })
-}
-
-/** 질문 하나(「복사」 버튼을 가진 가장 안쪽 목록 항목이나 article). */
+/**
+ * 질문 하나(「왜 이 질문인가요」 펼침을 가진 가장 안쪽 목록 항목이나 article).
+ * 6차 RS-01로 질문마다 있던 「복사」 버튼이 없어져, 질문마다 남는 펼침으로 찾는다("더 알아볼 질문"에는 펼침이 없다).
+ */
 export function questionItems(page: Page): Locator {
-  const copy = copyButton(page)
+  const why = page.getByText(WHY_TEXT)
   const box = page.getByRole('listitem').or(page.getByRole('article'))
-  return box.filter({ has: copy }).filter({ hasNot: box.filter({ has: copy }) })
+  return box.filter({ has: why }).filter({ hasNot: box.filter({ has: why }) })
 }
 
 export async function waitFirstResults(page: Page): Promise<void> {
@@ -371,19 +397,35 @@ export async function readClipboard(page: Page): Promise<string> {
   return page.evaluate(() => navigator.clipboard.readText())
 }
 
-/** 질문의 「복사」를 눌러 클립보드에 들어간 문장을 돌려준다. */
-export async function copyQuestion(page: Page, item: Locator): Promise<string> {
-  await page.evaluate(() => navigator.clipboard.writeText(''))
-  await copyButton(item).click()
-  await expect.poll(() => readClipboard(page), { message: '복사 뒤 클립보드가 비어 있다' }).not.toBe('')
-  return readClipboard(page)
+/** 질문 항목 안에서 문장이 아닌 짧은 꼬리표 줄 */
+const ITEM_TAGS = new Set<string>([...FIRST_TYPES, ...FINAL_TYPES, '경험 포함', '검수 문장', '근거 보기', '공고에 없음'])
+
+/**
+ * 질문 문장. RS-06대로 문장은 「왜 이 질문인가요」 바로 위에 있으므로, 펼침 줄 앞의 줄 가운데 꼬리표가 아닌 가장 긴 줄을 문장으로 읽는다
+ * (펼친 내용은 펼침 줄 뒤라 섞이지 않는다).
+ */
+export async function questionSentence(item: Locator): Promise<string> {
+  const lines = (await item.innerText()).split('\n').map(normalize).filter(Boolean)
+  const end = lines.findIndex((l) => l.includes(WHY_TEXT))
+  const head = (end >= 0 ? lines.slice(0, end) : lines).filter((l) => !ITEM_TAGS.has(l))
+  const sentence = [...head].sort((a, b) => b.length - a.length)[0]
+  if (!sentence) throw new Error(`질문 문장을 찾지 못했다: ${lines.join(' | ')}`)
+  return sentence
+}
+
+/**
+ * 예전 이름(질문마다 「복사」를 눌러 문장을 읽던 도우미). 6차 RS-01로 질문마다의 복사 버튼이 없어져
+ * 같은 이름을 쓰던 시험이 화면의 질문 문장을 읽게 한다. 클립보드는 쓰지 않는다.
+ */
+export async function copyQuestion(_page: Page, item: Locator): Promise<string> {
+  return questionSentence(item)
 }
 
 export async function questionSentences(page: Page): Promise<string[]> {
   const items = questionItems(page)
   const n = await items.count()
   const out: string[] = []
-  for (let i = 0; i < n; i++) out.push(normalize(await copyQuestion(page, items.nth(i))))
+  for (let i = 0; i < n; i++) out.push(normalize(await questionSentence(items.nth(i))))
   return out
 }
 
@@ -538,8 +580,25 @@ export async function printCalls(page: Page): Promise<number> {
   return page.evaluate(() => (window as unknown as { __printCalls?: number }).__printCalls ?? 0)
 }
 
-/** localStorage 에 손대면 예외가 나게 한다(G-13, 페이지를 열기 전에 부른다). */
+// ── 처음 온 사람 안내(6차 TR) ─────────────────────────────────
+/** 안내(스포트라이트) 설명 상자: role=dialog 이고 단계 "N/M"과 안내 버튼(이전·다음·건너뛰기·시작하기·닫기)을 가진 것 */
+export function tourDialog(page: Page): Locator {
+  return page
+    .getByRole('dialog')
+    .filter({ hasText: TOUR_STEP_RE })
+    .filter({ has: page.getByRole('button', { name: /^(?:이전|다음|건너뛰기|시작하기|닫기)$/ }) })
+}
+
+/**
+ * localStorage 에 손대면 예외가 나게 한다(G-13, 페이지를 열기 전에 부른다).
+ * 시험 스위치(rq:test:tour-off, TR-09)도 저장소에 있어 막힌 저장소에서는 읽히지 않는다 → 안내가 뜨면 건너뛰고 흐름을 잇는다.
+ */
 export async function blockStorage(page: Page): Promise<void> {
+  await page.addLocatorHandler(tourDialog(page), async (dialog) => {
+    const skip = dialog.getByRole('button', { name: '건너뛰기', exact: true })
+    if (await skip.isVisible().catch(() => false)) await skip.click()
+    else await page.keyboard.press('Escape')
+  })
   await page.addInitScript(() => {
     const fail = (): never => {
       throw new DOMException('시험: 저장소가 막혀 있어요', 'SecurityError')

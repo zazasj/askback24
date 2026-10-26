@@ -55,6 +55,7 @@ import {
   pickRadio,
   printCalls,
   questionItems,
+  questionSentence,
   questionSentences,
   readClipboard,
   resumeChips,
@@ -65,7 +66,6 @@ import {
   stepText,
   stepUrl,
   switchMode,
-  toast,
   waitFirstResults,
 } from './helpers'
 
@@ -291,7 +291,8 @@ test('S4-13 예시 구직자 A × OO소프트 = 만드는 중 문구 뒤 질문 
   expect(await copyQuestion(page, items.nth(4)), '5번 질문').toContain('FastAPI')
 })
 
-test('S4-14 질문마다 "복사"(알림·클립보드), "면접에서 쓸 것 같아요"(aria-pressed), "왜 이 질문인가요"(근거·주의할 답·좋은 신호)', async ({ page }) => {
+// 6차 RS-01(2026-10-26): 질문마다 "복사"·"면접에서 쓸 것 같아요" 버튼은 없앴다. "복사했어요" 알림은 "전체 복사"(S4-21)에 남는다
+test('S4-14 질문마다 "왜 이 질문인가요"(근거·주의할 답·좋은 신호), 질문마다 "복사"·"면접에서 쓸 것 같아요" 버튼은 없다', async ({ page }) => {
   await makeFirstQuestions(page, 'oo')
   const items = questionItems(page)
   await expect(items).toHaveCount(5)
@@ -299,13 +300,9 @@ test('S4-14 질문마다 "복사"(알림·클립보드), "면접에서 쓸 것 �
     const item = items.nth(i)
     const label = `${i + 1}번 질문`
 
-    const copied = normalize(await copyQuestion(page, item))
-    await expect(toast(page, '복사했어요'), `${label} 복사 알림`).toBeVisible()
-    expect(normalize(await item.innerText()), `${label}: 클립보드 글이 그 질문 문장이어야 한다`).toContain(copied)
-
-    const keep = item.getByRole('button', { name: '면접에서 쓸 것 같아요' })
-    await keep.click()
-    await expect(keep, label).toHaveAttribute('aria-pressed', 'true')
+    await expect(item.getByRole('button', { name: '복사', exact: true }), `${label}: "복사" 버튼 없음`).toHaveCount(0)
+    await expect(item.getByRole('button', { name: '면접에서 쓸 것 같아요' }), `${label}: "면접에서 쓸 것 같아요" 버튼 없음`).toHaveCount(0)
+    expect(normalize(await item.innerText()), `${label}: 질문 문장`).toContain(await questionSentence(item))
 
     await expect(item.getByText('주의할 답', { exact: true }).filter({ visible: true }), `${label}: 처음엔 접혀 있다`).toHaveCount(0)
     await item.getByText('왜 이 질문인가요').first().click()
@@ -313,6 +310,7 @@ test('S4-14 질문마다 "복사"(알림·클립보드), "면접에서 쓸 것 �
       await expect(item.getByText(part, { exact: true }).first(), `${label} 펼침 "${part}"`).toBeVisible()
     }
   }
+  await expect(page.getByRole('button', { name: '면접에서 쓸 것 같아요' }), '화면 어디에도 "면접에서 쓸 것 같아요" 버튼 없음').toHaveCount(0)
 })
 
 test('S4-15 1차 결과에는 처우 질문·"처우 확인" 칩이 없고 "1차 면접을 다녀오면" 다음 단계 상자가 있다', async ({ page }) => {

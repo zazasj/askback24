@@ -3,14 +3,17 @@
  * 화면마다 전체 페이지를 review/screens/<이름>-<프로젝트>.png 로 저장한다(desktop·mobile).
  * 준비 동작이 막혀도 그때 화면을 그대로 찍고, 막힌 까닭은 annotation 으로 남긴다.
  */
-import { test, type Locator, type Page, type TestInfo } from '@playwright/test'
+import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test'
 import { join } from 'node:path'
 import {
   ABOUT_TITLE,
+  COMPANY,
   MISSING_PATH,
   NOT_FOUND_TEXT,
+  PREP_BUTTON,
   REPO_ROOT,
   S2_TITLE,
+  applicationEntries,
   demoToolsButton,
   expectCurrentStep,
   fillPresetA,
@@ -26,9 +29,11 @@ import {
   questionItems,
   stepText,
   stepUrl,
+  tourDialog,
   waitFirstResults,
 } from './helpers'
 import { AI_SUMMARY_COUNT, AI_SUMMARY_TITLE, MAIN_MENU_OFF, S2_BUTTONS_OFF, control, keyboardFocus, mainMenuItem, scrollToTop, settleScroll } from './helpers2'
+import { NO_TOUR_SWITCH, helpButton, helpDialog, loadingStatus, resultSide, tourStepNumber, waitTour } from './helpers3'
 
 test.use({ actionTimeout: 15_000, navigationTimeout: 20_000 })
 test.describe.configure({ timeout: 120_000 })
@@ -304,6 +309,7 @@ for (const size of LOW_SCREENS) {
       await gotoApplications(page)
       await shot('s1')
       await page.getByRole('button', { name: '바로 해 보기' }).click()
+      // expectCurrentStep('공고 확인')은 ① 공고 분석 로딩(6차 LD-01)이 끝날 때까지 기다린다
       await expectCurrentStep(page, '공고 확인')
       await settleScroll(page)
       await shot('s4-first-1')
@@ -322,3 +328,111 @@ for (const size of LOW_SCREENS) {
     }
   })
 }
+
+// ── 3차 밤샘 화면(6차 추가분, 2026-10-26): ① 로딩·형광펜 · ② 도움말 팝업 · ③ 오른쪽 상자 · S1 서비스 안내 ──────────
+// how: 'view' = 지금 보이는 첫 화면, 'full' = 전체 페이지, Locator = 그 부분만
+
+type Shot3 = { name: string; setup: (page: Page) => Promise<Locator | 'view' | 'full'> }
+
+async function capture3(page: Page, testInfo: TestInfo, name: string, how: Locator | 'view' | 'full'): Promise<void> {
+  const path = join(REPO_ROOT, 'review', 'screens', `${name}-${testInfo.project.name}.png`)
+  await page.evaluate(async () => {
+    await document.fonts.ready
+  })
+  if (typeof how !== 'string') {
+    try {
+      await how.screenshot({ path, animations: 'disabled', timeout: 10_000 })
+      return
+    } catch (e) {
+      testInfo.annotations.push({ type: 'screen-element-failed', description: String(e).slice(0, 800) })
+    }
+  }
+  await page.screenshot({ path, fullPage: how === 'full', animations: 'disabled' })
+}
+
+const SCREENS_3: ReadonlyArray<Shot3> = [
+  {
+    name: '6-s4-first-1-loading',
+    setup: async (page) => {
+      await gotoApplications(page)
+      await applicationEntries(page).filter({ hasText: COMPANY.oo }).first().getByRole('button', { name: PREP_BUTTON }).click()
+      await expect(loadingStatus(page)).toBeVisible({ timeout: 3_000 })
+      await page.waitForTimeout(700)
+      return 'view'
+    },
+  },
+  {
+    name: '6-s4-first-1-drawn',
+    setup: async (page) => {
+      await openPrep(page, 'oo')
+      const marks = page.locator('mark')
+      const n = await marks.count()
+      for (let i = 0; i < n; i++) await marks.nth(i).scrollIntoViewIfNeeded()
+      await expect
+        .poll(() => marks.evaluateAll((els) => els.every((m) => m.getAttribute('data-drawn') !== 'false')), { timeout: 8_000 })
+        .toBe(true)
+      await page.waitForTimeout(600)
+      await scrollToTop(page)
+      return 'full'
+    },
+  },
+  {
+    name: '6-s4-first-2-help',
+    setup: async (page) => {
+      const base = await openPrep(page, 'oo')
+      await goToCardsStep(page, base)
+      await helpButton(page, '신규 API 개발').click()
+      await expect(helpDialog(page, '신규 API 개발')).toBeVisible()
+      await page.waitForTimeout(300)
+      return 'view'
+    },
+  },
+  {
+    name: '6-s4-first-3-side',
+    setup: async (page) => {
+      await makeFirstQuestions(page, 'oo')
+      return resultSide(page)
+    },
+  },
+  {
+    name: '6-s4-final-3-side',
+    setup: async (page) => {
+      await makeFinalQuestions(page)
+      return resultSide(page)
+    },
+  },
+]
+
+for (const screen of SCREENS_3) {
+  test(`SCREENS ${screen.name}`, async ({ page }, testInfo) => {
+    let how: Locator | 'view' | 'full' = 'view'
+    try {
+      how = await screen.setup(page)
+    } catch (e) {
+      testInfo.annotations.push({ type: 'screen-setup-failed', description: String(e).slice(0, 800) })
+    }
+    await capture3(page, testInfo, screen.name, how)
+  })
+}
+
+// 안내 캡처는 시험 스위치(rq:test:tour-off)를 끈 context에서
+test.describe('SCREENS 6-s1-tour', () => {
+  test.use({ storageState: NO_TOUR_SWITCH })
+
+  for (const step of [1, 4] as const) {
+    test(`SCREENS 6-s1-tour-${step}`, async ({ page }, testInfo) => {
+      try {
+        await page.goto('/mypage/applications')
+        await waitTour(page, 'S1 서비스 안내')
+        for (let n = 1; n < step; n++) {
+          await tourDialog(page).filter({ visible: true }).first().getByRole('button', { name: '다음', exact: true }).click()
+          await expect.poll(async () => (await tourStepNumber(page))?.n).toBe(n + 1)
+        }
+        await page.waitForTimeout(500)
+      } catch (e) {
+        testInfo.annotations.push({ type: 'screen-setup-failed', description: String(e).slice(0, 800) })
+      }
+      await capture3(page, testInfo, `6-s1-tour-${step}`, 'view')
+    })
+  }
+})

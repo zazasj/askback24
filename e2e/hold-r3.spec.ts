@@ -5,7 +5,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { join } from 'node:path'
 import { ABOUT_TITLE, REPO_ROOT, bodyText, expectCurrentStep, heading, installPrintSpy, makeFinalQuestions, makeFirstQuestions, printCalls } from './helpers'
-import { PRINT_BUTTON, pdfPageCount, scrollToBottom, settleScroll, textUnderBottomBar } from './helpers2'
+import { PRINT_BUTTON, pdfPageCount, scrollToBottom, scrollToTop, settleScroll, textUnderBottomBar } from './helpers2'
 
 test.use({ actionTimeout: 10_000 })
 test.describe.configure({ timeout: 120_000 })
@@ -146,7 +146,8 @@ test('W-05 최종 ③ 오른쪽 상자 "고용노동부 표준근로계약서" �
   expect(pdfPageCount(pdf), '최종 ③ 인쇄 A4 1쪽(Q-02)').toBe(1)
 })
 
-test('W-07 최종 ③ 질문 아래 "최종 면접을 다녀오면" 상자: 인쇄 때 숨김, 맨 아래에서 고정 바에 가리지 않음', async ({ page }) => {
+// 6차 W-07 변경(2026-10-26): 최종 ③에는 고정 바가 없다(V-05). 상자는 맨 아래에서 잘리지 않는다
+test('W-07 최종 ③ 질문 아래 "최종 면접을 다녀오면" 상자: 인쇄 때 숨김 · 최종 ③에는 고정 바가 없고 맨 아래에서 상자가 잘리지 않는다', async ({ page }) => {
   await makeFinalQuestions(page)
   const box = page.getByRole('region', { name: '최종 면접을 다녀오면', exact: true })
   await expect(box).toBeVisible()
@@ -157,8 +158,23 @@ test('W-07 최종 ③ 질문 아래 "최종 면접을 다녀오면" 상자: 인�
   const boxTop = await box.evaluate((el) => el.getBoundingClientRect().top + window.scrollY)
   expect(boxTop, '질문 아래').toBeGreaterThan(listBottom)
   await settleScroll(page)
+  // 맨 아래에서는 sticky 바가 제자리로 돌아가 보이지 않을 수 있어 맨 위에서도 본다
+  await scrollToTop(page)
+  expect((await textUnderBottomBar(page)).barTop, '최종 ③ 맨 위: 아래 고정 바가 없다(V-05)').toBeNull()
   await scrollToBottom(page)
-  expect((await textUnderBottomBar(page)).covered, '맨 아래에서 고정 바에 가린 글').toEqual([])
+  const under = await textUnderBottomBar(page)
+  expect(under.barTop, '최종 ③ 맨 아래: 아래 고정 바가 없다(V-05)').toBeNull()
+  expect(under.covered, '맨 아래에서 가린 글').toEqual([])
+  await box.scrollIntoViewIfNeeded()
+  const cut = await box.evaluate((el) => {
+    const r = el.getBoundingClientRect()
+    return { clipped: el.scrollHeight > el.clientHeight + 1, top: r.top, bottom: r.bottom, vh: window.innerHeight, height: r.height }
+  })
+  expect(cut.clipped, '상자 안 글이 잘리지 않는다(scrollHeight <= clientHeight)').toBe(false)
+  if (cut.height <= cut.vh) {
+    expect(cut.top, '상자 전체가 화면에 들어온다(위끝)').toBeGreaterThanOrEqual(-1)
+    expect(cut.bottom, '상자 전체가 화면에 들어온다(아래끝)').toBeLessThanOrEqual(cut.vh + 1)
+  }
   await page.emulateMedia({ media: 'print' })
   await expect(box, '인쇄 화면에서 숨김').toBeHidden()
 })

@@ -291,7 +291,23 @@ async function expectBarNotCovering(page: Page, step: string): Promise<void> {
   await scrollToTop(page)
 }
 
-test('F-05 아래 고정 바: ① "내 기대·걱정 고르기", ② "N개 골랐어요"·"질문 만들기", ③ "전체 복사"·"면접 다녀왔어요", 마지막 내용을 가리지 않는다', async ({ page }) => {
+/** 요소를 품은 고정(fixed·sticky) 띠 안의 보이는 버튼·링크 이름 */
+async function barControlNames(target: Locator): Promise<string[] | null> {
+  return target.evaluate((el) => {
+    let bar: Element | null = null
+    for (let n: Element | null = el; n && !bar; n = n.parentElement) {
+      const p = getComputedStyle(n).position
+      if (p === 'fixed' || p === 'sticky') bar = n
+    }
+    if (!bar) return null
+    return Array.from(bar.querySelectorAll('button, a[href], [role="button"], [role="link"]'))
+      .filter((c) => (c as HTMLElement).checkVisibility({ visibilityProperty: true }) && c.getBoundingClientRect().width > 1)
+      .map((c) => (c.getAttribute('aria-label') ?? c.textContent ?? '').replace(/\s+/g, ' ').trim())
+  })
+}
+
+// 6차 RS-02(2026-10-26): ③ 아래 바는 "면접 다녀왔어요" 하나("전체 복사"는 오른쪽 상자로), 최종 ③은 아래 바 없음. ①② 바는 그대로
+test('F-05 아래 고정 바: ① "내 기대·걱정 고르기", ② "N개 골랐어요"·"질문 만들기", ③ "면접 다녀왔어요" 하나, 마지막 내용을 가리지 않는다 · 최종 ③은 아래 바 없음', async ({ page }) => {
   const base = await openPrep(page, 'oo')
   await expectCurrentStep(page, '공고 확인')
   await settleScroll(page)
@@ -311,7 +327,26 @@ test('F-05 아래 고정 바: ① "내 기대·걱정 고르기", ② "N개 골�
   await waitFirstResults(page)
   await settleScroll(page)
   await scrollToTop(page)
-  await expectInBar(page.getByRole('button', { name: '전체 복사' }), '③ "전체 복사"')
-  await expectInBar(page.getByRole('button', { name: '면접 다녀왔어요' }), '③ "면접 다녀왔어요"')
+  const went = page.getByRole('button', { name: '면접 다녀왔어요' })
+  await expectInBar(went, '③ "면접 다녀왔어요"')
+  expect(await barControlNames(went), '③ 아래 고정 바의 버튼은 "면접 다녀왔어요" 하나').toEqual(['면접 다녀왔어요'])
+  const copyAll = page.getByRole('button', { name: '전체 복사' })
+  await expect(copyAll, '③ "전체 복사"는 화면에 하나').toHaveCount(1)
+  expect(await inBottomBar(copyAll), '③ "전체 복사"는 아래 고정 바 밖(오른쪽 상자)').toBe(false)
   await expectBarNotCovering(page, '③')
+
+  // 최종 ③: 아래 고정 바 없음(맨 위·맨 아래 모두)
+  await went.click()
+  await expectCurrentStep(page, '1차 면접 정리')
+  await fillReviewR04(page)
+  await page.getByRole('button', { name: '최종 질문 만들기', exact: true }).click()
+  await waitFinalResults(page)
+  await settleScroll(page)
+  await scrollToTop(page)
+  expect((await textUnderBottomBar(page)).barTop, '최종 ③ 맨 위: 아래 고정 바 없음').toBeNull()
+  await scrollToBottom(page)
+  expect((await textUnderBottomBar(page)).barTop, '최종 ③ 맨 아래: 아래 고정 바 없음').toBeNull()
+  for (const name of ['전체 복사', '면접에 들고 갈 한 장 인쇄']) {
+    expect(await inBottomBar(page.getByRole('button', { name, exact: true })), `최종 ③ "${name}"는 아래 고정 바 밖`).toBe(false)
+  }
 })

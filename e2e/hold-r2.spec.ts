@@ -13,7 +13,7 @@ import {
   REPO_ROOT,
   applicationEntries,
   applyToPosting,
-  copyQuestion,
+  WHY_TEXT,
   currentStep,
   demoToolsButton,
   experienceInput,
@@ -36,11 +36,14 @@ import {
   pickRadio,
   printCalls,
   questionItems,
+  questionSentence,
+  questionSentences,
   readClipboard,
   reviewItems,
   stepList,
   waitFinalResults,
   waitFirstResults,
+  waitPostingReady,
 } from './helpers'
 import {
   PRINT_BUTTON,
@@ -80,21 +83,22 @@ async function itemsByTop(items: Locator): Promise<Locator[]> {
 
 // ── V-01·V-02 인쇄물과 전체 복사 ────────────────────────────────
 
-test('V-01 1차 ③ 인쇄: 번호·카드 이름·질문·"들은 답"만, 유형 칩·내 선택·경험 포함은 없음 · "쓸 것 같아요" 질문이 맨 위', async ({ page, isMobile }) => {
+// 6차 RS-04(2026-10-26): "면접에서 쓸 것 같아요"를 없애 인쇄 순서는 화면 순서 그대로다
+test('V-01 1차 ③ 인쇄: 번호·카드 이름·질문·"들은 답"만, 유형 칩·내 선택·경험 포함은 없음 · 순서는 화면 순서', async ({ page, isMobile }) => {
   test.skip(isMobile, '인쇄는 화면 폭과 상관없이 A4라 데스크톱에서 한 번')
   await installPrintSpy(page)
   await makeFirstQuestions(page, 'oo')
-  const items = questionItems(page)
-  const third = normalize(await copyQuestion(page, items.nth(2)))
-  await items.nth(2).getByRole('button', { name: '면접에서 쓸 것 같아요' }).click()
-  await expect(items.nth(2).getByRole('button', { name: '면접에서 쓸 것 같아요' })).toHaveAttribute('aria-pressed', 'true')
+  const sentences = await questionSentences(page)
+  expect(sentences).toHaveLength(5)
 
   await page.emulateMedia({ media: 'print' })
-  // 인쇄 화면에서는 "복사" 버튼이 숨어 질문 목록의 항목으로 찾는다
+  // 인쇄 화면에서는 펼침이 숨을 수 있어 질문 목록의 항목으로 찾는다
   const ordered = await itemsByTop(page.getByRole('list', { name: '1차·기술 면접 질문 목록' }).getByRole('listitem'))
   expect(ordered.length).toBe(5)
   const top = ordered[0] as Locator
-  expect(normalize(await top.innerText()), '인쇄물 맨 위 = "면접에서 쓸 것 같아요"를 누른 3번 질문').toContain(third)
+  for (const [k, item] of ordered.entries()) {
+    expect(normalize(await item.innerText()), `인쇄 ${k + 1}번째 = 화면 ${k + 1}번 질문`).toContain(sentences[k] ?? '')
+  }
   for (const [k, item] of ordered.entries()) {
     const text = normalize(await item.innerText())
     for (const t of FIRST_TYPES) expect(text, `인쇄 ${k + 1}번째: 유형 칩 "${t}" 없음`).not.toContain(t)
@@ -112,26 +116,51 @@ test('V-01 1차 ③ 인쇄: 번호·카드 이름·질문·"들은 답"만, 유�
   expect(pdfPageCount(pdf), '1차 ③ 인쇄 A4 1쪽(Q-02)').toBe(1)
 })
 
-test('V-02 "전체 복사" 글에 [유형] 꼬리표가 없고 "쓸 것 같아요" 질문이 1번(1차·최종)', async ({ page, isMobile }) => {
+/** 글 안에서 조각들이 이 순서로 나오는 위치(못 찾으면 -1) */
+function orderIn(text: string, pieces: readonly string[], from = 0): number[] {
+  const out: number[] = []
+  let at = from
+  for (const p of pieces) {
+    const i = text.indexOf(p, at)
+    out.push(i)
+    if (i >= 0) at = i + p.length
+  }
+  return out
+}
+
+/** 최종 ③ 묶음 목록 안 질문 문장(화면 순서) */
+async function groupQuestionSentences(page: Page, group: string): Promise<string[]> {
+  const items = page.getByRole('list', { name: `${group} 목록` }).getByRole('listitem').filter({ has: page.getByText(WHY_TEXT) })
+  const n = await items.count()
+  const out: string[] = []
+  for (let i = 0; i < n; i++) out.push(normalize(await questionSentence(items.nth(i))))
+  return out
+}
+
+// 6차 RS-04(2026-10-26): "면접에서 쓸 것 같아요"를 없애 복사 순서는 화면 순서 그대로다
+test('V-02 "전체 복사" 글에 [유형] 꼬리표가 없고 순서는 화면 순서(1차·최종), 최종 복사 글은 소제목 두 개 아래로', async ({ page, isMobile }) => {
   test.skip(isMobile, '복사 글은 폭과 상관없어 데스크톱에서 한 번')
   await makeFirstQuestions(page, 'oo')
-  const items = questionItems(page)
-  const fourth = normalize(await copyQuestion(page, items.nth(3)))
-  await items.nth(3).getByRole('button', { name: '면접에서 쓸 것 같아요' }).click()
+  const sentences = await questionSentences(page)
+  expect(sentences).toHaveLength(5)
   await page.evaluate(() => navigator.clipboard.writeText(''))
   await page.getByRole('button', { name: '전체 복사' }).click()
   await expect.poll(() => readClipboard(page)).not.toBe('')
   const first = await readClipboard(page)
   expect(first, '1차 복사 글: 대괄호 꼬리표 없음').not.toMatch(TAG_BRACKETS)
   for (const t of FIRST_TYPES) expect(first, `1차 복사 글: "${t}" 없음`).not.toContain(t)
-  const line1 = first.split('\n').find((l) => /^1\.\s/.test(l)) ?? ''
-  expect(normalize(line1), '1차 복사 글 1번 = "쓸 것 같아요" 누른 4번 질문').toContain(fourth)
+  const pos = orderIn(normalize(first), sentences)
+  expect(pos, `1차 복사 글의 질문 순서 = 화면 순서(위치 ${pos.join(', ')})`).not.toContain(-1)
+  const line1 = first.split('\n').find((l) => /^1\.\s/.test(l))
+  if (line1 !== undefined) expect(normalize(line1), '1차 복사 글 "1." 줄 = 화면 1번 질문').toContain(sentences[0] ?? '')
 
   await page.getByRole('button', { name: '면접 다녀왔어요' }).click()
   await expectCurrentStep(page, '1차 면접 정리')
   await fillReviewR04(page)
   await page.getByRole('button', { name: '최종 질문 만들기', exact: true }).click()
   await waitFinalResults(page)
+  const g1 = await groupQuestionSentences(page, '최종 면접에서 물을 것')
+  const g2 = await groupQuestionSentences(page, '처우 협의 때 물을 것')
   await page.evaluate(() => navigator.clipboard.writeText(''))
   await page.getByRole('button', { name: '전체 복사' }).click()
   await expect.poll(() => readClipboard(page)).not.toBe('')
@@ -140,6 +169,14 @@ test('V-02 "전체 복사" 글에 [유형] 꼬리표가 없고 "쓸 것 같아�
   for (const t of FINAL_TYPES) expect(fin, `최종 복사 글: "${t}" 없음`).not.toContain(t)
   expect(fin, '최종 복사 글: 소제목 두 개(V-15)').toContain('최종 면접에서 물을 것')
   expect(fin).toContain('처우 협의 때 물을 것')
+  const all = normalize(fin)
+  const h1 = all.indexOf('최종 면접에서 물을 것')
+  const h2 = all.indexOf('처우 협의 때 물을 것', Math.max(0, h1))
+  expect(h2, '소제목 순서: "최종 면접에서 물을 것" → "처우 협의 때 물을 것"').toBeGreaterThan(h1)
+  const p1 = orderIn(all, g1, h1)
+  expect(p1, '첫 묶음 문장이 첫 소제목 아래 화면 순서로').not.toContain(-1)
+  for (const p of p1) expect(p, '첫 묶음 문장은 둘째 소제목 앞').toBeLessThan(h2)
+  expect(orderIn(all, g2, h2), '둘째 묶음 문장이 둘째 소제목 아래 화면 순서로').not.toContain(-1)
 })
 
 test('V-01 최종 ③ 인쇄: 유형 칩·내 선택·판정·공고 판정 없음, 소제목과 카드 이름은 남고 A4 1쪽', async ({ page, isMobile }) => {
@@ -226,7 +263,8 @@ test('V-04 ④ 최종 결과가 있는데 1차를 다시 만들면 "최종 질�
 
 // ── V-05 최종 ③ 고정 바 ───────────────────────────────────────
 
-test('V-05 최종 ③ 아래 고정 바에 "전체 복사"·"면접에 들고 갈 한 장 인쇄", 마지막 내용을 가리지 않는다 · 정리 화면은 고정 바 없음', async ({ page }) => {
+// 6차 RS-02·V-05 변경(2026-10-26): 최종 ③ 아래 고정 바를 없애고(D-196 뒤집음) "전체 복사"·인쇄는 오른쪽 상자로
+test('V-05 최종 ③에는 아래 고정 바가 없고 "전체 복사"·"면접에 들고 갈 한 장 인쇄"(각 하나)는 오른쪽 상자 안 · 정리 화면은 고정 바 없이 버튼 줄', async ({ page }) => {
   await makeFirstQuestions(page, 'oo')
   await page.getByRole('button', { name: '면접 다녀왔어요' }).click()
   await expectCurrentStep(page, '1차 면접 정리')
@@ -238,13 +276,19 @@ test('V-05 최종 ③ 아래 고정 바에 "전체 복사"·"면접에 들고 �
   await waitFinalResults(page)
   await settleScroll(page)
   await scrollToTop(page)
+  const side = page.getByRole('complementary').filter({ has: page.getByRole('button', { name: '전체 복사', exact: true }) })
+  await expect(side, '"전체 복사"를 품은 오른쪽 상자(complementary)').toHaveCount(1)
   for (const name of ['전체 복사', PRINT_BUTTON]) {
     const b = page.getByRole('button', { name, exact: true })
     await expect(b, `"${name}" 하나`).toHaveCount(1)
-    expect(await inBottomBar(b), `"${name}"이 아래 고정 바 안에`).toBe(true)
+    await expect(side.getByRole('button', { name, exact: true }), `"${name}"이 오른쪽 상자 안에`).toHaveCount(1)
+    expect(await inBottomBar(b), `"${name}"은 아래 고정 바 밖`).toBe(false)
   }
+  expect((await textUnderBottomBar(page)).barTop, '최종 ③ 맨 위: 아래 고정 바 없음').toBeNull()
   await scrollToBottom(page)
-  expect((await textUnderBottomBar(page)).covered, '맨 아래에서 고정 바에 가린 글').toEqual([])
+  const bottom = await textUnderBottomBar(page)
+  expect(bottom.barTop, '최종 ③ 맨 아래: 아래 고정 바 없음').toBeNull()
+  expect(bottom.covered, '맨 아래에서 가린 글').toEqual([])
 })
 
 // ── V-06 낮은 노트북 화면·브라우저 확대 ────────────────────────
@@ -278,7 +322,8 @@ async function stepsAtTop(page: Page, where: string): Promise<void> {
 }
 
 for (const size of LOW_SIZES) {
-  test(`V-06 ${size.width}×${size.height}: S1 "바로 해 보기" · ① "AI 분석 요약" · 단계를 옮기면 단계 표시로 · ② 카드 ${size.cards}개 · ③ 1번 질문 전체와 2번 칩`, async ({ page, isMobile }) => {
+  // 6차 V-06 변경(2026-10-26): "S4 ① 들어온 직후" → "S4 ① 로딩이 끝난 직후"(LD-01)
+  test(`V-06 ${size.width}×${size.height}: S1 "바로 해 보기" · ① 로딩이 끝난 직후 "AI 분석 요약" · 단계를 옮기면 단계 표시로 · ② 카드 ${size.cards}개 · ③ 1번 질문 전체와 2번 칩`, async ({ page, isMobile }) => {
     test.skip(isMobile, '노트북·확대 폭 기준(데스크톱 프로젝트)')
     await page.setViewportSize({ width: size.width, height: size.height })
     await gotoApplications(page)
@@ -287,9 +332,10 @@ for (const size of LOW_SIZES) {
     await tryNow.click()
     await expect(page).toHaveURL(/\/prep\?step=1(?:&|$)/)
     await expect(page.getByText(COMPANY.oo).first(), '맨 위 지원 건').toBeVisible()
+    await waitPostingReady(page)
     await settleScroll(page)
     const summary = page.getByText('AI 분석 요약', { exact: true }).first()
-    expect(insideBand(await rectOf(summary), await visibleBand(page)), 'S4 ① 첫 화면에 "AI 분석 요약" 제목').toBe(true)
+    expect(insideBand(await rectOf(summary), await visibleBand(page)), 'S4 ① 로딩이 끝난 직후 첫 화면에 "AI 분석 요약" 제목').toBe(true)
 
     await page.getByRole('button', { name: '내 기대·걱정 고르기' }).click()
     await expectCurrentStep(page, '내 기대·걱정')
@@ -370,18 +416,25 @@ test('V-09 1차 ③ 아래 바 왼쪽(데스크톱): "면접 다녀왔어요는 
 
 // ── V-10 같은 이름 버튼에 몇 번 질문인지 ───────────────────────
 
-test('V-10 질문마다 "복사"·"면접에서 쓸 것 같아요"·"근거 보기"의 접근 설명이 "N번 질문"', async ({ page }) => {
+// 6차 V-10 변경(2026-10-26): 접근 설명 "N번 질문"은 "근거 보기"에(복사·면접에서 쓸 것 같아요 버튼은 없음, RS-01)
+test('V-10 질문마다 "근거 보기"의 접근 설명이 "N번 질문"(이름은 그대로) · "복사"·"면접에서 쓸 것 같아요" 버튼은 없다', async ({ page }) => {
   await makeFirstQuestions(page, 'oo')
   const items = questionItems(page)
-  const n = await items.count()
-  for (let i = 0; i < n; i++) {
+  await expect(items).toHaveCount(5)
+  let checked = 0
+  for (let i = 0; i < 5; i++) {
     const item = items.nth(i)
-    await expect(item.getByRole('button', { name: '복사', exact: true }), `${i + 1}번 복사`).toHaveAccessibleDescription(`${i + 1}번 질문`)
-    await expect(item.getByRole('button', { name: '면접에서 쓸 것 같아요' }), `${i + 1}번 쓸 것 같아요`).toHaveAccessibleDescription(`${i + 1}번 질문`)
+    await expect(item.getByRole('button', { name: '복사', exact: true }), `${i + 1}번 "복사" 없음`).toHaveCount(0)
+    await expect(item.getByRole('button', { name: '면접에서 쓸 것 같아요' }), `${i + 1}번 "면접에서 쓸 것 같아요" 없음`).toHaveCount(0)
+    await item.getByText('왜 이 질문인가요').first().click()
+    const link = item.getByRole('link', { name: '근거 보기', exact: true })
+    // 1·2번은 공고에 근거가 있는 질문(V-18)이라 "근거 보기"가 꼭 있다
+    if (i < 2) await expect(link, `${i + 1}번 "근거 보기"`).toHaveCount(1)
+    if ((await link.count()) === 0) continue
+    await expect(link.first(), `${i + 1}번 "근거 보기" 접근 설명`).toHaveAccessibleDescription(`${i + 1}번 질문`)
+    checked += 1
   }
-  const first = items.first()
-  await first.getByText('왜 이 질문인가요').click()
-  await expect(first.getByRole('link', { name: '근거 보기' })).toHaveAccessibleDescription('1번 질문')
+  test.info().annotations.push({ type: 'V-10', description: `"근거 보기"가 있는 질문 ${checked}개` })
 })
 
 // ── V-11 경험 한 줄 바로가기 ──────────────────────────────────
@@ -510,8 +563,9 @@ test('V-15 최종 ③ 소제목 "최종 면접에서 물을 것"·"처우 협의
   const offer = page.getByRole('list', { name: '처우 협의 때 물을 것 목록' })
   await expect(page.getByRole('heading', { name: '최종 면접에서 물을 것' })).toBeVisible()
   await expect(page.getByRole('heading', { name: '처우 협의 때 물을 것' })).toBeVisible()
-  const t1 = await itemTypes(interview.getByRole('listitem').filter({ has: page.getByRole('button', { name: '복사', exact: true }) }), FINAL_TYPES)
-  const t2 = await itemTypes(offer.getByRole('listitem').filter({ has: page.getByRole('button', { name: '복사', exact: true }) }), FINAL_TYPES)
+  // 질문 항목은 질문마다 남는 "왜 이 질문인가요" 펼침으로 찾는다(6차 RS-01로 질문마다의 "복사"가 없어짐)
+  const t1 = await itemTypes(interview.getByRole('listitem').filter({ has: page.getByText(WHY_TEXT) }), FINAL_TYPES)
+  const t2 = await itemTypes(offer.getByRole('listitem').filter({ has: page.getByText(WHY_TEXT) }), FINAL_TYPES)
   expect(t1, '첫째 묶음 = API-07 순서에서 처우 확인을 뺀 것').toEqual(['다시 확인', '신호 확인', '범위 확인', '다시 확인'])
   expect(t2.length, '처우 확인 3개 이상').toBeGreaterThanOrEqual(3)
   expect(new Set(t2), '둘째 묶음은 처우 확인만').toEqual(new Set(['처우 확인']))
@@ -521,10 +575,14 @@ test('V-15 최종 ③ 소제목 "최종 면접에서 물을 것"·"처우 협의
 
 // ── V-16 안내 문구 ───────────────────────────────────────────
 
-test('V-16 ③ 오른쪽 상자 "한두 개만"·"기대되는 일을 묻는 질문부터" 안내, 주의할 답 설명은 "회사가 이렇게 답하면 … 회사의 흠은 아니에요"', async ({ page }) => {
+// 6차 V-16 변경(2026-10-26): "면접에서 쓸 것 같아요"를 누르면 맨 위에 온다는 안내는 뺀다(RS-05)
+test('V-16 ③ 오른쪽 상자 "면접에서는 보통 한두 개만 물을 수 있어요"·"기대되는 일을 묻는 질문부터" 안내("면접에서 쓸 것 같아요" 안내 없음), 주의할 답 설명은 "회사가 이렇게 답하면 … 회사의 흠은 아니에요"', async ({ page }) => {
   await makeFirstQuestions(page, 'oo')
-  await expect(page.getByText(/보통 한두 개만 물을 수 있어요/).first()).toBeVisible()
-  await expect(page.getByText(/기대되는 일을 묻는 질문부터/).first()).toBeVisible()
+  const side = page.getByRole('complementary').filter({ has: page.getByRole('button', { name: '전체 복사', exact: true }) })
+  await expect(side, '③ 오른쪽 상자').toHaveCount(1)
+  await expect(side).toContainText('면접에서는 보통 한두 개만 물을 수 있어요')
+  await expect(side).toContainText('기대되는 일을 묻는 질문부터')
+  await expect(side, '"면접에서 쓸 것 같아요" 안내 없음').not.toContainText('면접에서 쓸 것 같아요')
   const first = questionItems(page).first()
   await first.getByText('왜 이 질문인가요').click()
   await expect(first.getByText('회사가 이렇게 답하면 내 기대와 다를 수 있어요. 회사의 흠은 아니에요.')).toBeVisible()
