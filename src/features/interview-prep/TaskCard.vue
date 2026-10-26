@@ -3,9 +3,10 @@
  * 업무 카드 하나. 세 선택은 실제 라디오 입력에 칩 모양만 입혀 키보드·화면낭독기가 저절로 되게 한다.
  * 고른 라디오를 다시 누르면(Space 포함) 선택이 풀린다 — 라디오 기본 동작에 없는 것이라 click 에서 처리한다.
  */
-import { computed, ref, watch } from 'vue'
+import { computed, useTemplateRef } from 'vue'
 import { CARD_BOOK } from '@shared/catalog'
 import type { CardDef, Pref } from '@shared/contract'
+import HelpPopup from '@/components/ui/HelpPopup.vue'
 import { ncsDefinition, ncsLine } from '@/realData'
 import { cardTerms } from './glossary'
 import { PREFS } from './picks'
@@ -25,56 +26,37 @@ const nameId = computed(() => `card-${props.card.id}-name`)
 const descId = computed(() => `card-${props.card.id}-desc`)
 // 고용24 직무정보에서 찾은 능력단위명(못 찾은 카드는 팀이 정리한 값) — data/real/ncs-cards.json
 const basis = computed(() => ncsLine(props.card))
-// 응답에서 찾은 능력단위의 정의 한 문장(H2-11 ②). 첫 화면 카드 수(F-03)를 지키려고 "예를 들면" 안에 작게 둔다
+// 응답에서 찾은 능력단위의 정의 한 문장(H2-11 ②). 첫 화면 카드 수(F-03)를 지키려고 카드가 아니라 도움말 안에 둔다
 const definition = computed(() => ncsDefinition(props.card))
 
-// "예를 들면"(U-01·02·06, D-175·178): 아직 안 고른 카드와 "모르겠어요" 카드에만 둔다. 처음엔 접고,
-// "모르겠어요"를 새로 고르면 펼친다. "기대돼요"·"걱정돼요"는 이미 이해하고 고른 것이라 버튼을 숨기고 닫는다
+// "도움말"(HP-01~04): 고른 것과 관계없이 모든 카드에 늘 있고, 누를 때만 열린다("모르겠어요"에 저절로 열지 않음).
+// 팝업은 카드 밖(body)에 그려져 카드 높이가 바뀌지 않는다. 말풍선은 이 카드 왼끝·폭에 맞춘다
+const root = useTemplateRef<HTMLElement>('root')
 const terms = computed(() => cardTerms(props.card))
-const showMore = computed(() => props.pref === null || props.pref === 'unsure')
-const open = ref(false)
-watch(
-  () => props.pref,
-  (p, before) => {
-    if (p === 'unsure' && before !== 'unsure') open.value = true
-    else if (p === 'want' || p === 'avoid') open.value = false
-  },
-)
-const moreId = computed(() => `card-${props.card.id}-more`)
 </script>
 
 <template>
-  <div :id="`card-${card.id}`" class="task-card" :class="pref ? `is-${pref}` : undefined" tabindex="-1">
+  <div :id="`card-${card.id}`" ref="root" class="task-card" :class="pref ? `is-${pref}` : undefined" tabindex="-1">
     <div class="head">
       <h3 :id="nameId" class="name">{{ card.label }}</h3>
       <span v-if="tag" class="posting-tag">{{ tag }}</span>
     </div>
     <p :id="descId" class="plain">{{ card.plain }}</p>
-    <!-- "예를 들면"은 줄 왼쪽에 고정, NCS는 같은 줄 오른쪽. 펼친 내용은 이 줄 아래(버튼 자리가 움직이지 않게, 카드 높이 F-03 유지) -->
+    <!-- "도움말"은 줄 왼쪽, NCS는 같은 줄 오른쪽. 카드 높이가 모두 같고 이 줄은 아래에 붙어 카드마다 같은 자리다(D18) -->
     <div class="meta-row">
-      <button
-        v-if="showMore"
-        type="button"
-        class="more-toggle"
-        :aria-expanded="open"
-        :aria-controls="moreId"
-        @click="open = !open"
-      >
-        예를 들면
-      </button>
+      <HelpPopup :title="card.label" :boundary="root">
+        <!-- 넓은 화면에서는 카드 설명을 한 줄로 자르므로(HP-06) 전체 글을 맨 위에 늘 둔다 -->
+        <p class="help-desc">{{ card.plain }}</p>
+        <h3 class="help-sub">예를 들면</h3>
+        <ul class="examples">
+          <li v-for="ex in card.examples" :key="ex">{{ ex }}</li>
+        </ul>
+        <ul v-if="terms.length" class="terms" aria-label="용어 풀이">
+          <li v-for="t in terms" :key="t.term" class="term"><strong class="term-word">{{ t.term }}</strong> <span class="term-def">{{ t.def }}</span></li>
+        </ul>
+        <p v-if="definition" class="ncs-def">능력단위 정의(고용24 직무정보) · {{ definition }}</p>
+      </HelpPopup>
       <p class="basis">{{ basis }}</p>
-    </div>
-    <div v-show="open && showMore" :id="moreId" class="more-panel">
-      <ul class="examples">
-        <li v-for="ex in card.examples" :key="ex">{{ ex }}</li>
-      </ul>
-      <dl v-if="terms.length" class="terms" aria-label="용어 풀이">
-        <div v-for="t in terms" :key="t.term" class="term">
-          <dt>{{ t.term }}</dt>
-          <dd>{{ t.def }}</dd>
-        </div>
-      </dl>
-      <p v-if="definition" class="ncs-def">능력단위 정의(고용24 직무정보) · {{ definition }}</p>
     </div>
     <div role="radiogroup" class="choices" :aria-labelledby="nameId" :aria-describedby="descId">
       <label v-for="p in PREFS" :key="p" class="choice" :class="`is-${p}`">
@@ -164,15 +146,30 @@ const moreId = computed(() => `card-${props.card.id}-more`)
   color: var(--krds-light-color-text-basic);
 }
 
+/*
+ * 1280px 이상: 카드 높이를 모두 같게 하면(HP-05) 두 줄 설명 카드(168px)에 다 맞춰져 1440×900 첫 화면 카드가 2개뿐(F-03).
+ * 설명을 한 줄로 자르고(말줄임) 전체 글은 도움말 맨 위에 둔다(HP-06). 화면낭독기는 라디오 묶음 설명으로 전체 글을 읽는다
+ */
+@media (min-width: 1280px) {
+  .plain {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
+}
+
 .basis {
   font-size: var(--krds-pc-font-size-body-xsmall);
   line-height: 1.4;
   color: var(--krds-light-color-text-subtle);
 }
 
+/* NCS 글이 두 줄이 되어도 "도움말"은 마지막 줄에 붙어 카드 아래끝에서 같은 자리(D18) */
 .meta-row {
   display: flex;
-  align-items: baseline;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 0.2rem 1.2rem;
 }
@@ -183,58 +180,37 @@ const moreId = computed(() => `card-${props.card.id}-more`)
   text-align: right;
 }
 
-/* "예를 들면": 줄 왼쪽 고정. 접힌 상태는 NCS 줄과 같은 높이라 첫 화면 카드 수(F-03)를 지킨다 */
-.more-toggle {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-size: var(--krds-pc-font-size-body-xsmall);
+/* ── 도움말 팝업 안(HelpPopup 슬롯): 설명 전체 + 옛 "예를 들면" 펼침 내용 그대로 ── */
+.help-desc {
+  margin-bottom: 0.6rem;
+  font-size: var(--krds-pc-font-size-body-small);
+  line-height: 1.5;
+  color: var(--krds-light-color-text-basic);
+}
+
+.help-sub {
+  font-size: var(--krds-pc-font-size-label-small);
   font-weight: 700;
   line-height: 1.4;
-  color: var(--krds-light-color-text-primary);
-  cursor: pointer;
-}
-
-.more-toggle::before {
-  content: '›';
-  display: inline-block;
-  transition: transform 0.15s ease;
-}
-
-.more-toggle[aria-expanded='true']::before {
-  transform: rotate(90deg);
-}
-
-.more-toggle:focus-visible {
-  outline: 0.3rem solid var(--krds-light-color-border-primary);
-  outline-offset: 0.2rem;
-}
-
-.more-panel {
-  display: grid;
-  gap: 0.2rem;
+  color: var(--krds-light-color-text-bolder);
 }
 
 .examples {
-  margin: 0.4rem 0 0;
   padding-left: 1.8rem;
   list-style: disc;
   font-size: var(--krds-pc-font-size-body-small);
+  line-height: 1.5;
   color: var(--krds-light-color-text-basic);
 }
 
 .terms {
   display: grid;
   gap: 0.2rem;
-  margin: 0.6rem 0 0;
+  margin-top: 0.6rem;
   padding: 0.6rem 0.8rem;
   border-radius: var(--krds-radius-small2);
   background: var(--krds-light-color-surface-gray-subtler);
+  list-style: none;
   font-size: var(--krds-pc-font-size-body-xsmall);
   line-height: 1.5;
 }
@@ -244,14 +220,13 @@ const moreId = computed(() => `card-${props.card.id}-more`)
   gap: 0.6rem;
 }
 
-.term dt {
+.term-word {
   flex: none;
   font-weight: 700;
   color: var(--krds-light-color-text-bolder);
 }
 
-.term dd {
-  margin: 0;
+.term-def {
   color: var(--krds-light-color-text-subtle);
 }
 
@@ -336,10 +311,6 @@ const moreId = computed(() => `card-${props.card.id}-more`)
 @media (max-width: 767px) {
   .task-card {
     padding: 1.4rem;
-  }
-
-  .more-toggle {
-    min-height: var(--rq-touch);
   }
 
   .chip {

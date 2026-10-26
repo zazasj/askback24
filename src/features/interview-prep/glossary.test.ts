@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { CARD_BOOK } from '@shared/catalog'
 import { GLOSSARY, TERM_LIMIT, cardTerms } from './glossary'
 
-describe('업무 카드 용어 풀이(U-01)', () => {
+describe('업무 카드 도움말 용어 풀이(HP-02, 옛 U-01)', () => {
   it('카드 글에 나온 말을 처음 나온 순서로, 최대 3개', () => {
     const be01 = CARD_BOOK.cards.find((c) => c.id === 'BE01')!
     expect(cardTerms(be01).map((t) => t.term)).toEqual(['API', '서버'])

@@ -243,11 +243,14 @@ const experienceHint = computed(() => {
   color: var(--krds-light-color-text-basic);
 }
 
-/* 카드는 제 내용 높이만 쓴다(start). stretch면 옆 카드의 "예를 들면"이 펼쳐질 때 같은 줄 카드가 빈 채로 늘어난다(D-178) */
+/*
+ * 카드 높이를 모두 같게(HP-05): 줄을 1fr로 두면 격자 전체에서 가장 긴 카드 높이에 모든 줄이 맞춰진다("5개 더 보기" 뒤 17개도).
+ * 카드 안에서 펼쳐지는 것이 없어(도움말은 팝업) 고르기·도움말로 높이가 바뀌지 않는다. 휴대폰(한 줄에 하나)은 제 높이
+ */
 .card-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
+  grid-auto-rows: 1fr;
   gap: 1.2rem;
 }
 
@@ -416,6 +419,7 @@ const experienceHint = computed(() => {
 @media (max-width: 767px) {
   .card-grid {
     grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: auto;
   }
 
   /* 글과 버튼을 한 줄에(카드가 덜 밀리게) */
