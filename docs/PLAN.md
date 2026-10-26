@@ -2,7 +2,7 @@
 
 > 화면 설계의 원본: `D:/Obsidian/50_대외활동/2026_고용24_AI해커톤/프론트 설계 - 고용24 재현 화면과 역질문 메이커.md` (S1~S4 와이어프레임, 김00 이력서, 코드 뼈대).
 > 완료 기준: `docs/ACCEPTANCE.md`. 결정 기록: `docs/DECISIONS.md`. 디자인 검토 기준: `docs/DESIGN-REVIEW.md`.
-> 레포 경로: Windows `D:/Source/askback24`, Git Bash `/d/Source/askback24`.
+> 레포 경로: Windows `D:/SejinSource/askback24`, Git Bash `/d/SejinSource/askback24`.
 
 ## 밤샘 범위
 
@@ -33,7 +33,7 @@
 
 - Vite + Vue 3 + TypeScript 프로젝트를 **직접 파일로** 만든다(대화형 `npm create` 금지).
 - 의존성: `vue` `vue-router` `pinia` `@vueuse/core` `krds-uiux` / 개발: `vite` `@vitejs/plugin-vue` `typescript` `vue-tsc` `vitest` `@playwright/test` `@axe-core/playwright` `@types/node` (`@vercel/node`는 D-015로 제외).
-- `npm --prefix /d/Source/askback24 exec playwright install chromium`.
+- `npm --prefix /d/SejinSource/askback24 exec playwright install chromium`.
 - `package.json` 스크립트:
   - `dev`: `vite` · `build`: `vue-tsc --noEmit && vite build` · `build:mock`: `vue-tsc --noEmit && vite build --mode mock` · `preview`: `vite preview --port 4173 --strictPort`
   - `typecheck`: `vue-tsc --noEmit` · `test:unit`: `vitest run` · `test:e2e`: `playwright test` · `screens`: `playwright test e2e/screens.spec.ts` · `check`: `npm run build && npm run test:unit && npm run test:e2e`
@@ -95,7 +95,7 @@ S3용 추가 모의 공고 4~6건(밤샘 결정 D-008): 백엔드 신입 공고.
 | **M5 1차 면접 정리 → 최종 질문** | 최종 흐름 단계 표시 · 1차 면접 정리 화면(복기 입력 4종 최소판, R-04 예시 세트) · `mode: "final"` 생성(카드 상태 판정 → 순서 규칙 → 표현 단계 → 검사) + 시험(API-07) · 최종 결과(요약 개수·최종·처우 질문) · S1 2행 시드 1차 결과 · 1차 결과 없을 때 안내 · 들은 답 미저장 | R-*, S1-06, API-07 |
 | **M6 마감** | 375px 반응형 전 화면(왼쪽 메뉴 → 선택 상자, 표 → 카드) · 접근성(axe, 포커스, 키보드) · 첫 방문 안내 다듬기 · 파비콘·메타 · `README.md`(실행·시연 방법·제한 사항) · 전체 `npm run check` | G-07·09·10, 전체 |
 
-각 마일스톤 완료 조건: `npm run build` · `npm run test:unit` 통과 + 관련 ID의 e2e(`npm --prefix /d/Source/askback24 run test:e2e -- --grep "<ID 접두>"`) 통과 + 커밋.
+각 마일스톤 완료 조건: `npm run build` · `npm run test:unit` 통과 + 관련 ID의 e2e(`npm --prefix /d/SejinSource/askback24 run test:e2e -- --grep "<ID 접두>"`) 통과 + 커밋.
 
 ## KRDS 사용법
 

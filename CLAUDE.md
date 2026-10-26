@@ -4,14 +4,14 @@
 
 ## 명령 (Bash에서 `cd` 금지 — 훅이 막는다)
 
-레포 경로를 인자로 준다. `/d/Source/askback24` = 이 레포 절대경로.
+레포 경로를 인자로 준다. `/d/SejinSource/askback24` = 이 레포 절대경로.
 
-- 빌드(타입 검사 포함): `npm --prefix /d/Source/askback24 run build`
-- 단위 시험: `npm --prefix /d/Source/askback24 run test:unit`
-- 화면 시험: `npm --prefix /d/Source/askback24 run test:e2e` (특정 ID만: `… run test:e2e -- --grep "S4-1"`)
-- 화면 캡처: `npm --prefix /d/Source/askback24 run screens` → `review/screens/*.png`
-- 전체: `npm --prefix /d/Source/askback24 run check`
-- git: `git -C /d/Source/askback24 status`, `git -C /d/Source/askback24 add <경로>`, `git -C /d/Source/askback24 commit -m "…"`
+- 빌드(타입 검사 포함): `npm --prefix /d/SejinSource/askback24 run build`
+- 단위 시험: `npm --prefix /d/SejinSource/askback24 run test:unit`
+- 화면 시험: `npm --prefix /d/SejinSource/askback24 run test:e2e` (특정 ID만: `… run test:e2e -- --grep "S4-1"`)
+- 화면 캡처: `npm --prefix /d/SejinSource/askback24 run screens` → `review/screens/*.png`
+- 전체: `npm --prefix /d/SejinSource/askback24 run check`
+- git: `git -C /d/SejinSource/askback24 status`, `git -C /d/SejinSource/askback24 add <경로>`, `git -C /d/SejinSource/askback24 commit -m "…"`
 - 파일은 절대경로로 읽고 쓴다.
 
 ## 스택
@@ -45,7 +45,7 @@ Vue 3 (`<script setup lang="ts">`, Composition API) · Vite · TypeScript · Vue
 ## git
 
 - 작업 브랜치는 **staging**이다. 커밋은 staging에만 한다. **main에는 커밋·push 하지 않는다**(main merge는 세진이 GitHub에서 한다).
-- push는 `git -C /d/Source/askback24 push origin staging`만 허용한다. 밤샘 루프에서는 릴리스 단계가 마지막에 한 번만 한다.
+- push는 `git -C /d/SejinSource/askback24 push origin staging`만 허용한다. 밤샘 루프에서는 릴리스 단계가 마지막에 한 번만 한다.
 - 서버(dev·preview)를 백그라운드로 남기지 않는다. 화면 확인은 Playwright webServer가 띄우고 끈다.
 - 작성자는 레포 로컬 설정(`Devjin` / zazasj noreply)을 쓴다. 전역 git 설정을 바꾸거나 `--author`로 덮어쓰지 않는다.
 - 메시지: `[Feat] M2 공고 형광펜과 업무 카드` / `[Fix] r1 S4-13 유형 순서` / `[Chore] …` / `[Docs] …`
