@@ -289,7 +289,7 @@ curl -X POST "{AI_ENDPOINT}/v1/final-judgements" \
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| `judgements` | array | 판정한 카드마다 하나. 판단이 어려운 카드는 빼도 됨(그 카드는 우리 단순 규칙으로 판정) |
+| `judgements` | array | 요청 `items` 순서대로, 검사를 통과한 판정만. 판단이 어려운 카드는 빼도 됨(빠진 카드는 우리 서버가 단순 규칙으로 판정) |
 | `judgements[].card_id` | string | 요청의 `card_id` 그대로. 필수 |
 | `judgements[].state` | string | `confirmed` · `mismatch` · `still_unknown`(「판정 상태」). 필수 |
 | `judgements[].basis` | string | 판정 근거 한 줄(1~160자, 해요체, 화면에 보임). 들은 답을 그대로 옮기지 않음. 필수 |
@@ -417,7 +417,7 @@ curl -X POST "{AI_ENDPOINT}/v1/final-questions" \
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| `questions` | array | 요청 `items`마다 하나씩, 순서·개수 그대로 |
+| `questions` | array | 요청 `items` 순서대로, 검사를 통과한 문항만(빠진 문항은 우리 서버가 검수 문장으로 채움) |
 | `questions[].key` | string | 요청의 `key` 그대로. 필수 |
 | `questions[].text` | string | 질문 문장(10~260자, 면접 비즈니스체). `cushion`이 있으면 맨 앞에 그대로. 필수 |
 | `questions[].evidence` | object | 선택. 돌려준다면 요청 값 그대로. 우리 서버는 요청의 근거를 씀 |
