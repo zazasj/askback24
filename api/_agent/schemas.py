@@ -38,3 +38,30 @@ class Draft(BaseModel):
 class FirstResponse(BaseModel):
     questions: list[Draft]
     model: str
+
+
+class JudgeItem(BaseModel):
+    card_id: str
+    card_label: str
+    pref: Literal["want", "avoid", "unsure", "none"]
+    heard: str
+    clarity: Literal["clear", "vague"] | None = None
+    watch_out: str
+    good_sign: str
+
+
+class JudgeRequest(BaseModel):
+    mode: Literal["final"]
+    posting: dict[str, Any]
+    items: list[JudgeItem] = Field(min_length=1, max_length=17)
+
+
+class Judgement(BaseModel):
+    card_id: str
+    state: Literal["confirmed", "mismatch", "still_unknown"]
+    basis: str
+
+
+class JudgeResponse(BaseModel):
+    judgements: list[Judgement]
+    model: str

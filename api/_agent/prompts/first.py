@@ -21,7 +21,7 @@ SYSTEM = """당신은 구직자가 면접 끝에 면접관에게 하는 역질�
 - JSON 하나로만 답합니다: {"questions": [{"card_id": "...", "text": "..."}]} (요청한 card_id마다 하나씩)"""
 
 
-_TAG = re.compile(r"<(?=/?(?:공고|구직자 메모)>)")
+_TAG = re.compile(r"<(?=/?(?:공고|구직자 메모|들은 답)>)")
 
 
 def _esc(s: str) -> str:

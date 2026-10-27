@@ -27,6 +27,18 @@ class LoopSpec:
     user_message: Callable[[Any, list[str] | None, dict[str, list[str]] | None], str]
 
 
+async def call_with_deadline(llm: Llm, role: Role, system: str, user: str, left: float) -> LlmResult:
+    """남은 시간(left)을 호출 제한이자 wait_for 마감으로 건다. 시간 초과는 timeout, 그 밖의 예외는 not_json."""
+    try:
+        return await asyncio.wait_for(llm.complete_json(role, system, user, left), timeout=left)
+    except LlmError:
+        raise
+    except asyncio.TimeoutError:
+        raise LlmError("timeout") from None
+    except Exception:
+        raise LlmError("not_json") from None
+
+
 class State(TypedDict):
     req: Any
     drafts: dict[str, str]
@@ -48,16 +60,7 @@ class LoopAgent:
         left = self.spec.budget_s - (self.clock() - started) - margin
         if left <= 0:
             raise LlmError("timeout")
-        try:
-            return await asyncio.wait_for(
-                self.llm.complete_json(self.spec.role, self.spec.system, user, left), timeout=left
-            )
-        except LlmError:
-            raise
-        except asyncio.TimeoutError:
-            raise LlmError("timeout") from None
-        except Exception:
-            raise LlmError("not_json") from None
+        return await call_with_deadline(self.llm, self.spec.role, self.spec.system, user, left)
 
     def _pick(self, data: Any, wanted: set[str]) -> dict[str, str]:
         """짝 키로 짝짓기: 같은 키는 처음 것, 요청에 없는 키와 모양이 다른 것은 버린다."""
