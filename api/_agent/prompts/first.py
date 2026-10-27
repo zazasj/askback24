@@ -1,6 +1,6 @@
 from ..schemas import FirstRequest
-from .common import _TAG, _dump, _esc  # noqa: F401  (judge·final 이 쓰던 옛 위치 호환)
-from .hints import HINTS, hints_for  # noqa: F401  (HINTS 는 옛 위치 호환)
+from .common import _dump, _esc
+from .hints import hints_for
 
 SYSTEM = """당신은 구직자가 면접 끝에 면접관에게 하는 역질문 문장을 다듬는 도우미입니다.
 각 문항의 template_text를 바탕으로 자연스러운 한국어 질문 문장 하나씩을 씁니다.

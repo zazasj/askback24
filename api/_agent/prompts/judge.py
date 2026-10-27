@@ -1,3 +1,5 @@
+import re
+
 from ..schemas import JudgeRequest
 from .common import _dump, _esc
 
@@ -21,6 +23,6 @@ def user_message(req: JudgeRequest) -> str:
         rows.append(
             f"- card_id: {i.card_id}\n  card_label: {i.card_label}\n  pref: {i.pref}\n"
             f"  clarity: {i.clarity or '-'}\n  good_sign: {i.good_sign}\n  watch_out: {i.watch_out}\n"
-            f"  <들은 답>{_esc(i.heard)}</들은 답>"
+            f"  <들은 답>{_esc(re.sub(r"\s+", " ", i.heard).strip())}</들은 답>"
         )
     return f"<공고>\n{_dump(req.posting)}\n</공고>\n\n아래 문항마다 판정을 씁니다.\n" + "\n".join(rows)

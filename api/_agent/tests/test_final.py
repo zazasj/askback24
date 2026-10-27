@@ -1,3 +1,4 @@
+import asyncio
 import copy
 import json
 from pathlib import Path
@@ -5,6 +6,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from _agent.app import create_app
+from _agent.graphs.final import FinalAgent
 from _agent.llm import FakeLlm, LlmError
 from _agent.prompts.final import SYSTEM, user_message
 from _agent.schemas import FinalRequest
@@ -93,11 +95,21 @@ def test_final_no_heard_field_accepted(ai_log):
     assert "heard" not in llm.calls[0]["user"]
 
 
-def test_final_timeout_is_budget():
+async def test_final_timeout_is_budget():
     llm = FakeLlm([good()])
-    post(llm)
-    # 실제 시계라 남은 시간이 몇 ms 모자란다.
-    assert abs(llm.calls[0]["timeout_s"] - 10.0) < 0.1
+    await FinalAgent(llm, set(), clock=lambda: 0.0).run(FinalRequest.model_validate(RAW))
+    assert llm.calls[0]["timeout_s"] == 10.0
+
+
+def test_final_no_rewrite_at_real_latency(ai_log):
+    # 한 번에 6초면 남은 시간이 8초 문턱 아래라 다시 쓰지 않는다(D-343).
+    no_cushion = "지난 면접에 이어 공고의 '고객사 상주 가능자' 부분을 조금 더 구체적으로 여쭙겠습니다. 첫해 상주 기간은 어느 정도인가요?"
+    llm = FakeLlm([with_text("BE15", no_cushion), good(["BE15"])])
+    clock = lambda: 6.0 * len(llm.calls)  # noqa: E731
+    out = asyncio.run(FinalAgent(llm, set(), clock=clock).run(FinalRequest.model_validate(RAW)))
+    assert len(llm.calls) == 1
+    assert "BE15" not in [q.key for q in out.questions]
+    assert "retried=0" in ai_log.text
 
 
 def test_final_logs_shape(ai_log):

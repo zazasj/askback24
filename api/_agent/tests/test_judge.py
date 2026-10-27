@@ -49,6 +49,14 @@ def test_judge_drops_basis_quoting_heard():
     assert [j["card_id"] for j in r.json()["judgements"]] == ["BE15", "BE01"]
 
 
+def test_judge_drops_basis_copying_another_cards_heard(ai_log):
+    # TS mergeJudgements 는 물어본 카드 전체의 들은 답과 견준다.
+    copied = row("BE15", "mismatch", "유지보수가 7할쯤 되고 신규는 프로젝트 들어갈 때만요 래요.")
+    r = post(FakeLlm([{"judgements": [copied, row("BE07")]}]))
+    assert [j["card_id"] for j in r.json()["judgements"]] == ["BE07"]
+    assert "issues=BE15:basis_heard,BE02:missing,BE01:missing" in ai_log.text
+
+
 def test_judge_unavailable_503(ai_log):
     r = post(FakeLlm([LlmError("timeout")]))
     assert r.status_code == 503 and r.json()["error"]["code"] == "unavailable"
@@ -79,6 +87,13 @@ def test_heard_wrapped_as_data():
     assert msg.count("</들은 답>") == len(raw["items"])
     assert msg.count("<들은 답>") == len(raw["items"])
     assert "<공고>" in msg and "</공고>" in msg
+
+
+def test_heard_whitespace_squashed():
+    raw = copy.deepcopy(RAW)
+    raw["items"][0]["heard"] = "첫 줄\n둘째   줄"
+    msg = user_message(JudgeRequest.model_validate(raw))
+    assert "첫 줄\n둘째" not in msg and "<들은 답>첫 줄 둘째 줄</들은 답>" in msg
 
 
 async def test_judge_timeout_is_budget():

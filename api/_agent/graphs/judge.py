@@ -58,6 +58,7 @@ class JudgeAgent:
 
         def check(s: State) -> dict:
             passed: list[Judgement] = []
+            all_heard = [x.heard for x in s["req"].items]  # TS mergeJudgements 처럼 물어본 카드 전체와 견준다
             issues: dict[str, list[str]] = {}
             for i in s["req"].items:
                 got = s["raw"].get(i.card_id)
@@ -66,7 +67,7 @@ class JudgeAgent:
                     continue
                 state, basis = got
                 basis = re.sub(r"\s+", " ", basis).strip()
-                found = check_judgement(basis, state, [i.heard])
+                found = check_judgement(basis, state, all_heard)
                 if found:
                     issues[i.card_id] = found
                 else:

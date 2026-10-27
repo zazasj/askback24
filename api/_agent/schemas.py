@@ -53,7 +53,7 @@ class JudgeItem(BaseModel):
 class JudgeRequest(BaseModel):
     mode: Literal["final"]
     posting: dict[str, Any]
-    items: list[JudgeItem] = Field(min_length=1, max_length=17)
+    items: list[JudgeItem] = Field(min_length=1, max_length=17)  # data/cards.backend.json 카드 수. 카드가 늘면 같이 고친다
 
 
 class Judgement(BaseModel):
@@ -89,7 +89,7 @@ class FinalDraftItem(BaseModel):
 class FinalRequest(BaseModel):
     mode: Literal["final"]
     posting: dict[str, Any]
-    items: list[FinalDraftItem] = Field(min_length=1, max_length=8)
+    items: list[FinalDraftItem] = Field(min_length=1, max_length=8)  # data/final.backend.json limits.total. 바뀌면 같이 고친다
 
 
 class FinalDraft(BaseModel):
