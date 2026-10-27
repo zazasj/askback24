@@ -181,7 +181,7 @@ export async function generateFirst(req: FirstQuestionsRequest, options: Generat
     if (draft && typeof draft.text === 'string') {
       const text = draft.text.replace(/\s+/g, ' ').trim()
       // 근거는 늘 우리 규칙의 것(API-SPEC 18행). AI가 준 evidence는 읽지 않는다 — 다르면 "근거 보기"·basis·"공고에 없음"이 어긋남(A3-r1-03)
-      const found = checkFirstQuestion({ text, state: r.state, ...(r.evidence ? { evidence: r.evidence } : {}) }, posting)
+      const found = checkFirstQuestion({ text, state: r.state, has_exp: r.has_exp, ...(r.evidence ? { evidence: r.evidence } : {}) }, posting)
       if (!found.length) return toQuestion(r, rank, text, 'ai')
       issues.push(...found)
     }

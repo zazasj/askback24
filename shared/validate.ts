@@ -19,6 +19,8 @@ export type Issue =
   | 'forbidden_word'
   /** 최종 질문에 1차 면접관 말을 인용함 */
   | 'interviewer_quote'
+  /** 경험을 적지 않은 문항인데 "제 경험·해 봤는데"처럼 지원자 경험을 지어냄 */
+  | 'experience_claim'
 
 /** 검수 틀(최대 75자) + 경험 한 줄(100자) + 앞말을 넉넉히 넣고도 한 번에 읽히는 길이 */
 export const TEXT_MIN = 10
@@ -37,9 +39,13 @@ export const FORBIDDEN_PATTERNS: readonly RegExp[] = [
   /부모님?\s*(?:직업|재산)|가족\s*관계/,
   /정치\s*성향|지지\s*정당/,
   /나쁜\s*회사|블랙\s*기업|악덕/,
+  // 근거 없이 회사를 단정하는 말("퇴사자가 많던데")
+  /퇴사자가\s*많|이직률이\s*높|사람이\s*자주\s*나가/,
 ]
 
 const PRESUPPOSE = /공고에[^.?!]*?(?:있던데|있는데)/
+/** 1인칭 경험 표현. 경험 한 줄이 없는 문항(has_exp false)에 나오면 지어낸 경험 */
+const EXPERIENCE_CLAIM = /제\s*경험|해\s*봤|해봤|해\s*본\s*적|경험이\s*있/
 const INTERVIEWER_QUOTE = /아까|하셨는데|말씀하신/
 
 /** 근거 인용이 공고 그 필드 값의 일부(글자 그대로)인지 */
@@ -92,12 +98,15 @@ export interface FirstQuestionCheck {
   /** 그 카드가 공고에 어떻게 적혔는지(분석 JSON) */
   state: PostingState
   evidence?: Evidence
+  /** 지원자가 경험 한 줄을 적은 문항인지. 없으면(최종 등) 경험 표현을 보지 않음 */
+  has_exp?: boolean
 }
 
 /** 1차·기술 면접 질문 검사. 빈 배열이면 통과 */
 export function checkFirstQuestion(q: FirstQuestionCheck, posting: Posting): Issue[] {
   const issues = commonIssues(q.text, q.evidence, posting)
   if (q.state === 'absent' && PRESUPPOSE.test(q.text)) issues.push('absent_presupposition')
+  if (q.has_exp === false && EXPERIENCE_CLAIM.test(q.text)) issues.push('experience_claim')
   return issues
 }
 

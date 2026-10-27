@@ -1,0 +1,12 @@
+{ "cases": [
+  { "name": "깨끗한 문장", "posting": "K-MOCK-0001", "text": "신입이 고객사에 상주해 일하는 비율은 어느 정도인가요?", "state": "explicit", "has_exp": false, "expect": [] },
+  { "name": "공고에 없는 인용", "posting": "K-MOCK-0001", "text": "공고의 '주 4일 근무' 부분이 궁금합니다. 실제로 그런가요?", "state": "explicit", "has_exp": false, "expect": ["quote_not_in_posting"] },
+  { "name": "카드 이름 인용은 통과", "posting": "K-MOCK-0001", "text": "'고객사 상주 개발' 업무는 신입도 맡게 되나요?", "state": "explicit", "has_exp": false, "expect": [] },
+  { "name": "없음 카드 전제", "posting": "K-MOCK-0001", "text": "공고에 온콜이 있던데 신입도 들어가나요?", "state": "absent", "has_exp": false, "expect": ["absent_presupposition"] },
+  { "name": "나이 금지", "posting": "K-MOCK-0001", "text": "팀원들의 나이대는 보통 어떻게 되나요?", "state": "explicit", "has_exp": false, "expect": ["forbidden_word"] },
+  { "name": "하나이고 오탐 없음", "posting": "K-MOCK-0001", "text": "배포는 팀 업무 중 하나이고 신입도 참여하나요?", "state": "inferred", "has_exp": false, "expect": [] },
+  { "name": "경험 없는 문항에 경험", "posting": "K-MOCK-0001", "text": "제가 온콜을 해 봤는데, 이 팀에서는 신입도 들어가나요?", "state": "inferred", "has_exp": false, "expect": ["experience_claim"] },
+  { "name": "경험 문항은 통과", "posting": "K-MOCK-0001", "text": "제가 온콜을 해 봤는데, 이 팀에서는 신입도 들어가나요?", "state": "inferred", "has_exp": true, "expect": [] },
+  { "name": "회사 평가", "posting": "K-MOCK-0001", "text": "퇴사자가 많던데 이유가 무엇인가요?", "state": "explicit", "has_exp": false, "expect": ["forbidden_word"] },
+  { "name": "너무 짧음", "posting": "K-MOCK-0001", "text": "그런가요?", "state": "explicit", "has_exp": false, "expect": ["too_short"] }
+] }
