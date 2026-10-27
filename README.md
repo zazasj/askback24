@@ -10,7 +10,7 @@
 
 ## 실행 방법
 
-Node 22 이상, npm을 쓴다.
+Node 22 이상, npm을 쓴다. AI 서버(Python)를 시험하려면 [uv](https://docs.astral.sh/uv/)도 필요하다(uv가 Python 3.12를 내려받는다). `npm run test:py`가 `uv run`으로 Python 시험을 돌린다.
 
 ```bash
 npm ci
@@ -65,7 +65,8 @@ npm run test:unit      # Vitest (shared/, api/, src/, scripts/)
 npm run test:e2e       # Playwright, 데스크톱 1440 · 휴대폰 375 (Chromium)
 npm run test:e2e -- --grep "S4-13"   # 특정 ID만
 npm run screens        # 화면 캡처 → review/screens/*.png
-npm run check          # 위 세 가지(build · test:unit · test:e2e)를 차례로
+npm run test:py        # AI 서버 pytest (uv + Python 3.12 필요)
+npm run check          # 위 네 가지(build · test:unit · test:py · test:e2e)를 차례로
 ```
 
 화면 시험은 `vite build --mode mock` + `vite preview`(포트 4173)를 스스로 띄우고 끝나면 끈다. 4173 포트가 비어 있어야 한다. 휴대폰 시험은 375×812로 돌고, 역질문 ③ 첫 화면 시험(F-02)만 390×844로 잰다. 처음 온 사람 안내는 시험 스위치를 켠 채 돌고 안내 시험(TR)만 끈 채 돈다(아래 「안내 끄기와 시험 스위치」, `e2e/README.md`).
@@ -87,22 +88,27 @@ npm run check          # 위 세 가지(build · test:unit · test:e2e)를 차�
 
 ## 실제 AI 연결
 
-질문 문장 쓰기와 1차 면접 답 판정은 AI 담당 서버가 맡는다. 우리 서버 함수(`api/questions.ts`)가 그 서버의 세 주소 `POST {AI_ENDPOINT}/v1/first-questions` · `/v1/final-judgements` · `/v1/final-questions`를 부른다. 요청·응답 형식, 응답 규칙, 실패 처리는 명세 [`docs/API-SPEC.md`](docs/API-SPEC.md)에 있다. 연결 코드는 `shared/providers/remote.ts`이고, 지금 배포는 가짜 응답 모드(`mock`) 그대로다. 형원에게 넘길 요약 명세(필드 표 양식)는 `docs/AI-API-명세서.md`·`.pdf`(다시 뽑기 `npm run docs:api-pdf`), 배경·규칙의 자세한 설명은 `docs/API-SPEC.md`.
+질문 문장 쓰기와 1차 면접 답 판정은 AI 서버가 맡는다. AI 서버는 같은 배포의 Python 함수 `/api/ai`(`api/ai/index.py`, FastAPI + LangGraph, LLM은 엔노이아)다. 우리 서버 함수(`api/questions.ts`)가 그 서버의 주소 `POST {AI_ENDPOINT}/v1/first-questions` · `/v1/final-judgements` · `/v1/final-questions`를 부른다. 요청·응답 형식, 응답 규칙, 실패 처리는 명세 [`docs/API-SPEC.md`](docs/API-SPEC.md)에 있다. 연결 코드는 `shared/providers/remote.ts`이고, 지금 배포는 가짜 응답 모드(`mock`) 그대로다. 형원에게 넘길 요약 명세(필드 표 양식)는 `docs/AI-API-명세서.md`·`.pdf`(다시 뽑기 `npm run docs:api-pdf`), 배경·규칙의 자세한 설명은 `docs/API-SPEC.md`.
 
 | 환경변수 | 값 | 넣는 곳 |
 |---|---|---|
 | `LLM_PROVIDER` | `remote` (기본 `mock`) | Vercel 서버 함수 환경변수 |
-| `AI_ENDPOINT` | AI 담당 서버 주소, `/v1/…` 앞부분(예: `https://ai.example.com`) | Vercel 서버 함수 환경변수 |
-| `AI_API_KEY` | AI 담당 서버가 준 키. 우리 서버가 `Authorization: Bearer <키>`로 보낸다 | Vercel 서버 함수 환경변수(Sensitive) |
+| `AI_ENDPOINT` | 비우면 같은 배포의 `https://$VERCEL_URL/api/ai`. 다른 서버나 운영 도메인을 쓰려면 `/v1/…` 앞부분(예: `https://ai.example.com`) | Vercel 서버 함수 환경변수 |
+| `AI_API_KEY` | 우리 서버(TS)와 Python 함수가 같이 쓰는 키. 우리 서버가 `Authorization: Bearer <키>`로 보낸다 | Vercel 서버 함수 환경변수(Sensitive) |
+| `ENNOIA_PROJECT` · `ENNOIA_API_KEY` | 엔노이아 프로젝트와 키. Python 함수만 읽는다 | Vercel 서버 함수 환경변수(Sensitive) |
+| `ENNOIA_AGENT_ID_FAST` · `ENNOIA_AGENT_ID_ACCURATE` | 빠른·정확한 역할의 에이전트 ID. 역할 ID가 없으면 `ENNOIA_AGENT_ID` 하나를 둘 다에 쓴다 | Vercel 서버 함수 환경변수 |
+| `VERCEL_AUTOMATION_BYPASS_SECRET` | Vercel 「Protection Bypass for Automation」 값. 있으면 같은 배포 호출에 `x-vercel-protection-bypass`로 보낸다 | Vercel 프로젝트 Settings → Deployment Protection에서 켜면 자동으로 들어간다 |
 
-세 값은 Vercel 대시보드 → 프로젝트 → Settings → Environment Variables에 넣고, Preview(staging 미리보기)와 Production(main)을 따로 고른다. `VITE_`로 시작하는 이름에 넣지 않는다(화면 번들에 들어간다).
+위 값은 Vercel 대시보드 → 프로젝트 → Settings → Environment Variables에 넣고, Preview(staging 미리보기)와 Production(main)을 따로 고른다. `VITE_`로 시작하는 이름에 넣지 않는다(화면 번들에 들어간다).
+
+미리보기 배포는 배포 보호가 켜져 있어 같은 배포 호출도 막히므로 Protection Bypass for Automation을 켜 `VERCEL_AUTOMATION_BYPASS_SECRET`을 둔다. `VERCEL_URL`은 도메인이 아니라 배포마다 생기는 주소라 운영(Production)도 보호 범위에 들 수 있다. 운영에서도 우회 값을 쓰거나, `AI_ENDPOINT`를 운영 도메인(`https://<운영 도메인>/api/ai`)으로 정한다. 배포 뒤에는 `/api/ai/v1/health`(Bearer 키 필요)로 Python 함수가 떴는지, 응답의 `labels`가 0보다 큰지(`data/`가 함수에 묶였는지) 본다.
 
 `AI_ENDPOINT`는 `https://`만 받는다(로컬 시험용 `http://localhost`·`http://127.0.0.1`은 예외). 운영(Vercel `VERCEL_ENV=production`)에서 `AI_API_KEY`가 비어 있으면 AI 서버를 부르지 않고 모두 검수 문장으로 낸다. 로컬·Preview는 키 없이도 부른다. Vercel Preview·Production에서 `LLM_PROVIDER`가 `remote`가 아니면(빠짐·`Remote` 같은 오타·`mock`) 가짜 공급자를 쓰지 않고 모두 검수 문장(최종 판정은 단순 규칙)으로 낸다. 함수 로그에 `provider=unconfigured`와 경고 한 줄 "LLM_PROVIDER가 remote가 아니라 검수 문장으로 냄"이 남는다. 가짜 문장이 실제 빌드에서 AI 결과처럼 보이지 않게 하려는 것이다.
 
 가짜 응답 모드에서 실제 모드로 바꾸는 순서(배포 전환은 세진이 정한다):
 
-1. AI 담당 서버가 `docs/API-SPEC.md`의 세 주소를 만들고, `docs/api-examples/*-request.json`을 보내 `*-response.json`과 같은 모양이 오는지 확인한다.
-2. Vercel Preview 환경변수에 `LLM_PROVIDER=remote`, `AI_ENDPOINT`, `AI_API_KEY`를 넣는다.
+1. AI 서버(`/api/ai`)가 `docs/AI-API-명세서.md`의 주소로 답하는지, `docs/api-examples/*-request.json`을 보내 `*-response.json`과 같은 모양이 오는지 확인한다.
+2. Vercel Preview 환경변수에 `LLM_PROVIDER=remote`, `AI_API_KEY`, `ENNOIA_*`를 넣고 Protection Bypass를 켠다(`AI_ENDPOINT`는 비워 둔다).
 3. `vercel.json`의 `buildCommand`를 `npm run build:mock`에서 `npm run build`로 바꿔 staging에 push한다. 이제 화면이 `POST /api/questions`를 부른다.
 4. staging 미리보기에서 질문을 만들어 본다. 먼저 Vercel 함수 로그에서 `[questions] … provider=remote … template=0`을 확인한다. `provider=unconfigured`면 `LLM_PROVIDER`가 `remote`로 들어가지 않은 것이다(오타·빠짐). `template=`이 0이 아니면 `issues=`(걸린 검사)와 `failure=`(오류·시간 초과)를 본다. 그다음 화면에서 ③ 제목 옆 "가짜 응답 모드" 태그가 없고 질문에 "검수 문장" 라벨이 붙지 않는지 본다.
 5. 문제가 없으면 Production 환경변수에도 같은 값을 넣고 main에 합친다. `LLM_PROVIDER=mock`으로 되돌리면 실제 빌드에서는 모두 검수 문장으로 나간다(가짜 문장을 AI 결과로 보이지 않게). 가짜 응답 모드로 돌리려면 `buildCommand`를 `npm run build:mock`으로 돌린다.
@@ -166,7 +172,7 @@ staging(개발) ──push──▶ Vercel 미리보기 ──세진 확인─�
 ## 제한 사항
 
 - **모의 데이터**: 공고 7건·회사 신호 값·지원 내역·김00 이력서는 모두 예시다. 공고는 실제 공고처럼 긴 글로 썼지만 지어낸 글이고, 회사명은 가명이다. (주)◇◇데이터와 S3 추가 공고(`K-MOCK-0003`~`0007`)는 `draft: true`로, 팀 데이터가 오면 바꾼다.
-- **LLM 미연결**: 실제 LLM은 연결하지 않았다(엔노이아는 이번 범위에서 뺌). AI 담당 서버를 부르는 연결 코드(`LLM_PROVIDER=remote`)와 명세는 있지만 배포는 가짜 응답 모드 그대로다(「실제 AI 연결」). 가짜 응답 모드의 질문 문장은 LLM이 아니라 규칙과 검수 틀로 만든 문장이고, 화면 제목 옆 회색 태그와 `/about-ai`에 그렇게 적혀 있다. 1차 면접 정리의 판정도 정해 둔 예시 세트(R-04)만 고정값이고, 그 밖의 입력은 단순 규칙(구체적 → 확인됨, 모호·못 물음 → 아직 모름)으로 판정한다. "기대와 다름"은 실제 LLM이 붙어야 나온다.
+- **LLM 연결**: 같은 배포의 Python AI 서버(`/api/ai`, 엔노이아)를 부르는 연결 코드(`LLM_PROVIDER=remote`)와 명세가 있다. 환경변수를 넣고 `buildCommand`를 바꾸기 전까지 배포는 가짜 응답 모드 그대로다(「실제 AI 연결」). 가짜 응답 모드의 질문 문장은 LLM이 아니라 규칙과 검수 틀로 만든 문장이고, 화면 제목 옆 회색 태그와 `/about-ai`에 그렇게 적혀 있다. 1차 면접 정리의 판정도 정해 둔 예시 세트(R-04)만 고정값이고, 그 밖의 입력은 단순 규칙(구체적 → 확인됨, 모호·못 물음 → 아직 모름)으로 판정한다. "기대와 다름"은 실제 LLM이 붙어야 나온다.
 - **브라우저**: 화면 시험은 Chromium(데스크톱 1440, 휴대폰 375, 일부 1366×657·1152×720·960×600·390×844)만 돌았다. 3차 밤샘에 더한 화면 요소(① 로딩·형광펜, ② 도움말 팝업, ③ 오른쪽 상자, 모든 화면 안내 단계)는 375×812·390×844·1366×657·1440×900에서 가로 넘침·화면 밖 상자가 없는지 따로 확인했다(D-262). 사파리·아이폰은 사람이 직접 확인해야 한다.
 - **배포**: 이 문서의 시험은 로컬 가짜 응답 모드 빌드로만 돌았다. Vercel 배포와 서버 함수(`api/questions.ts`)의 동작은 배포 쪽에서 따로 확인한다.
 - **저장**: 지원 내역·선택·결과와 본 안내·본 공고 분석 로딩 기록은 이 브라우저(`localStorage`, `rq:v1:` 키)에만 저장되고 "시연 초기화"가 모두 지운다. 서버 DB가 없고, 저장이 막힌 브라우저에서는 새로고침하면 처음으로 돌아간다. 1차 면접에서 들은 답과 면접 분위기는 저장하지 않는다.

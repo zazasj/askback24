@@ -20,6 +20,23 @@ describe('handleWarmup', () => {
     expect(String(f.mock.calls[0]?.[0])).toBe('https://ai.example.test/v1/warmup')
   })
 
+  it('Python 이 200 {"ok":false} 를 주면 fail 로 기록하고 204', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"ok":false}')))
+    const l = log()
+    const res = await handleWarmup(post(), ENV, l)
+    vi.unstubAllGlobals()
+    expect(res.status).toBe(204)
+    expect(vi.mocked(l.info).mock.calls[0]?.[0]).toContain('[warmup] fail')
+  })
+
+  it('ok:true 면 ok 로 기록', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"ok":true}')))
+    const l = log()
+    await handleWarmup(post(), ENV, l)
+    vi.unstubAllGlobals()
+    expect(vi.mocked(l.info).mock.calls[0]?.[0]).toContain('[warmup] ok')
+  })
+
   it('LLM_PROVIDER 없음: fetch 0번, 204', async () => {
     const f = vi.fn()
     vi.stubGlobal('fetch', f)

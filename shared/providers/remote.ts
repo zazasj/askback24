@@ -130,9 +130,10 @@ async function post(config: RemoteConfig, path: string, body: unknown, signal: A
   }
 }
 
-/** 모델을 미리 깨우는 호출. 응답 내용은 보지 않는다(성공이면 끝). 실패는 예외 */
-export async function warmupRemote(config: RemoteConfig, signal: AbortSignal): Promise<void> {
-  await post(config, REMOTE_PATHS.warmup, {}, signal)
+/** 모델을 미리 깨우는 호출. Python 은 모델이 안 깨어나도 200 {"ok": false} 를 주므로 본문의 ok 를 돌려준다. 호출 실패는 예외 */
+export async function warmupRemote(config: RemoteConfig, signal: AbortSignal): Promise<boolean> {
+  const data = await post(config, REMOTE_PATHS.warmup, {}, signal)
+  return isObject(data) && data.ok === true
 }
 
 /** 바깥 모양({ "<key>": [...] })이 틀리면 전체를 대신하게 예외 */

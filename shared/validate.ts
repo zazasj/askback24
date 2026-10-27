@@ -44,8 +44,8 @@ export const FORBIDDEN_PATTERNS: readonly RegExp[] = [
 ]
 
 const PRESUPPOSE = /공고에[^.?!]*?(?:있던데|있는데)/
-/** 1인칭 경험 표현. 경험 한 줄이 없는 문항(has_exp false)에 나오면 지어낸 경험 */
-const EXPERIENCE_CLAIM = /제\s*경험|해\s*봤|해봤|해\s*본\s*적|경험이\s*있/
+/** 1인칭 경험 표현. 경험 한 줄이 없는 문항(has_exp false)에 나오면 지어낸 경험. 같은 절의 1인칭 주어 뒤에 올 때만 본다(3인칭 "경험이 있는 신입" 오탐 방지) */
+const EXPERIENCE_CLAIM = /(?<![가-힣])(?:제가|저는|저도|제)\s*[^.?!]{0,30}?(?:경험|해\s*봤|해봤|해\s*본\s*적|맡아\s*(?:봤|본))/
 const INTERVIEWER_QUOTE = /아까|하셨는데|말씀하신/
 
 /** 근거 인용이 공고 그 필드 값의 일부(글자 그대로)인지 */

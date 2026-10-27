@@ -1,6 +1,8 @@
 import asyncio
 import hmac
+import logging
 import os
+import time
 from collections.abc import Mapping
 
 from fastapi import APIRouter, Depends, FastAPI, Request
@@ -17,6 +19,8 @@ from .llm import Llm, LlmError, llm_from_env
 from .schemas import FirstRequest, FirstResponse
 
 PREFIX = "/api/ai/v1"
+# TS 의 20초(WARMUP_TIMEOUT_MS)보다 먼저 끝내 ok 값이 로그에 닿게 한다.
+WARMUP_S = 15.0
 _HTTP_CODES = {404: "not_found", 405: "method_not_allowed"}
 
 
@@ -39,7 +43,17 @@ def _make_auth(env: Mapping[str, str]):
     return check_key
 
 
+def _setup_logging() -> None:
+    # basicConfig 는 root 를 INFO 로 올려 httpx 요청 줄까지 찍으므로, 우리 로거만 stderr(Vercel 로그)로 보낸다.
+    lg = logging.getLogger("askback24.ai")
+    lg.setLevel(logging.INFO)
+    lg.propagate = False
+    if not lg.handlers:
+        lg.addHandler(logging.StreamHandler())
+
+
 def create_app(env: Mapping[str, str] | None = None, llm: Llm | None = None) -> FastAPI:
+    _setup_logging()
     env = os.environ if env is None else env
     llm = llm or llm_from_env(env)
     labels = load_card_labels(Path(__file__).resolve().parents[2])
@@ -67,13 +81,17 @@ def create_app(env: Mapping[str, str] | None = None, llm: Llm | None = None) -> 
 
     @router.get("/health")
     def health() -> dict:
-        return {"ok": True, "service": "askback24-ai"}
+        # labels 는 data/ 가 함수에 묶였는지 배포에서 볼 수 있게 한다.
+        return {"ok": True, "service": "askback24-ai", "labels": len(labels)}
 
     @router.post("/first-questions")
     async def first_questions(body: FirstRequest) -> FirstResponse:
+        started = time.monotonic()
         try:
             return await run_first(body, llm, labels)
-        except LlmError:
+        except LlmError as e:
+            ms = int((time.monotonic() - started) * 1000)
+            logging.getLogger("askback24.ai").info("[ai] first unavailable code=%s ms=%d", e.code, ms)
             raise ApiError(503, "unavailable", "model is not ready") from None
 
     @router.post("/warmup")
@@ -81,7 +99,7 @@ def create_app(env: Mapping[str, str] | None = None, llm: Llm | None = None) -> 
         # 첫 호출이 느린(약 17초) 모델을 미리 깨운다. 결과와 상관없이 200.
         try:
             await asyncio.wait_for(
-                llm.complete_json("fast", "JSON 한 개만 답한다.", '{"ok":true} 를 그대로 돌려줘', timeout_s=20.0), 20.0
+                llm.complete_json("fast", "JSON 한 개만 답한다.", '{"ok":true} 를 그대로 돌려줘', timeout_s=WARMUP_S), WARMUP_S
             )
         except Exception:
             return {"ok": False}

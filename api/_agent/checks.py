@@ -20,7 +20,7 @@ FORBIDDEN = [
     re.compile(r"퇴사자가\s*많|이직률이\s*높|사람이\s*자주\s*나가"),
 ]
 PRESUPPOSE = re.compile(r"공고에[^.?!]*?(?:있던데|있는데)")
-EXPERIENCE_CLAIM = re.compile(r"제\s*경험|해\s*봤|해봤|해\s*본\s*적|경험이\s*있")
+EXPERIENCE_CLAIM = re.compile(r"(?<![가-힣])(?:제가|저는|저도|제)\s*[^.?!]{0,30}?(?:경험|해\s*봤|해봤|해\s*본\s*적|맡아\s*(?:봤|본))")
 _QUOTE = re.compile(r"['‘]([^'‘’\n]+)['’]")
 
 

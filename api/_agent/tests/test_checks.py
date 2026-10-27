@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -13,7 +14,9 @@ LABELS = load_card_labels(ROOT)
 
 @pytest.mark.parametrize("case", CASES, ids=[c["name"] for c in CASES])
 def test_fixture(case):
-    got = check_first(case["text"], case["state"], case["has_exp"], POSTINGS[case["posting"]], LABELS)
+    # TS 시험·generate.ts 와 같이 공백을 한 칸으로 줄인 뒤 검사한다
+    text = re.sub(r"\s+", " ", case["text"]).strip()
+    got = check_first(text, case["state"], case["has_exp"], POSTINGS[case["posting"]], LABELS)
     assert got == case["expect"]
 
 

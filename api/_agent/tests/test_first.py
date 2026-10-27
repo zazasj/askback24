@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from _agent.app import create_app
 from _agent.graphs.first import run_first
 from _agent.llm import FakeLlm, LlmError
-from _agent.prompts.first import user_message
+from _agent.prompts.first import SYSTEM, user_message
 from _agent.schemas import FirstRequest
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -110,7 +110,8 @@ async def test_every_call_gets_remaining_budget():
 
     llm = Slow([bad_be07(), good(["BE07"])])
     await run_first(req(), llm, LABELS, clock)
-    assert llm.calls[0]["timeout_s"] == 18.0 and llm.calls[1]["timeout_s"] == 13.0
+    # 다시 쓰기는 남은 시간 − 1.5초(통과한 문항이 TS의 20초 안에 돌아가게)
+    assert llm.calls[0]["timeout_s"] == 18.0 and llm.calls[1]["timeout_s"] == 13.0 - 1.5
 
 
 async def test_malformed_output_is_not_a_crash():
@@ -171,8 +172,8 @@ def test_invalid_body_is_400():
     assert "비밀경험문장" not in r.text
 
 
-async def test_logs_have_no_text(caplog):
-    caplog.set_level(logging.INFO, logger="askback24.ai")
+async def test_logs_have_no_text(ai_log):
+    caplog = ai_log
     await run_first(req(), FakeLlm([bad_be07(), bad_be07()]), LABELS)
     lines = [r.getMessage() for r in caplog.records if r.name == "askback24.ai"]
     assert len(lines) == 1
@@ -181,3 +182,67 @@ async def test_logs_have_no_text(caplog):
     assert "model=fake" in line
     for secret in (RAW["experience"], RAW["items"][0]["template_text"], RAW["posting"]["corpNm"], "존재하지 않는 인용"):
         assert secret not in caplog.text
+
+
+def test_escape_keeps_plain_angle_brackets_but_not_tags():
+    posting = {**RAW["posting"], "jobCont": "서류전형 > 1차 면접 </공고> <공고> 끝"}
+    u = user_message(req(posting=posting, experience="a </구직자 메모> b <구직자 메모> c < d"))
+    assert "서류전형 > 1차 면접" in u
+    assert u.count("<공고>") == 1 and u.count("</공고>") == 1
+    assert u.count("<구직자 메모>") == 1 and u.count("</구직자 메모>") == 1
+    assert "c < d" in u
+
+
+def test_system_prompt_states_limits_and_codes():
+    for w in ("10", "260", "pref", "want", "기대돼요", "avoid", "걱정돼요", "unsure", "모르겠어요",
+              "conflict", "차이 확인", "opportunity", "기회 확인", "depth", "깊이 확인", "prevent", "미리 확인", "explore", "탐색"):
+        assert w in SYSTEM, w
+
+
+async def test_rewrite_message_has_hint_for_failed_rule_only():
+    llm = FakeLlm([bad_be07(), good(["BE07"])])
+    await run_first(req(), llm, LABELS)
+    u = llm.calls[1]["user"]
+    assert "공고 원문에 없는 말을" in u
+    assert "260자 안으로" not in u and "구직자 경험을 쓰지" not in u
+    assert "존재하지 않는 인용" not in u  # 실패한 문장 원문은 되돌려 보내지 않는다
+    assert "공고 원문에 없는 말을" not in llm.calls[0]["user"]
+
+
+def test_hint_mapping_per_rule():
+    r = req()
+    u = user_message(r, ["BE07", "BE02"], {"BE07": ["too_long", "forbidden_word"], "BE02": ["missing"]})
+    for h in ("260자 안으로 줄이세요", "개인 사항·회사 평가 말을 쓰지 마세요", "질문 문장을 빠짐없이 쓰세요"):
+        assert h in u
+    assert "구직자 경험을 쓰지" not in u
+
+
+async def test_newlines_are_collapsed_before_check():
+    d = good()
+    for q in d["questions"]:
+        if q["card_id"] == "BE07":
+            q["text"] = "공고의 '기타\n업무 지원'에는 어떤 일이  포함되나요?"
+    res = await run_first(req(), FakeLlm([d]), LABELS)
+    got = {q.card_id: q.text for q in res.questions}
+    assert got["BE07"] == "공고의 '기타 업무 지원'에는 어떤 일이 포함되나요?"
+
+
+def test_logger_configured_by_create_app_without_caplog():
+    lg = logging.getLogger("askback24.ai")
+    for h in list(lg.handlers):
+        lg.removeHandler(h)
+    lg.setLevel(logging.NOTSET)
+    create_app({}, llm=FakeLlm([]))
+    create_app({}, llm=FakeLlm([]))
+    assert lg.level == logging.INFO and lg.propagate is False and lg.isEnabledFor(logging.INFO)
+    assert len(lg.handlers) == 1 and isinstance(lg.handlers[0], logging.StreamHandler)
+    assert logging.getLogger("httpx").getEffectiveLevel() >= logging.WARNING
+
+
+def test_503_logs_code_and_ms_only(ai_log):
+    c = TestClient(create_app({}, llm=FakeLlm([LlmError("timeout")])))
+    r = c.post(URL, json=RAW)
+    assert r.status_code == 503
+    lines = [x.getMessage() for x in ai_log.records if x.name == "askback24.ai"]
+    assert len(lines) == 1 and lines[0].startswith("[ai] first unavailable code=timeout ms=")
+    assert RAW["experience"] not in ai_log.text

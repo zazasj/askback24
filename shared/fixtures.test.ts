@@ -18,6 +18,7 @@ const { cases } = JSON.parse(readFileSync(new URL('./fixtures/validate-cases.jso
 
 describe('검사 예시 파일', () => {
   it.each(cases.map((c) => [c.name, c] as const))('%s', (_name, c) => {
-    expect(checkFirstQuestion({ text: c.text, state: c.state, has_exp: c.has_exp }, getPosting(c.posting)!)).toEqual(c.expect)
+    // generate.ts 와 Python 그래프(first.py)처럼 공백을 한 칸으로 줄인 뒤 검사한다
+    expect(checkFirstQuestion({ text: c.text.replace(/\s+/g, ' ').trim(), state: c.state, has_exp: c.has_exp }, getPosting(c.posting)!)).toEqual(c.expect)
   })
 })

@@ -15,6 +15,7 @@
 | 2-2 | 최종 면접·처우 질문 문장 생성 | `POST {AI_ENDPOINT}/v1/final-questions` | 10초 안 |
 | 3 | 공고 분석 (카드 상태·처우 빈칸·회사 신호) | `POST {AI_ENDPOINT}/v1/posting-analysis` | 함수 한도 안(공고당 한 번, 결과 저장) |
 | 4 | 업무 카드 초안 | `POST {AI_ENDPOINT}/v1/card-drafts` | 함수 한도 안(직무당 한 번, 사람 검수) |
+| 내부 | 모델 미리 깨우기(화면을 열 때 우리 서버가 부름, 요청 본문 없음) | `POST {AI_ENDPOINT}/v1/warmup` | 15초 안, 200 `{"ok": true 또는 false}` |
 
 최종 면접은 2-1 → (우리 규칙이 질문 순서 결정) → 2-2 순서로 두 번 부릅니다. 화면이 지금 쓰는 것은 1·2번이고, 3·4번은 지금 개발자가 부르며 나중에 화면이 필요하면 우리 서버가 대신 부릅니다.
 
@@ -160,7 +161,7 @@ curl -X POST "{AI_ENDPOINT}/v1/first-questions" \
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| `questions` | array | 요청 `items`마다 하나씩, 순서·개수 그대로 |
+| `questions` | array | 요청 `items` 순서대로, 검사를 통과한 문항만(빠진 문항은 우리 서버가 검수 문장으로 채움) |
 | `questions[].card_id` | string | 요청의 `card_id` 그대로. 필수 |
 | `questions[].text` | string | 질문 문장(10~260자, 면접 비즈니스체). 필수 |
 | `questions[].evidence` | object | 선택. 돌려준다면 요청 값 그대로(`null`도 됨). 우리 서버는 요청의 근거를 씀 |

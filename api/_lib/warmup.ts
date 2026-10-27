@@ -19,9 +19,9 @@ export async function handleWarmup(request: Request, env: ServerEnv, log: Logger
     const started = Date.now()
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), WARMUP_TIMEOUT_MS)
-    let ok = true
+    let ok = false
     try {
-      await warmupRemote(remoteConfigFor(env), ctrl.signal)
+      ok = await warmupRemote(remoteConfigFor(env), ctrl.signal)
     } catch {
       ok = false
     } finally {

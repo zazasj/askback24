@@ -1,13 +1,14 @@
 """② 1차 질문 그래프: write → check → (rewrite → check) → finish. 설계 확정 9-1."""
 import asyncio
 import logging
+import re
 import time
 from collections.abc import Callable
 from typing import Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
-from ..budget import FIRST_BUDGET_S, RETRY_MIN_LEFT_S
+from ..budget import FIRST_BUDGET_S, RETRY_MIN_LEFT_S, REWRITE_SAFETY_S
 from ..checks import check_first
 from ..llm import Llm, LlmError, LlmResult
 from ..prompts.first import SYSTEM, user_message
@@ -26,9 +27,9 @@ class State(TypedDict):
     model: str
 
 
-async def _call(llm: Llm, user: str, started: float, clock: Callable[[], float]) -> LlmResult:
-    # 마감은 모든 호출에 건다: 남은 예산이 곧 호출 제한 시간이다.
-    left = FIRST_BUDGET_S - (clock() - started)
+async def _call(llm: Llm, user: str, started: float, clock: Callable[[], float], margin: float = 0.0) -> LlmResult:
+    # 마감은 모든 호출에 건다: 남은 예산(−margin)이 곧 호출 제한 시간이다.
+    left = FIRST_BUDGET_S - (clock() - started) - margin
     if left <= 0:
         raise LlmError("timeout")
     try:
@@ -52,7 +53,8 @@ def _pick(data: Any, wanted: set[str]) -> dict[str, str]:
             continue
         cid, text = r.get("card_id"), r.get("text")
         if isinstance(cid, str) and isinstance(text, str) and cid in wanted and cid not in out:
-            out[cid] = text
+            # TS(generate.ts)와 같이 공백을 한 칸으로 줄인 문장을 검사하고 돌려준다.
+            out[cid] = re.sub(r"\s+", " ", text).strip()
     return out
 
 
@@ -80,7 +82,7 @@ def build_graph(llm: Llm, labels: set[str], clock: Callable[[], float]):
     async def rewrite(s: State) -> dict:
         only = list(s["issues"])
         try:
-            res = await _call(llm, user_message(s["req"], only), s["started"], clock)
+            res = await _call(llm, user_message(s["req"], only, s["issues"]), s["started"], clock, REWRITE_SAFETY_S)
         except LlmError:
             return {"rewrites": 1, "rewrite_failed": True}
         return {"drafts": {**s["drafts"], **_pick(res.data, set(only))}, "model": res.model, "rewrites": 1}

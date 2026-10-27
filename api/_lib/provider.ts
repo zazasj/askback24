@@ -49,11 +49,6 @@ const warned = new WeakSet<object>()
 
 const DEPLOYED: ReadonlySet<string> = new Set(['production', 'preview'])
 
-/**
- * 기본은 mock. 로컬·단위 시험(VERCEL_ENV 없음·development)은 모르는 값도 mock(D-044).
- * Vercel preview·production 은 remote 만 부르고, 빠짐·오타·mock 등은 unconfigured — 가짜 문장이 실제 빌드에서
- * source "ai" 로 나가지 않게(A3-r2-01, D-146).
- */
 /** remote 공급자 설정. AI_ENDPOINT → 같은 배포(VERCEL_URL)의 /api/ai 순으로 주소를 고른다 */
 export function remoteConfigFor(env: ServerEnv): RemoteConfig {
   const config: RemoteConfig = { requireKey: env.VERCEL_ENV === 'production' }
@@ -64,6 +59,11 @@ export function remoteConfigFor(env: ServerEnv): RemoteConfig {
   return config
 }
 
+/**
+ * 기본은 mock. 로컬·단위 시험(VERCEL_ENV 없음·development)은 모르는 값도 mock(D-044).
+ * Vercel preview·production 은 remote 만 부르고, 빠짐·오타·mock 등은 unconfigured — 가짜 문장이 실제 빌드에서
+ * source "ai" 로 나가지 않게(A3-r2-01, D-146).
+ */
 export function providerFor(env: ServerEnv, log?: WarnLog): LlmProvider {
   if (env.LLM_PROVIDER === 'remote') {
     // 주소가 없거나 https 가 아니거나 운영인데 키가 없으면 공급자가 부르지 않고 예외 → 모두 검수 문장(generate, A3-r1-08)

@@ -22,7 +22,8 @@ def test_health_wrong_key_is_401():
 def test_health_ok_with_key():
     c = TestClient(create_app({"AI_API_KEY": "k"}))
     r = c.get("/api/ai/v1/health", headers={"Authorization": "Bearer k"})
-    assert r.status_code == 200 and r.json() == {"ok": True, "service": "askback24-ai"}
+    assert r.status_code == 200 and r.json()["ok"] is True and r.json()["service"] == "askback24-ai"
+    assert r.json()["labels"] > 0
 
 
 def test_no_key_allowed_only_locally():
@@ -82,7 +83,7 @@ def test_warmup_calls_fast_once_and_returns_ok():
     llm = FakeLlm([{"ok": True}])
     r = TestClient(create_app({}, llm=llm)).post("/api/ai/v1/warmup")
     assert r.status_code == 200 and r.json() == {"ok": True}
-    assert len(llm.calls) == 1 and llm.calls[0]["role"] == "fast" and llm.calls[0]["timeout_s"] == 20.0
+    assert len(llm.calls) == 1 and llm.calls[0]["role"] == "fast" and llm.calls[0]["timeout_s"] == 15.0
 
 
 def test_warmup_failure_is_still_200_ok_false():

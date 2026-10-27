@@ -8,5 +8,11 @@
   { "name": "경험 없는 문항에 경험", "posting": "K-MOCK-0001", "text": "제가 온콜을 해 봤는데, 이 팀에서는 신입도 들어가나요?", "state": "inferred", "has_exp": false, "expect": ["experience_claim"] },
   { "name": "경험 문항은 통과", "posting": "K-MOCK-0001", "text": "제가 온콜을 해 봤는데, 이 팀에서는 신입도 들어가나요?", "state": "inferred", "has_exp": true, "expect": [] },
   { "name": "회사 평가", "posting": "K-MOCK-0001", "text": "퇴사자가 많던데 이유가 무엇인가요?", "state": "explicit", "has_exp": false, "expect": ["forbidden_word"] },
-  { "name": "너무 짧음", "posting": "K-MOCK-0001", "text": "그런가요?", "state": "explicit", "has_exp": false, "expect": ["too_short"] }
+  { "name": "너무 짧음", "posting": "K-MOCK-0001", "text": "그런가요?", "state": "explicit", "has_exp": false, "expect": ["too_short"] },
+  { "name": "3인칭 해 본 적 없음 통과", "posting": "K-MOCK-0001", "text": "이 업무를 해 본 적이 없는 신입도 맡을 수 있나요?", "state": "explicit", "has_exp": false, "expect": [] },
+  { "name": "3인칭 경험이 있는 신입 통과", "posting": "K-MOCK-0001", "text": "온콜 경험이 있는 신입이 들어가나요?", "state": "explicit", "has_exp": false, "expect": [] },
+  { "name": "다른 신입 해 봤나요 통과", "posting": "K-MOCK-0001", "text": "다른 신입도 해 봤나요?", "state": "explicit", "has_exp": false, "expect": [] },
+  { "name": "경험이 있으면 좋은가요 통과", "posting": "K-MOCK-0001", "text": "배포 경험이 있으면 좋은가요?", "state": "explicit", "has_exp": false, "expect": [] },
+  { "name": "제가 경험한 바로는", "posting": "K-MOCK-0001", "text": "제가 경험한 바로는 배포가 어렵던데, 이 팀은 어떤가요?", "state": "explicit", "has_exp": false, "expect": ["experience_claim"] },
+  { "name": "줄바꿈이 낀 공고 인용은 통과(공백 한 칸으로 줄인 뒤 검사)", "posting": "K-MOCK-0001", "text": "공고의 '기타\n업무 지원'에는 어떤 일이 포함되나요?", "state": "explicit", "has_exp": false, "expect": [] }
 ] }
