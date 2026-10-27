@@ -65,3 +65,39 @@ class Judgement(BaseModel):
 class JudgeResponse(BaseModel):
     judgements: list[Judgement]
     model: str
+
+
+class FinalDraftItem(BaseModel):
+    """shared/providers/types.ts FinalDraftItem. 들은 답(heard)은 필드가 없어 와도 무시된다."""
+
+    rank: int
+    key: str
+    card_id: str | None = None
+    topic: Literal["sal", "workHours", "probation", "onsite"] | None = None
+    label: str
+    type: Literal["recheck", "signal", "scope", "offer", "opportunity"]
+    origin: Literal["asked", "not_asked", "received", "offer"]
+    state: str | None = None
+    review_state: str | None = None
+    evidence: Evidence | None = None
+    tone: Literal["basic", "cushion", "direct"]
+    cushion: str
+    template: str
+    template_text: str
+
+
+class FinalRequest(BaseModel):
+    mode: Literal["final"]
+    posting: dict[str, Any]
+    items: list[FinalDraftItem] = Field(min_length=1, max_length=8)
+
+
+class FinalDraft(BaseModel):
+    key: str
+    text: str
+    evidence: Evidence | None = None
+
+
+class FinalResponse(BaseModel):
+    questions: list[FinalDraft]
+    model: str

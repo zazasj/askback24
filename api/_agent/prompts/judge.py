@@ -1,5 +1,5 @@
 from ..schemas import JudgeRequest
-from .first import _dump, _esc
+from .common import _dump, _esc
 
 SYSTEM = """당신은 구직자가 1차 면접에서 물어본 질문의 답을 듣고, 그 답이 어떤 쪽인지 판정하는 도우미입니다.
 문항마다 들은 답(heard)을 good_sign, watch_out과 견줘 state 하나와 근거(basis)를 씁니다.

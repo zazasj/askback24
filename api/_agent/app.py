@@ -13,10 +13,11 @@ from pathlib import Path
 
 from .checks import load_card_labels
 from .errors import ApiError
+from .graphs.final import FinalAgent
 from .graphs.first import FirstAgent
 from .graphs.judge import JudgeAgent
 from .llm import Llm, LlmError, llm_from_env
-from .schemas import FirstRequest, FirstResponse, JudgeRequest, JudgeResponse
+from .schemas import FinalRequest, FinalResponse, FirstRequest, FirstResponse, JudgeRequest, JudgeResponse
 
 PREFIX = "/api/ai/v1"
 # TS 의 20초(WARMUP_TIMEOUT_MS)보다 먼저 끝내 ok 값이 로그에 닿게 한다.
@@ -59,6 +60,7 @@ def create_app(env: Mapping[str, str] | None = None, llm: Llm | None = None) -> 
     labels = load_card_labels(Path(__file__).resolve().parents[2])
     first_agent = FirstAgent(llm, labels)  # 그래프는 앱이 뜰 때 한 번만 compile
     judge_agent = JudgeAgent(llm)
+    final_agent = FinalAgent(llm, labels)
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
     @app.exception_handler(ApiError)
@@ -98,6 +100,13 @@ def create_app(env: Mapping[str, str] | None = None, llm: Llm | None = None) -> 
     async def final_judgements(body: JudgeRequest) -> JudgeResponse:
         try:
             return await judge_agent.run(body)
+        except LlmError:
+            raise ApiError(503, "unavailable", "model is not ready") from None
+
+    @router.post("/final-questions")
+    async def final_questions(body: FinalRequest) -> FinalResponse:
+        try:
+            return await final_agent.run(body)
         except LlmError:
             raise ApiError(503, "unavailable", "model is not ready") from None
 

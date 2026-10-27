@@ -1,7 +1,5 @@
-import json
-import re
-
 from ..schemas import FirstRequest
+from .common import _TAG, _dump, _esc  # noqa: F401  (judge·final 이 쓰던 옛 위치 호환)
 from .hints import HINTS, hints_for  # noqa: F401  (HINTS 는 옛 위치 호환)
 
 SYSTEM = """당신은 구직자가 면접 끝에 면접관에게 하는 역질문 문장을 다듬는 도우미입니다.
@@ -19,18 +17,6 @@ SYSTEM = """당신은 구직자가 면접 끝에 면접관에게 하는 역질�
 - pref는 구직자가 고른 마음입니다: want 기대돼요 · avoid 걱정돼요 · unsure 모르겠어요.
 - type은 질문 유형입니다: conflict 차이 확인 · opportunity 기회 확인 · depth 깊이 확인 · prevent 미리 확인 · explore 탐색.
 - JSON 하나로만 답합니다: {"questions": [{"card_id": "...", "text": "..."}]} (요청한 card_id마다 하나씩)"""
-
-
-_TAG = re.compile(r"<(?=/?(?:공고|구직자 메모|들은 답)>)")
-
-
-def _esc(s: str) -> str:
-    # 자료 안의 태그 열기·닫기만 막고, 그 밖의 꺾쇠("서류전형 > 1차")는 원문 그대로 둔다.
-    return _TAG.sub("‹", s)
-
-
-def _dump(v: object) -> str:
-    return _esc(json.dumps(v, ensure_ascii=False, indent=1))
 
 
 def user_message(req: FirstRequest, only: list[str] | None = None, issues: dict[str, list[str]] | None = None) -> str:
