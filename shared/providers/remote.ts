@@ -13,6 +13,8 @@ export interface RemoteConfig {
   key?: string
   /** 운영(Production)이면 true — 키가 없으면 부르지 않는다. 로컬·Preview 는 키 없이도 부른다(D-227) */
   requireKey?: boolean
+  /** Vercel 배포 보호를 넘는 값(x-vercel-protection-bypass). 로그·오류에 싣지 않는다 */
+  bypassSecret?: string
   /** 시험용. 없으면 부를 때의 전역 fetch */
   fetch?: typeof fetch
 }
@@ -111,6 +113,7 @@ async function post(config: RemoteConfig, path: string, body: unknown, signal: A
   if (config.requireKey && !config.key) throw new RemoteError('not_configured')
   const headers: Record<string, string> = { 'Content-Type': 'application/json; charset=utf-8', Accept: 'application/json' }
   if (config.key) headers.Authorization = `Bearer ${config.key}`
+  if (config.bypassSecret) headers['x-vercel-protection-bypass'] = config.bypassSecret
   const doFetch = config.fetch ?? globalThis.fetch
   const res = await doFetch(`${base}${path}`, { method: 'POST', headers, body: JSON.stringify(body), signal })
   if (!res.ok) {

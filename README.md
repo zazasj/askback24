@@ -32,15 +32,16 @@ npm run preview        # http://localhost:4173
 
 ### 실제 모드
 
-`npm run build` / `npm run dev`는 실제 모드다. 화면이 `POST /api/questions`(Vercel 함수, `api/questions.ts`)를 부르고, 12초 안에 답이 없거나 오류가 나면 미리 검수한 문장으로 대신 보여 준다. 로컬 `npm run dev`에는 서버 함수가 없으므로 늘 검수 문장으로 대체된다.
+`npm run build` / `npm run dev`는 실제 모드다. 화면이 `POST /api/questions`(Vercel 함수, `api/questions.ts`)를 부르고, 25초 안에 답이 없거나 오류가 나면 미리 검수한 문장으로 대신 보여 준다. 로컬 `npm run dev`에는 서버 함수가 없으므로 늘 검수 문장으로 대체된다.
 
 서버 함수 환경변수는 `.env.example`을 본다. 키는 `api/` 안에서 `process.env`로만 읽고, `VITE_`로 시작하는 변수에 넣지 않는다. `.env`는 커밋하지 않는다.
 
 | 변수 | 뜻 |
 |---|---|
-| `LLM_PROVIDER` | `mock`(기본) · `remote`(AI 담당 서버) · `ennoia`(자리만). 로컬에서는 모르는 값이면 `mock`. Vercel Preview·Production(`VERCEL_ENV`)에서는 `remote`가 아니면(빠짐·오타·`mock` 포함) 가짜 문장 대신 모두 검수 문장으로 낸다(D-282) |
-| `AI_ENDPOINT`, `AI_API_KEY` | `remote`일 때 AI 담당 서버 주소와 키. 아래 「실제 AI 연결」 |
-| `ENNOIA_API_KEY`, `ENNOIA_ENDPOINT` | 엔노이아 자리만 남아 있다. 엔노이아는 이번 범위에서 뺐고(D-110), 값이 있어도 부르지 않는다 |
+| `LLM_PROVIDER` | `mock`(기본) · `remote`(같은 배포의 Python AI 서버). 로컬에서는 모르는 값이면 `mock`. Vercel Preview·Production(`VERCEL_ENV`)에서는 `remote`가 아니면(빠짐·오타·`mock` 포함) 가짜 문장 대신 모두 검수 문장으로 낸다(D-282) |
+| `AI_ENDPOINT`, `AI_API_KEY` | `remote`일 때 AI 서버 주소와 키. `AI_ENDPOINT`가 비면 같은 배포의 `/api/ai`(`VERCEL_URL`)를 부른다. 아래 「실제 AI 연결」 |
+| `VERCEL_AUTOMATION_BYPASS_SECRET` | 배포 보호가 켜진 미리보기에서 같은 배포 호출을 통과시키는 값. 로그에 남기지 않는다 |
+| `ENNOIA_*` | 엔노이아는 Python AI 서버(`api/ai`)가 부른다. TS 서버 함수는 읽지 않는다 |
 
 ### 고용24 공공데이터 다시 받기
 
@@ -106,7 +107,7 @@ npm run check          # 위 세 가지(build · test:unit · test:e2e)를 차�
 4. staging 미리보기에서 질문을 만들어 본다. 먼저 Vercel 함수 로그에서 `[questions] … provider=remote … template=0`을 확인한다. `provider=unconfigured`면 `LLM_PROVIDER`가 `remote`로 들어가지 않은 것이다(오타·빠짐). `template=`이 0이 아니면 `issues=`(걸린 검사)와 `failure=`(오류·시간 초과)를 본다. 그다음 화면에서 ③ 제목 옆 "가짜 응답 모드" 태그가 없고 질문에 "검수 문장" 라벨이 붙지 않는지 본다.
 5. 문제가 없으면 Production 환경변수에도 같은 값을 넣고 main에 합친다. `LLM_PROVIDER=mock`으로 되돌리면 실제 빌드에서는 모두 검수 문장으로 나간다(가짜 문장을 AI 결과로 보이지 않게). 가짜 응답 모드로 돌리려면 `buildCommand`를 `npm run build:mock`으로 돌린다.
 
-AI 서버가 늦거나(9초) 오류를 내거나 응답 모양이 틀리면 우리 서버가 그 질문을 미리 검수한 문장(최종 판정은 단순 규칙)으로 대신하므로 화면은 멈추지 않는다. 로컬 `npm run dev`에는 서버 함수가 없어서 연결은 단위 시험(가짜 fetch, `api/_lib/remote.test.ts`)과 staging 미리보기로 확인한다.
+AI 서버가 늦거나(20초) 오류를 내거나 응답 모양이 틀리면 우리 서버가 그 질문을 미리 검수한 문장(최종 판정은 단순 규칙)으로 대신하므로 화면은 멈추지 않는다. 로컬 `npm run dev`에는 서버 함수가 없어서 연결은 단위 시험(가짜 fetch, `api/_lib/remote.test.ts`)과 staging 미리보기로 확인한다.
 
 명세의 예시 JSON(`docs/api-examples/` 6개)은 코드로 만든다. 규칙·데이터·가짜 공급자를 고친 뒤 아래 명령으로 다시 쓰고, 단위 시험(`scripts/apiExamples.test.ts`)이 파일과 지금 코드가 같은지 비교한다.
 
@@ -175,7 +176,7 @@ staging(개발) ──push──▶ Vercel 미리보기 ──세진 확인─�
 
 ```
 api/        Vercel 함수 (요청 검사 → shared/generate → 응답). 키는 여기서만 읽는다
-shared/     화면과 서버가 같이 쓰는 규칙·검사·생성·공급자(mock, remote = AI 담당 서버, ennoia 자리)
+shared/     화면과 서버가 같이 쓰는 규칙·검사·생성·공급자(mock, remote = 같은 배포의 Python AI 서버)
 data/       업무 카드, 모의 공고·분석, 회사 신호, 김00 이력서, 지원 내역 시드, 예시 구직자
 data/real/  고용24 오픈API에서 받은 값(직무정보·직업정보·공통코드·강소기업 통계)
 scripts/    고용24 오픈API 받기(fetch-work24, 화면·시험·빌드는 부르지 않는다) · AI API 예시 JSON 만들기(api-examples)

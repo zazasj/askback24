@@ -28,8 +28,8 @@ export const EXPERIENCE_MAX = 100
 export const HEARD_MAX = 100
 /** 공급자 판정 근거 길이 한도 */
 export const JUDGE_BASIS_MAX = 160
-/** 서버 함수 기본값. 화면은 12초를 기다리므로 그보다 짧게 */
-export const PROVIDER_TIMEOUT_MS = 9_000
+/** 서버 함수 기본값. 화면은 25초를 기다리므로 그보다 짧게 */
+export const PROVIDER_TIMEOUT_MS = 20_000
 
 export type GenerateErrorCode = 'unknown_posting'
 

@@ -9,8 +9,8 @@ export function POST(request: Request): Promise<Response> {
     LLM_PROVIDER: process.env.LLM_PROVIDER,
     AI_ENDPOINT: process.env.AI_ENDPOINT,
     AI_API_KEY: process.env.AI_API_KEY,
-    ENNOIA_API_KEY: process.env.ENNOIA_API_KEY,
-    ENNOIA_ENDPOINT: process.env.ENNOIA_ENDPOINT,
     VERCEL_ENV: process.env.VERCEL_ENV,
+    VERCEL_URL: process.env.VERCEL_URL,
+    VERCEL_AUTOMATION_BYPASS_SECRET: process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
   })
 }

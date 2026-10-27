@@ -6,7 +6,7 @@ import { providerFor } from './_lib/provider'
 import { parseQuestionsRequest } from './_lib/request'
 import { POST } from './questions'
 
-const KEY = 'sk-test-ENNOIA-0000-secret'
+const KEY = 'sk-test-KEYCHECK-0000-secret'
 const EXPERIENCE = PRESETS.A.experience
 const HEARD = '유지보수가 7할쯤 되고 신규는 프로젝트 들어갈 때만요'
 
@@ -72,12 +72,12 @@ describe('POST /api/questions', () => {
     expect(parsed.ok && parsed.value.mode === 'final' && parsed.value.review.impression).toEqual({ mood: 'normal' })
   })
 
-  it('LLM_PROVIDER=ennoia 인데 형식 미확인 → 검수 문장으로 200', async () => {
-    const res = await handleQuestions(post(firstBody), { LLM_PROVIDER: 'ennoia', ENNOIA_API_KEY: KEY }, memoryLog())
+  it('LLM_PROVIDER=ennoia(옛 값) → 로컬은 mock 으로 200', async () => {
+    const res = await handleQuestions(post(firstBody), { LLM_PROVIDER: 'ennoia', AI_API_KEY: KEY }, memoryLog())
     expect(res.status).toBe(200)
     const body = (await res.json()) as FirstQuestionsResponse
-    expect(body.questions.every((q) => q.source === 'template')).toBe(true)
-    expect(providerFor({ LLM_PROVIDER: 'ennoia' }).name).toBe('ennoia')
+    expect(body.questions).toHaveLength(5)
+    expect(providerFor({ LLM_PROVIDER: 'ennoia' }).name).toBe('mock')
     expect(providerFor({}).name).toBe('mock')
     expect(providerFor({ LLM_PROVIDER: 'unknown' }).name).toBe('mock')
   })
@@ -116,9 +116,9 @@ describe('API-05 응답·로그에 키·경험 한 줄·들은 답이 없다', (
   }
 
   it('API-05 로그에는 공급자 이름과 개수만(키·경험 원문·질문 문장 없음)', async () => {
-    for (const env of [{}, { LLM_PROVIDER: 'ennoia', ENNOIA_API_KEY: KEY }]) {
+    for (const env of [{}, { LLM_PROVIDER: 'ennoia', AI_API_KEY: KEY }]) {
       const { logs } = await run(firstBody, env)
-      expect(logs).toMatch(/^\[questions\] mode=first provider=(mock|ennoia) n=5 template=\d+ ms=\d+/)
+      expect(logs).toMatch(/^\[questions\] mode=first provider=mock n=5 template=\d+ ms=\d+/)
       expect(logs).not.toContain(KEY)
       expect(logs).not.toContain(EXPERIENCE)
       expect(logs).not.toContain('FastAPI')
@@ -127,7 +127,7 @@ describe('API-05 응답·로그에 키·경험 한 줄·들은 답이 없다', (
   })
 
   it('API-05 응답에 키가 없고, 경험 한 줄을 따로 되돌려 주는 필드가 없다', async () => {
-    for (const env of [{}, { LLM_PROVIDER: 'ennoia', ENNOIA_API_KEY: KEY }]) {
+    for (const env of [{}, { LLM_PROVIDER: 'ennoia', AI_API_KEY: KEY }]) {
       const { status, text } = await run(firstBody, env)
       expect(status).toBe(200)
       expect(text).not.toContain(KEY)
@@ -138,7 +138,7 @@ describe('API-05 응답·로그에 키·경험 한 줄·들은 답이 없다', (
   })
 
   it('API-05 최종 요청의 들은 답은 응답·로그 어디에도 없다', async () => {
-    const { text, logs } = await run(finalBody, { ENNOIA_API_KEY: KEY })
+    const { text, logs } = await run(finalBody, { AI_API_KEY: KEY })
     expect(text).not.toContain(HEARD)
     expect(logs).not.toContain(HEARD)
     expect(text).not.toContain(KEY)
@@ -146,7 +146,7 @@ describe('API-05 응답·로그에 키·경험 한 줄·들은 답이 없다', (
 
   it('API-05 함수 진입점은 키를 process.env 에서만 읽고 console 에도 남기지 않는다', async () => {
     vi.stubEnv('LLM_PROVIDER', 'ennoia')
-    vi.stubEnv('ENNOIA_API_KEY', KEY)
+    vi.stubEnv('AI_API_KEY', KEY)
     const seen: string[] = []
     const capture = (...args: unknown[]) => void seen.push(args.map(String).join(' '))
     const info = vi.spyOn(console, 'info').mockImplementation(capture)
@@ -158,7 +158,7 @@ describe('API-05 응답·로그에 키·경험 한 줄·들은 답이 없다', (
       expect(res.status).toBe(200)
       expect(text).not.toContain(KEY)
       const all = seen.join('\n')
-      expect(all).toContain('provider=ennoia')
+      expect(all).toContain('provider=mock')
       expect(all).not.toContain(KEY)
       expect(all).not.toContain(EXPERIENCE)
     } finally {

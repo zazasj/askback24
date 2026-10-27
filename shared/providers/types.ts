@@ -128,7 +128,7 @@ export interface AiErrorResponse {
 }
 
 export interface LlmProvider {
-  /** 로그용 이름(mock · remote · ennoia) */
+  /** 로그용 이름(mock · remote) */
   readonly name: string
   writeFirst(input: FirstDraftInput, signal: AbortSignal): Promise<Draft[]>
   /** 없으면 단순 규칙으로 판정한다 */
