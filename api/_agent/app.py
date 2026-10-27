@@ -1,3 +1,4 @@
+import asyncio
 import hmac
 import os
 from collections.abc import Mapping
@@ -74,6 +75,17 @@ def create_app(env: Mapping[str, str] | None = None, llm: Llm | None = None) -> 
             return await run_first(body, llm, labels)
         except LlmError:
             raise ApiError(503, "unavailable", "model is not ready") from None
+
+    @router.post("/warmup")
+    async def warmup() -> dict:
+        # 첫 호출이 느린(약 17초) 모델을 미리 깨운다. 결과와 상관없이 200.
+        try:
+            await asyncio.wait_for(
+                llm.complete_json("fast", "JSON 한 개만 답한다.", '{"ok":true} 를 그대로 돌려줘', timeout_s=20.0), 20.0
+            )
+        except Exception:
+            return {"ok": False}
+        return {"ok": True}
 
     app.include_router(router)
     return app

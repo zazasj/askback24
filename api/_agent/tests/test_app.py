@@ -74,3 +74,26 @@ def test_unhandled_error_is_500_internal_without_content():
     assert r.status_code == 500
     assert r.json() == {"error": {"code": "internal", "message": "internal error"}}
     assert "SECRET" not in r.text
+
+
+def test_warmup_calls_fast_once_and_returns_ok():
+    from _agent.llm import FakeLlm
+
+    llm = FakeLlm([{"ok": True}])
+    r = TestClient(create_app({}, llm=llm)).post("/api/ai/v1/warmup")
+    assert r.status_code == 200 and r.json() == {"ok": True}
+    assert len(llm.calls) == 1 and llm.calls[0]["role"] == "fast" and llm.calls[0]["timeout_s"] == 20.0
+
+
+def test_warmup_failure_is_still_200_ok_false():
+    from _agent.llm import FakeLlm, LlmError
+
+    r = TestClient(create_app({}, llm=FakeLlm([LlmError("timeout")]))).post("/api/ai/v1/warmup")
+    assert r.status_code == 200 and r.json() == {"ok": False}
+
+
+def test_warmup_requires_bearer():
+    from _agent.llm import FakeLlm
+
+    r = TestClient(create_app({"AI_API_KEY": "k"}, llm=FakeLlm([{"ok": True}]))).post("/api/ai/v1/warmup")
+    assert r.status_code == 401

@@ -36,6 +36,7 @@ export const REMOTE_PATHS = {
   first: '/v1/first-questions',
   judge: '/v1/final-judgements',
   final: '/v1/final-questions',
+  warmup: '/v1/warmup',
 } as const
 
 export type RemoteErrorCode = 'not_configured' | 'http_status' | 'not_json' | 'bad_shape'
@@ -127,6 +128,11 @@ async function post(config: RemoteConfig, path: string, body: unknown, signal: A
   } catch {
     throw new RemoteError('not_json')
   }
+}
+
+/** 모델을 미리 깨우는 호출. 응답 내용은 보지 않는다(성공이면 끝). 실패는 예외 */
+export async function warmupRemote(config: RemoteConfig, signal: AbortSignal): Promise<void> {
+  await post(config, REMOTE_PATHS.warmup, {}, signal)
 }
 
 /** 바깥 모양({ "<key>": [...] })이 틀리면 전체를 대신하게 예외 */
