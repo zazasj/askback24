@@ -17,7 +17,9 @@
     "test:unit": "vitest run --passWithNoTests",
     "test:e2e": "playwright test",
     "screens": "playwright test e2e/screens.spec.ts",
-    "check": "npm run build && npm run test:unit && npm run test:e2e",
+    "test:py": "uv run --frozen pytest",
+    "py:lock": "uv lock && uv export --no-dev --no-hashes -o requirements.txt",
+    "check": "npm run build && npm run test:unit && npm run test:py && npm run test:e2e",
     "fetch:work24": "node --experimental-strip-types --no-warnings=ExperimentalWarning --env-file-if-exists=.env scripts/fetch-work24.ts",
     "api:examples": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/api-examples.ts",
     "docs:api-pdf": "node scripts/spec-pdf.cjs"

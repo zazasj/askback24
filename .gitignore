@@ -11,3 +11,6 @@ review/e2e-results.json
 .vercel
 *.log
 .cache
+.venv/
+__pycache__/
+.pytest_cache/

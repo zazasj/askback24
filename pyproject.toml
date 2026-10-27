@@ -1,0 +1,21 @@
+[project]
+name = "askback24-ai"
+version = "0.1.0"
+description = "askback24 면접 역질문 AI 서버(FastAPI + LangGraph)"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "langgraph",
+    "httpx",
+    "pydantic>=2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["api/_agent/tests"]
+asyncio_mode = "auto"
