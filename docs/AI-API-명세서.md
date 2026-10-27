@@ -2,7 +2,7 @@
 
 면접 역질문 서비스(askback24)가 AI 서버에 **질문 문장 쓰기**와 **1차 면접 답 판정**(1·2번), **공고 분석**과 **업무 카드 초안**(3·4번)을 요청하는 API입니다. 우리 서버(Vercel 함수)가 부르고, AI 파이프라인 담당이 AI 서버에 만듭니다. 질문 개수·순서·유형·근거는 우리 규칙이 정해 요청에 담고, AI 서버는 문장과 판정만 돌려줍니다.
 
-> AI 서버는 같은 Vercel 프로젝트의 Python 함수(`api/ai/index.py`, FastAPI + LangGraph)이고 LLM은 엔노이아입니다. 설계는 `docs/ai_agent/에이전트 설계 확정.md`(D-302~D-316). 답하는 시간은 2026-10-27 확정한 **목표 값**이고, 우리 서버 코드는 개발 1단계에서 이 값으로 바꿉니다(D-309).
+> AI 서버는 같은 Vercel 프로젝트의 Python 함수(`api/ai/index.py`, FastAPI + LangGraph)이고 LLM은 엔노이아입니다. 설계는 `docs/ai_agent/에이전트 설계 확정.md`(D-302~D-326). 답하는 시간은 2026-10-27 확정한 **목표 값**이고, 우리 서버 코드는 개발 1단계에서 이 값으로 바꿉니다(D-309).
 >
 > 기준: 우리 코드 `shared/providers/types.ts`(2026-10-27, staging). 배경·흐름·검사 규칙의 자세한 설명은 `docs/API-SPEC.md`, 요청·응답 원본 예시는 `docs/api-examples/` 6개(코드가 만든 값)에 있습니다. 회사·공고·인물은 시연용 가명입니다.
 
@@ -468,10 +468,10 @@ curl -X POST "{AI_ENDPOINT}/v1/final-questions" \
 
 | Body | 필수 | 타입 | 설명 |
 |---|---|---|---|
-| `posting` | Y | object | 공고 원문 한 건 전체(「공고 posting 필드」) + 회사를 찾을 `bizNo`(사업자등록번호, 시연은 없는 형식) |
+| `posting` | Y | object | 공고 원문 한 건 전체(「공고 posting 필드」). 실서비스의 실제 공고면 `bizNo`(사업자등록번호)를 더함(선택) |
 | `job` | Y | string | 직무 ID(예: `backend`). 이 직무의 업무 카드 사전(`data/cards.<job>.json`)과 비교 |
 
-회사 자료(국민연금·고용보험 EIS·강소기업·임금체불 명단(모의)·공고 등록 이력)는 요청에 담지 않습니다. AI 서버가 함께 올린 정적 파일(`data/company/`)에서 `bizNo`로 찾습니다.
+회사 자료는 요청에 담지 않습니다. AI 서버가 회사를 이 순서로 찾습니다: 서버 환경변수 `REAL_COMPANY_MAP`(시연 공고 번호 → 실제 회사, 팀 확인 전에는 비어 있음) → 공고의 `bizNo` → 시연 모의 값. 국민연금(data.go.kr 오픈API)과 EIS 빈칸(EIS Open API)은 실시간으로 부르고, 강소기업·EIS 업종 기준값·임금체불(모의)·공고 등록 이력은 함께 올린 `data/company/` 파일에서 읽습니다. 외부 API가 실패하면 그 신호만 뺍니다. **실제 이름·사업자번호는 응답에 넣지 않습니다.**
 
 ### 응답
 
@@ -491,11 +491,11 @@ curl -X POST "{AI_ENDPOINT}/v1/final-questions" \
 | `analysis.blanks[].evidence` | object | 있을 때만 `{ "field", "quote" }` |
 | `signals` | array | 켜진 회사 신호(켜는 규칙은 설계 확정 문서 2절 표) |
 | `signals[].kind` | string | `reposting` · `pension_flow` · `industry_baseline` · `small_giant` · `wage_arrears` |
-| `signals[].text` | string | 코드가 만든 사실 문장(숫자는 여기에만) |
+| `signals[].text` | string | 코드가 만든 사실 문장. 숫자는 여기에만, 실제 회사 값은 구간·방향만(예: 가입자 30~99명) |
 | `signals[].source` · `source_name` | string | `실제`·`모의`, 데이터 이름 |
 | `signals[].ask` | string | 신호 질문. 숫자·회사 평가 없음. 강소기업은 없음 |
 | `signals[].ask_source` | string | `ai`(검사 통과) · `template`(신호 종류별 검수 질문) |
-| `signals[].caveat` | string | 기준 시점·해석 한계(있을 때만) |
+| `signals[].caveat` | string | 기준 시점·해석 한계(있을 때만). 매핑된 실제 값이면 "실제 공공데이터 값을 시연용 가상 회사에 붙여 보여 줘요" |
 | `out_of_dictionary` | array | 사전에 없는 업무가 공고에 나온 곳 `{ "field", "quote", "note" }`(사전 보강 참고, 질문에 안 씀) |
 | `meta.graph_version` · `meta.model` · `meta.created_at` | string | 만든 그래프 버전 · 모델 · 시각 |
 
