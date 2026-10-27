@@ -1,4 +1,19 @@
 {
   "buildCommand": "npm run build:mock",
-  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/api/ai/(.*)",
+      "destination": "/api/ai"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "functions": {
+    "api/ai/index.py": {
+      "includeFiles": "{api/_agent/**,data/**}",
+      "maxDuration": 60
+    }
+  }
 }

@@ -28,8 +28,8 @@ export const EXPERIENCE_MAX = 100
 export const HEARD_MAX = 100
 /** 공급자 판정 근거 길이 한도 */
 export const JUDGE_BASIS_MAX = 160
-/** 서버 함수 기본값. 화면은 12초를 기다리므로 그보다 짧게 */
-export const PROVIDER_TIMEOUT_MS = 9_000
+/** 서버 함수 기본값. 화면은 25초를 기다리므로 그보다 짧게 */
+export const PROVIDER_TIMEOUT_MS = 20_000
 
 export type GenerateErrorCode = 'unknown_posting'
 
@@ -181,7 +181,7 @@ export async function generateFirst(req: FirstQuestionsRequest, options: Generat
     if (draft && typeof draft.text === 'string') {
       const text = draft.text.replace(/\s+/g, ' ').trim()
       // 근거는 늘 우리 규칙의 것(API-SPEC 18행). AI가 준 evidence는 읽지 않는다 — 다르면 "근거 보기"·basis·"공고에 없음"이 어긋남(A3-r1-03)
-      const found = checkFirstQuestion({ text, state: r.state, ...(r.evidence ? { evidence: r.evidence } : {}) }, posting)
+      const found = checkFirstQuestion({ text, state: r.state, has_exp: r.has_exp, ...(r.evidence ? { evidence: r.evidence } : {}) }, posting)
       if (!found.length) return toQuestion(r, rank, text, 'ai')
       issues.push(...found)
     }

@@ -251,3 +251,23 @@ describe('문체: 질문 문장은 면접 비즈니스체, 주의할 답·좋은
     }
   })
 })
+
+describe('경험 한 줄이 없는 문항의 경험 표현(experience_claim)', () => {
+  const text = '제가 온콜을 해 봤는데, 이 팀에서는 신입도 들어가나요?'
+
+  it('has_exp false 이면 1인칭 경험 표현이 탈락', () => {
+    expect(checkFirstQuestion({ text, state: 'inferred', has_exp: false }, OO)).toEqual(['experience_claim'])
+  })
+
+  it('has_exp true 이면 통과', () => {
+    expect(checkFirstQuestion({ text, state: 'inferred', has_exp: true }, OO)).toEqual([])
+  })
+
+  it('has_exp 가 없으면(최종 등) 보지 않는다', () => {
+    expect(checkFirstQuestion({ text, state: 'inferred' }, OO)).toEqual([])
+  })
+
+  it('회사를 단정하는 말은 forbidden_word', () => {
+    expect(hasForbiddenWord('퇴사자가 많던데 이유가 무엇인가요?')).toBe(true)
+  })
+})

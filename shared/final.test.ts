@@ -4,7 +4,6 @@ import { ANALYSES, CARDS, FINAL_BOOK, PRESETS, REVIEW_EXAMPLE, getCard, getPosti
 import type { CardPick, Evidence, FinalPref, FinalQuestionsRequest, InterviewReview, PostingState, ReviewState } from './contract'
 import { generateFinal } from './generate'
 import { classifyFinal, finalCardTemplate, rankFinal, ruleJudgements, type Origin } from './finalRules'
-import { createEnnoiaProvider } from './providers/ennoia'
 import { createMockProvider } from './providers/mock'
 import type { FinalDraft, LlmProvider } from './providers/types'
 import { checkFinalQuestion } from './validate'
@@ -79,7 +78,7 @@ describe('API-07 최종 질문 순서 규칙', () => {
 
   // H1-06(세진 승인 2026-10-25): 걱정돼요 카드(BE07)는 구체적인 답이어도 단순 규칙에서 "확인됨"으로 빠지지 않고 아직 모름
   it('API-07 공급자가 없거나 실패하면 단순 규칙 판정(구체적 → 확인됨, 걱정돼요 카드는 아직 모름)과 검수 문장, 순서 규칙은 같다', async () => {
-    for (const provider of [undefined, createMockProvider({ fail: true }), createEnnoiaProvider({})]) {
+    for (const provider of [undefined, createMockProvider({ fail: true })]) {
       const res = await generateFinal(reqR04(), provider ? { provider } : {})
       expect(res.summary).toEqual({ confirmed: 2, mismatch: 0, still_unknown: 3, company_signal: 1 })
       expect(res.card_states.find((s) => s.card_id === 'BE07')?.basis).toBe(FINAL_BOOK.basis.asked_clear_avoid)

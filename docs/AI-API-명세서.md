@@ -1,29 +1,34 @@
 # AI API 명세서
 
-면접 역질문 서비스(askback24)가 AI 서버에 **질문 문장 쓰기**와 **1차 면접 답 판정**을 요청하는 API입니다. 우리 서버(Vercel 함수)가 부르고, AI 파이프라인 담당이 AI 서버에 만듭니다. 질문 개수·순서·유형·근거는 우리 규칙이 정해 요청에 담고, AI 서버는 문장과 판정만 돌려줍니다.
+면접 역질문 서비스(askback24)가 AI 서버에 **질문 문장 쓰기**와 **1차 면접 답 판정**(1·2번), **공고 분석**과 **업무 카드 초안**(3·4번)을 요청하는 API입니다. 우리 서버(Vercel 함수)가 부르고, AI 파이프라인 담당이 AI 서버에 만듭니다. 질문 개수·순서·유형·근거는 우리 규칙이 정해 요청에 담고, AI 서버는 문장과 판정만 돌려줍니다.
 
+> AI 서버는 같은 Vercel 프로젝트의 Python 함수(`api/ai/index.py`, FastAPI + LangGraph)이고 LLM은 엔노이아입니다. 설계는 `docs/ai_agent/에이전트 설계 확정.md`(D-302~D-326). 답하는 시간은 2026-10-27 확정한 **목표 값**이고, 우리 서버 코드는 개발 1단계에서 이 값으로 바꿉니다(D-309).
+>
 > 기준: 우리 코드 `shared/providers/types.ts`(2026-10-27, staging). 배경·흐름·검사 규칙의 자세한 설명은 `docs/API-SPEC.md`, 요청·응답 원본 예시는 `docs/api-examples/` 6개(코드가 만든 값)에 있습니다. 회사·공고·인물은 시연용 가명입니다.
 
 ## API 목록
 
 | 번호 | 이름 | Method · URL | 답하는 시간 |
 |---|---|---|---|
-| 1 | 1차 질문 문장 생성 | `POST {AI_ENDPOINT}/v1/first-questions` | 8초 안 |
-| 2-1 | 최종 면접: 1차 면접 답 판정 | `POST {AI_ENDPOINT}/v1/final-judgements` | 3초 안 권장 |
-| 2-2 | 최종 면접·처우 질문 문장 생성 | `POST {AI_ENDPOINT}/v1/final-questions` | 5초 안 권장 |
+| 1 | 1차 질문 문장 생성 | `POST {AI_ENDPOINT}/v1/first-questions` | 18초 안 |
+| 2-1 | 최종 면접: 1차 면접 답 판정 | `POST {AI_ENDPOINT}/v1/final-judgements` | 8초 안 |
+| 2-2 | 최종 면접·처우 질문 문장 생성 | `POST {AI_ENDPOINT}/v1/final-questions` | 10초 안 |
+| 3 | 공고 분석 (카드 상태·처우 빈칸·회사 신호) | `POST {AI_ENDPOINT}/v1/posting-analysis` | 함수 한도 안(공고당 한 번, 결과 저장) |
+| 4 | 업무 카드 초안 | `POST {AI_ENDPOINT}/v1/card-drafts` | 함수 한도 안(직무당 한 번, 사람 검수) |
+| 내부 | 모델 미리 깨우기(화면을 열 때 우리 서버가 부름, 요청 본문 없음) | `POST {AI_ENDPOINT}/v1/warmup` | 15초 안, 200 `{"ok": true 또는 false}` |
 
-최종 면접은 2-1 → (우리 규칙이 질문 순서 결정) → 2-2 순서로 두 번 부릅니다.
+최종 면접은 2-1 → (우리 규칙이 질문 순서 결정) → 2-2 순서로 두 번 부릅니다. 화면이 지금 쓰는 것은 1·2번이고, 3·4번은 지금 개발자가 부르며 나중에 화면이 필요하면 우리 서버가 대신 부릅니다.
 
 ## 공통
 
 | 항목 | 값 |
 |---|---|
 | Method | `POST` |
-| URL (운영) | `{AI_ENDPOINT}/v1/<호출>` — `AI_ENDPOINT`는 AI 담당이 정한 주소(예: `https://ai.example.com`). **https만** 부릅니다 |
+| URL (운영) | `{AI_ENDPOINT}/v1/<호출>` — `AI_ENDPOINT`는 같은 배포의 `https://<배포 주소>/api/ai`(비어 있으면 `https://${VERCEL_URL}/api/ai`). **https만** 부릅니다. 미리보기 배포에서는 `x-vercel-protection-bypass` 머리글을 함께 보냅니다 |
 | URL (테스트) | 로컬 시험은 `http://localhost:<port>` · `http://127.0.0.1:<port>`도 됩니다 |
 | `Authorization` | `Bearer {AI_API_KEY}` — 키는 별도 전달(우리 서버 환경변수에만 둠). 운영에서 키가 없으면 우리 서버가 부르지 않습니다 |
 | `Content-Type` | `application/json; charset=utf-8` (응답도 UTF-8 JSON 하나, 한글 그대로) |
-| 시간 제한 | 우리 서버는 요청 하나에 **9초**에 끊고 다시 부르지 않습니다. 최종은 2-1과 2-2가 9초를 나눠 씁니다 |
+| 시간 제한 | 우리 서버는 요청 하나에 **20초**에 끊고 다시 부르지 않습니다. 최종은 2-1과 2-2가 20초를 나눠 씁니다(8초 + 10초 권장). AI 서버는 검사에 걸린 문항만, 자기 몫의 시간에 여유가 있으면 한 번 더 써도 됩니다 |
 | 개인정보 | 요청·응답 본문을 저장·기록·학습에 쓰지 않습니다. 로그에는 `card_id`/`key`, 글자 수, 처리 시간, 모델 이름만 남깁니다. 경험 한 줄(`experience`)과 들은 답(`heard`)은 특히 저장하지 않습니다 |
 
 ### 오류
@@ -156,7 +161,7 @@ curl -X POST "{AI_ENDPOINT}/v1/first-questions" \
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| `questions` | array | 요청 `items`마다 하나씩, 순서·개수 그대로 |
+| `questions` | array | 요청 `items` 순서대로, 검사를 통과한 문항만(빠진 문항은 우리 서버가 검수 문장으로 채움) |
 | `questions[].card_id` | string | 요청의 `card_id` 그대로. 필수 |
 | `questions[].text` | string | 질문 문장(10~260자, 면접 비즈니스체). 필수 |
 | `questions[].evidence` | object | 선택. 돌려준다면 요청 값 그대로(`null`도 됨). 우리 서버는 요청의 근거를 씀 |
@@ -450,9 +455,89 @@ curl -X POST "{AI_ENDPOINT}/v1/final-questions" \
 | `probation` | 수습 |
 | `onsite` | 상주 근무 조건 |
 
+## 3. 공고 분석 API
+
+공고 한 건을 업무 카드 사전과 비교해 카드마다 공고 상태·근거·이유를 붙이고, 처우 빈칸과 회사 신호(신호 질문 포함)를 만듭니다. 공고당 한 번 돌려 결과를 저장합니다(지금은 `data/analysis/<공고>.json`·`data/signals.json`에 커밋). 질문 순서는 정하지 않습니다 — 순서는 우리 규칙이 상태로 계산합니다.
+
+### 요청
+
+| 항목 | 값 |
+|---|---|
+| Method | `POST` |
+| URL | `{AI_ENDPOINT}/v1/posting-analysis` |
+| `Authorization` | `Bearer {AI_API_KEY}` |
+
+| Body | 필수 | 타입 | 설명 |
+|---|---|---|---|
+| `posting` | Y | object | 공고 원문 한 건 전체(「공고 posting 필드」). 실서비스의 실제 공고면 `bizNo`(사업자등록번호)를 더함(선택) |
+| `job` | Y | string | 직무 ID(예: `backend`). 이 직무의 업무 카드 사전(`data/cards.<job>.json`)과 비교 |
+
+회사 자료는 요청에 담지 않습니다. AI 서버가 회사를 이 순서로 찾습니다: 서버 환경변수 `REAL_COMPANY_MAP`(시연 공고 번호 → 실제 회사, 팀 확인 전에는 비어 있음) → 공고의 `bizNo` → 시연 모의 값. 국민연금(data.go.kr 오픈API)과 EIS 빈칸(EIS Open API)은 실시간으로 부르고, 강소기업·EIS 업종 기준값·임금체불(모의)·공고 등록 이력은 함께 올린 `data/company/` 파일에서 읽습니다. 외부 API가 실패하면 그 신호만 뺍니다. **실제 이름·사업자번호는 응답에 넣지 않습니다.**
+
+### 응답
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `analysis.wantedAuthNo` | string | 요청 공고 번호 |
+| `analysis.cards` | array | 사전의 카드마다 하나 |
+| `analysis.cards[].card_id` | string | 사전에 있는 카드 ID |
+| `analysis.cards[].state` | string | `explicit` · `inferred` · `vague` · `absent` |
+| `analysis.cards[].evidence` | object | `absent`가 아니면 `{ "field", "quote" }` — `quote`는 `posting[field]` 원문의 글자 그대로 일부(근거 칸 8개 중) |
+| `analysis.cards[].reason` | string | 화면 말풍선. 과정이 아니라 확인해 볼 이유(해요체) |
+| `analysis.cards[].needs_review` | boolean | 독립 2회 판정이 엇갈려 사람이 볼 카드 |
+| `analysis.blanks` | array | 처우 빈칸(코드로 만듦) |
+| `analysis.blanks[].topic` | string | `sal` · `workHours` · `probation` · `onsite` |
+| `analysis.blanks[].status` | string | `missing`(공고에 없음) · `vague`(모호한 표현) · `check`(적혀 있지만 구성 확인 필요) |
+| `analysis.blanks[].label` · `basis` · `question` | string | 근로조건 이름 · 그렇게 본 까닭 · 검수 처우 질문 |
+| `analysis.blanks[].evidence` | object | 있을 때만 `{ "field", "quote" }` |
+| `signals` | array | 켜진 회사 신호(켜는 규칙은 설계 확정 문서 2절 표) |
+| `signals[].kind` | string | `reposting` · `pension_flow` · `industry_baseline` · `small_giant` · `wage_arrears` |
+| `signals[].text` | string | 코드가 만든 사실 문장. 숫자는 여기에만, 실제 회사 값은 구간·방향만(예: 가입자 30~99명) |
+| `signals[].source` · `source_name` | string | `실제`·`모의`, 데이터 이름 |
+| `signals[].ask` | string | 신호 질문. 숫자·회사 평가 없음. 강소기업은 없음 |
+| `signals[].ask_source` | string | `ai`(검사 통과) · `template`(신호 종류별 검수 질문) |
+| `signals[].caveat` | string | 기준 시점·해석 한계(있을 때만). 매핑된 실제 값이면 "실제 공공데이터 값을 시연용 가상 회사에 붙여 보여 줘요" |
+| `out_of_dictionary` | array | 사전에 없는 업무가 공고에 나온 곳 `{ "field", "quote", "note" }`(사전 보강 참고, 질문에 안 씀) |
+| `meta.graph_version` · `meta.model` · `meta.created_at` | string | 만든 그래프 버전 · 모델 · 시각 |
+
+## 4. 업무 카드 초안 API
+
+직무 하나의 업무 카드 사전 **초안**을 만듭니다. NCS 능력단위 연결은 규칙이, 카드 글은 LLM이 쓰고, 사람이 검수해 `data/cards.<job>.json`으로 커밋합니다. 응답을 저장하지 않습니다.
+
+### 요청
+
+| 항목 | 값 |
+|---|---|
+| Method | `POST` |
+| URL | `{AI_ENDPOINT}/v1/card-drafts` |
+| `Authorization` | `Bearer {AI_API_KEY}` |
+
+| Body | 필수 | 타입 | 설명 |
+|---|---|---|---|
+| `job` | Y | string | 새 직무 ID(예: `frontend`) |
+| `job_label` | Y | string | 직무 이름(예: 프론트엔드 개발자) |
+| `ncs_subcategories` | Y | array | NCS 세분류 코드 목록(예: 응용SW엔지니어링 `20010202`) |
+| `job_dictionary_code` | N | string | 한국직업사전 세세분류 코드(수행직무 문구를 붙일 때) |
+| `max_cards` | N | number | 묶은 뒤 카드 수 상한(기본 15) |
+
+### 응답
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `candidates` | array | 규칙이 만든 카드 후보(능력단위 하나에 하나) |
+| `candidates[].ablt_unit` · `unit` · `subcategory` | string | 능력단위 코드 · 이름 · 세분류 이름 |
+| `candidates[].level` | number | 능력단위 수준(알 수 있을 때). 신입과 먼 수준은 `high_level: true` 표시만 |
+| `candidates[].used_in` | string | 묶인 카드 ID, 안 쓰였으면 `null` |
+| `cards` | array | 카드 초안(`shared/contract.ts` `CardDef` 모양: `id`·`label`·`plain`·`examples`·`ncs`·`posting_signals`·`questions`·`interpretation` …). 근무 방식 카드는 사람이 더함 |
+| `cards[].ncs[].ablt_unit` | string | 이 카드에 묶인 능력단위 코드(묶음 근거) |
+| `issues` | array | 검사에 걸린 곳 `{ "card_id", "rule" }`(금지어, 질문 틀에 "공고" 등) |
+| `meta.graph_version` · `meta.model` · `meta.created_at` | string | 만든 그래프 버전 · 모델 · 시각 |
+
+유형 이름·규칙표(`type_labels`·`gap_rules`)는 직무와 상관없어 초안에 넣지 않고 기존 사전의 것을 씁니다.
+
 ## 공고 posting 필드
 
-세 API 모두 공고 한 건을 그대로 보냅니다. 필드 이름은 고용24 채용정보 API 상세 명세를 따릅니다. 값은 모두 문자열이고(`draft`만 boolean), **빈 문자열은 공고에 적혀 있지 않다는 뜻**입니다.
+1·2·3번 API 모두 공고 한 건을 그대로 보냅니다. 필드 이름은 고용24 채용정보 API 상세 명세를 따릅니다. 값은 모두 문자열이고(`draft`만 boolean), **빈 문자열은 공고에 적혀 있지 않다는 뜻**입니다.
 
 | 필드 | 타입 | 설명 |
 |---|---|---|

@@ -13,7 +13,7 @@ import { REMOTE_PATHS, createRemoteProvider } from '../../shared/providers/remot
 import { buildApiExamples, type ApiExampleName } from '../../scripts/apiExamples.ts'
 import { POST } from '../questions.ts'
 import { handleQuestions, type Logger } from './handler.ts'
-import { UNCONFIGURED_WARNING, providerFor, type ServerEnv } from './provider.ts'
+import { UNCONFIGURED_WARNING, providerFor, remoteConfigFor, type ServerEnv } from './provider.ts'
 
 const root = fileURLToPath(new URL('../..', import.meta.url))
 const KEY = 'sk-test-REMOTE-0000-secret'
@@ -313,7 +313,7 @@ describe('A3-r2-01 preview·production 에서 LLM_PROVIDER 가 remote 가 아니
     ['없음', undefined],
     ["'Remote'(오타)", 'Remote'],
     ["'mock'", 'mock'],
-    ["'ennoia'", 'ennoia'],
+    ["'ennoia'(옛 값)", 'ennoia'],
   ]
 
   for (const VERCEL_ENV of ['preview', 'production']) {
@@ -356,7 +356,7 @@ describe('A3-r2-01 preview·production 에서 LLM_PROVIDER 가 remote 가 아니
         if (LLM_PROVIDER) env.LLM_PROVIDER = LLM_PROVIDER
         expect(providerFor(env).name, `${VERCEL_ENV} × ${LLM_PROVIDER}`).toBe('mock')
       }
-      expect(providerFor({ LLM_PROVIDER: 'ennoia', ...(VERCEL_ENV ? { VERCEL_ENV } : {}) }).name).toBe('ennoia')
+      expect(providerFor({ LLM_PROVIDER: 'ennoia', ...(VERCEL_ENV ? { VERCEL_ENV } : {}) }).name).toBe('mock')
     }
     for (const VERCEL_ENV of ['preview', 'production']) expect(providerFor({ LLM_PROVIDER: 'remote', VERCEL_ENV }).name).toBe('remote')
   })
@@ -465,7 +465,7 @@ describe('AS-07 키는 api/ 에서만 읽고, 기본값·배포 설정은 그대
     expect(providerFor({}).name).toBe('mock')
     expect(providerFor({ AI_ENDPOINT: ENDPOINT, AI_API_KEY: KEY }).name).toBe('mock')
     expect(providerFor({ LLM_PROVIDER: 'remote' }).name).toBe('remote')
-    expect(providerFor({ LLM_PROVIDER: 'ennoia' }).name).toBe('ennoia')
+    expect(providerFor({ LLM_PROVIDER: 'ennoia' }).name).toBe('mock')
     const vercel = JSON.parse(readFileSync(join(root, 'vercel.json'), 'utf8')) as { buildCommand?: string }
     expect(vercel.buildCommand).toBe('npm run build:mock')
     const envExample = readFileSync(join(root, '.env.example'), 'utf8')
@@ -473,5 +473,45 @@ describe('AS-07 키는 api/ 에서만 읽고, 기본값·배포 설정은 그대
     expect(envExample).toMatch(/^AI_ENDPOINT=$/m)
     expect(envExample).toMatch(/^AI_API_KEY=$/m)
     expect(envExample).not.toMatch(/^VITE_.*(?:KEY|ENDPOINT)/m)
+  })
+})
+
+// 같은 배포의 Python AI 서버: 기본 주소와 보호 우회 머리글
+describe('같은 배포의 AI 서버 기본 주소·보호 우회', () => {
+  const FIRST_URL = 'https://abc.vercel.app/api/ai/v1/first-questions'
+  const firstInput = { cards: [], experience: '' } as never
+
+  async function callFirst(env: ServerEnv) {
+    const calls = stubFetch((path, body) => exampleServer(path.replace(/^\/api\/ai/, ''), body))
+    await providerFor(env).writeFirst(firstInput, new AbortController().signal)
+    return calls
+  }
+
+  it('AI_ENDPOINT 가 비고 VERCEL_URL 이 있으면 https://<VERCEL_URL>/api/ai 를 부른다', async () => {
+    const calls = await callFirst({ LLM_PROVIDER: 'remote', VERCEL_URL: 'abc.vercel.app' })
+    expect(calls.map((c) => c.url)).toEqual([FIRST_URL])
+  })
+
+  it('AI_ENDPOINT 가 있으면 VERCEL_URL 보다 먼저 쓴다', async () => {
+    const calls = await callFirst({ LLM_PROVIDER: 'remote', AI_ENDPOINT: ENDPOINT, VERCEL_URL: 'abc.vercel.app' })
+    expect(calls.map((c) => c.url)).toEqual([`${BASE}${REMOTE_PATHS.first}`])
+  })
+
+  it('VERCEL_AUTOMATION_BYPASS_SECRET 이 있으면 x-vercel-protection-bypass 머리글, 없으면 없음', async () => {
+    const withSecret = await callFirst({ LLM_PROVIDER: 'remote', VERCEL_URL: 'abc.vercel.app', VERCEL_AUTOMATION_BYPASS_SECRET: 's' })
+    expect(withSecret[0]?.headers.get('x-vercel-protection-bypass')).toBe('s')
+    const without = await callFirst({ LLM_PROVIDER: 'remote', VERCEL_URL: 'abc.vercel.app' })
+    expect(without[0]?.headers.has('x-vercel-protection-bypass')).toBe(false)
+  })
+
+  it('remoteConfigFor: 운영만 키 필수, 주소·키·우회값을 그대로 옮긴다', () => {
+    expect(remoteConfigFor({ VERCEL_URL: 'abc.vercel.app', AI_API_KEY: 'k', VERCEL_ENV: 'production', VERCEL_AUTOMATION_BYPASS_SECRET: 's' })).toEqual({
+      endpoint: 'https://abc.vercel.app/api/ai',
+      key: 'k',
+      requireKey: true,
+      bypassSecret: 's',
+    })
+    expect(remoteConfigFor({}).endpoint).toBeUndefined()
+    expect(remoteConfigFor({ VERCEL_ENV: 'preview' }).requireKey).toBe(false)
   })
 })

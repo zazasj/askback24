@@ -3,7 +3,6 @@ import { PRESETS } from './catalog'
 import type { FirstQuestionsRequest, Question } from './contract'
 import { GenerateError, generateFirst, type GenerateReport } from './generate'
 import { createMockProvider, experienceSentence } from './providers/mock'
-import { createEnnoiaProvider } from './providers/ennoia'
 import type { Draft, FirstDraftInput, LlmProvider } from './providers/types'
 import { pickTop5 } from './rules'
 import { ANALYSES, getAnalysis, getCard } from './catalog'
@@ -119,8 +118,8 @@ describe('API-04 공급자 예외·시간 초과 → 검수 문장(source: templ
     expect(res.questions.every((q) => q.source === 'template')).toBe(true)
   })
 
-  it('엔노이아 자리는 아직 부르면 예외 → 검수 문장', async () => {
-    const res = await generateFirst(reqA(), { provider: createEnnoiaProvider({ key: 'test-key-123', endpoint: 'https://example.com' }) })
+  it('공급자가 늘 실패하면 검수 문장', async () => {
+    const res = await generateFirst(reqA(), { provider: createMockProvider({ fail: true }) })
     expect(res.questions.every((q) => q.source === 'template')).toBe(true)
   })
 

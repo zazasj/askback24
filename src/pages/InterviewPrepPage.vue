@@ -10,6 +10,7 @@ import { useRoute } from 'vue-router'
 import { PRESETS, getAnalysis, getPosting, getSignals, type PresetKey } from '@shared/catalog'
 import type { Mode } from '@shared/contract'
 import NotFoundContent from '@/components/ui/NotFoundContent.vue'
+import { warmUpOnce } from '@/api/warmup'
 import { useDemoStore } from '@/stores/demo'
 import { useDemoToolActions, type DemoToolAction } from '@/stores/demoTools'
 import { usePostingIntroStore } from '@/stores/postingIntro'
@@ -202,6 +203,7 @@ async function focusStepHeading(): Promise<void> {
 
 watch([step, mode], () => void focusStepHeading())
 onMounted(() => {
+  warmUpOnce()
   // 앱 안에서 들어왔을 때만(S1 버튼이 사라짐). 주소로 처음 열면 초점은 문서 처음 그대로
   if (typeof (window.history.state as { back?: unknown } | null)?.back === 'string') void focusStepHeading()
 })
