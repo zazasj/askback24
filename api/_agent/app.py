@@ -2,7 +2,6 @@ import asyncio
 import hmac
 import logging
 import os
-import time
 from collections.abc import Mapping
 
 from fastapi import APIRouter, Depends, FastAPI, Request
@@ -14,7 +13,7 @@ from pathlib import Path
 
 from .checks import load_card_labels
 from .errors import ApiError
-from .graphs.first import run_first
+from .graphs.first import FirstAgent
 from .llm import Llm, LlmError, llm_from_env
 from .schemas import FirstRequest, FirstResponse
 
@@ -57,6 +56,7 @@ def create_app(env: Mapping[str, str] | None = None, llm: Llm | None = None) -> 
     env = os.environ if env is None else env
     llm = llm or llm_from_env(env)
     labels = load_card_labels(Path(__file__).resolve().parents[2])
+    first_agent = FirstAgent(llm, labels)  # 그래프는 앱이 뜰 때 한 번만 compile
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
     @app.exception_handler(ApiError)
@@ -86,12 +86,10 @@ def create_app(env: Mapping[str, str] | None = None, llm: Llm | None = None) -> 
 
     @router.post("/first-questions")
     async def first_questions(body: FirstRequest) -> FirstResponse:
-        started = time.monotonic()
         try:
-            return await run_first(body, llm, labels)
-        except LlmError as e:
-            ms = int((time.monotonic() - started) * 1000)
-            logging.getLogger("askback24.ai").info("[ai] first unavailable code=%s ms=%d", e.code, ms)
+            return await first_agent.run(body)
+        except LlmError:
+            # 로그 한 줄은 LoopAgent 가 남겼다.
             raise ApiError(503, "unavailable", "model is not ready") from None
 
     @router.post("/warmup")
