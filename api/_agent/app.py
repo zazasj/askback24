@@ -7,7 +7,13 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from pathlib import Path
+
+from .checks import load_card_labels
 from .errors import ApiError
+from .graphs.first import run_first
+from .llm import Llm, LlmError, llm_from_env
+from .schemas import FirstRequest, FirstResponse
 
 PREFIX = "/api/ai/v1"
 _HTTP_CODES = {404: "not_found", 405: "method_not_allowed"}
@@ -32,8 +38,10 @@ def _make_auth(env: Mapping[str, str]):
     return check_key
 
 
-def create_app(env: Mapping[str, str] | None = None) -> FastAPI:
+def create_app(env: Mapping[str, str] | None = None, llm: Llm | None = None) -> FastAPI:
     env = os.environ if env is None else env
+    llm = llm or llm_from_env(env)
+    labels = load_card_labels(Path(__file__).resolve().parents[2])
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
     @app.exception_handler(ApiError)
@@ -59,6 +67,13 @@ def create_app(env: Mapping[str, str] | None = None) -> FastAPI:
     @router.get("/health")
     def health() -> dict:
         return {"ok": True, "service": "askback24-ai"}
+
+    @router.post("/first-questions")
+    async def first_questions(body: FirstRequest) -> FirstResponse:
+        try:
+            return await run_first(body, llm, labels)
+        except LlmError:
+            raise ApiError(503, "unavailable", "model is not ready") from None
 
     app.include_router(router)
     return app
