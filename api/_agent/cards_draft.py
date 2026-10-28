@@ -18,7 +18,8 @@ from .schemas import CardDraftRequest, CardDraftResponse
 
 ROOT = Path(__file__).resolve().parents[2]
 CLI_DEADLINE_S = 180.0
-# 한 번 부르는 상한도 전체 한도에 맞춰 늘린다(묶기 호출이 45초를 넘길 수 있음). 다시 쓰기 몫 10초를 남긴다.
+# 한 번 부르는 상한도 전체 한도에 맞춰 늘린다(묶기 호출이 45초를 넘길 수 있음). 10초만 남기므로 호출이 상한까지 가면
+# 남은 시간이 다시 쓰기 기준(20초)에 못 미쳐 다시 쓰기를 건너뛴다. 보통은 그보다 일찍 끝난다.
 LLM_HEADROOM_S = 10.0
 
 
@@ -50,10 +51,11 @@ def compare_section(book: list[dict], res: CardDraftResponse) -> str:
 def report(res: CardDraftResponse, compare: list[dict] | None) -> str:
     cands = res.candidates
     high = sum(1 for c in cands if c.high_level)
+    unknown = sum(1 for c in cands if c.level is None)
     L = ["# 업무 카드 초안 검수 보고서\n", "초안은 검수 전이에요. `data/`는 바꾸지 않았어요.\n"]
     L.append("## 출처\n\n" + "\n".join(f"- {k}: {v}" for k, v in res.meta.sources.items()))
     L.append(f"\n- 모델: {res.meta.model} / 만든 때: {res.meta.created_at}")
-    L.append(f"\n## 후보\n\n후보 {len(cands)}개, 수준 6 이상 {high}개")
+    L.append(f"\n## 후보\n\n후보 {len(cands)}개, 수준 6 이상 {high}개, 수준 모름 {unknown}개")
     L.append("\n## 카드와 묶인 능력단위\n")
     for c in res.cards:
         units = ", ".join(f"{n.unit}({n.ablt_unit})" for n in c.ncs) or "없음"
@@ -96,20 +98,24 @@ def main(argv: list[str] | None = None, root: Path = ROOT, env: Mapping[str, str
         except (OSError, ValueError, KeyError):
             print("비교할 사전을 읽지 못했어요")
             return 1
+    out = (root / args.out).resolve()
+    if out == (root / "data").resolve() or (root / "data").resolve() in out.parents:
+        print("data/ 안에는 쓰지 않아요. review/ 아래 경로를 쓰세요")  # 사전은 검수 뒤 사람이 옮긴다
+        return 1
     agent = CardsAgent(llm or llm_from_env(env), root, env, http=http, deadline_s=args.deadline,
                        llm_max_s=max(CARDS_LLM_MAX_S, args.deadline - LLM_HEADROOM_S))
     try:
         res = asyncio.run(agent.run(req))
     except (LlmError, ApiError) as e:
-        print(f"실패(code={getattr(e, 'code', 'error')})")
+        msg = f", {e.message}" if isinstance(e, ApiError) else ""
+        print(f"실패(code={getattr(e, 'code', 'error')}{msg})")
         return 1
-    except SourceError:
-        print("실패(code=source)")
+    except SourceError as e:
+        print(f"실패(code={e.code})")
         return 1
     except Exception as e:  # 글에 키나 응답이 섞일 수 있어 종류만 남긴다
         print(f"실패(code={type(e).__name__})")
         return 1
-    out = root / args.out
     out.mkdir(parents=True, exist_ok=True)
     (out / f"{args.job}.json").write_text(json.dumps(res.model_dump(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     (out / f"{args.job}.report.md").write_text(report(res, book), encoding="utf-8")

@@ -32,7 +32,7 @@ def test_report_lists_sources_and_issues(tmp_path):
     assert cards_draft.main([*ARGS, "--out", str(tmp_path)], root=ROOT, env={}, llm=llm) == 0
     md = (tmp_path / "backend.report.md").read_text(encoding="utf-8")
     assert "모의" in md and "실제 스냅숏" in md
-    assert "후보 12개" in md and "수준 6 이상 0개" in md
+    assert "후보 12개" in md and "수준 6 이상 0개" in md and "수준 모름 12개" in md
     assert "question_mentions_posting" in md and "BA02" in md
     assert "카드이름1" in md and "2001020211" in md
     assert "안 쓰인 후보" in md and "20010202-mock-08" in md
@@ -59,3 +59,28 @@ def test_cli_raises_llm_call_cap_with_deadline(tmp_path):
     llm = FakeLlm([drafts(1)])
     assert cards_draft.main([*ARGS, "--out", str(tmp_path)], root=ROOT, env={}, llm=llm) == 0
     assert llm.calls[0]["timeout_s"] > 45
+
+
+def test_refuses_out_inside_data(capsys):
+    for out in ("data/x", "data", "review/../data/y"):
+        assert cards_draft.main([*ARGS, "--out", out], root=ROOT, env={}, llm=FakeLlm([drafts(1)])) == 1
+        assert "data/" in capsys.readouterr().out
+    assert not (ROOT / "data" / "x").exists()
+
+
+def test_failure_prints_api_error_message(tmp_path, capsys):
+    args = ["--job", "backend", "--job-label", "백엔드 개발자", "--ncs", "99999999", "--out", str(tmp_path)]
+    assert cards_draft.main(args, root=ROOT, env={}, llm=FakeLlm([])) == 1
+    assert "code=invalid_request, no units" in capsys.readouterr().out
+    assert not (tmp_path / "backend.json").exists()
+
+
+def test_compare_row_without_match(tmp_path):
+    book = tmp_path / "book.json"
+    book.write_text(
+        json.dumps({"cards": [{"id": "X1", "label": "없는 일", "ncs": [{"unit": "존재하지않는단위"}]}]}), encoding="utf-8"
+    )
+    code = cards_draft.main([*ARGS, "--compare", str(book), "--out", str(tmp_path / "o")], root=ROOT, env={}, llm=FakeLlm([drafts(1)]))
+    assert code == 0
+    row = next(l for l in (tmp_path / "o" / "backend.report.md").read_text(encoding="utf-8").splitlines() if "X1" in l)
+    assert "묶은 초안 카드 없음" in row and "후보에 없는 이름: 존재하지않는단위" in row
