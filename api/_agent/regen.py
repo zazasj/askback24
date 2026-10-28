@@ -1,0 +1,174 @@
+"""시연 공고 분석을 파이프라인으로 다시 만들어 후보와 비교 보고서를 쓴다(설계 §2 ①).
+기본은 review/ 에만 쓰고, --apply 일 때만 data/ 를 덮는다. 사람이 검수한 글은 후보에서도 지킨다."""
+import argparse
+import asyncio
+import json
+import os
+from collections.abc import Mapping
+from pathlib import Path
+
+import httpx
+
+from .errors import ApiError
+from .graphs.analysis import AnalysisAgent
+from .llm import Llm, LlmError, llm_from_env
+from .schemas import AnalysisRequest, AnalysisResponse, Signal
+
+ROOT = Path(__file__).resolve().parents[2]
+JOB = "backend"
+# kind 없는 지금 줄을 source_name 으로 종류에 맞춘다. 여기 없으면 파이프라인이 만들지 않는 뜻의 줄이다.
+_KIND_BY_SOURCE = {
+    "고용24 공고 이력": "reposting",
+    "국민연금 사업장 가입자 현황": "pension_flow",
+    "고용24 강소기업 정보": "small_giant",
+    "고용보험 통계(EIS)": "industry_baseline",
+}
+_WAGE_SOURCE = "임금체불 사업주 명단"
+
+
+def current_kind(line: dict) -> str | None:
+    name = line.get("source_name")
+    if name in _KIND_BY_SOURCE:
+        return _KIND_BY_SOURCE[name]
+    if name == _WAGE_SOURCE and "올라 있어요" in line.get("text", "") and "않아요" not in line.get("text", ""):
+        return "wage_arrears"
+    return None
+
+
+def merge_candidate(current: dict, fresh: AnalysisResponse) -> dict:
+    old_cards = {c["card_id"]: c for c in current.get("cards", [])}
+    cards = []
+    for c in fresh.analysis.cards:
+        if c.state == "absent":  # shared/rules.ts 가 파일에 없는 카드를 absent 로 본다
+            continue
+        row = c.model_dump(exclude_none=True, exclude={"needs_review"})
+        if "questions" in old_cards.get(c.card_id, {}):
+            row["questions"] = old_cards[c.card_id]["questions"]
+        cards.append(row)
+    old_blanks = {(b["topic"], b["status"]): b for b in current.get("blanks", [])}
+    blanks = []
+    for b in fresh.analysis.blanks:
+        kept = old_blanks.get((b.topic, b.status))
+        blanks.append(kept if kept else b.model_dump(exclude_none=True))
+    return {"wantedAuthNo": fresh.analysis.wantedAuthNo, "meta": fresh.meta.model_dump(), "cards": cards, "blanks": blanks}
+
+
+def merge_signals(current: list, fresh: list[Signal]) -> list:
+    out = [s.model_dump(exclude_none=True, exclude={"kind", "ask_source"}) for s in fresh]
+    out += [line for line in current if current_kind(line) is None]
+    return out
+
+
+def _by_id(cards: list[dict]) -> dict[str, dict]:
+    return {c["card_id"]: c for c in cards}
+
+
+def report_header() -> str:
+    return ("# 공고 분석 다시 만들기 비교 보고서\n\n"
+            "후보는 `data/`를 바꾸지 않았어요. 적용 전 `npm run check`를 돌리고, 깨지는 e2e는 SPEC-ISSUES에 적어요.\n")
+
+
+def report_section(wanted: str, current: dict, current_signals: list, fresh: AnalysisResponse, signals: list) -> str:
+    L = [f"\n## {wanted}\n"]
+    old, new = _by_id(current.get("cards", [])), _by_id([c.model_dump() for c in fresh.analysis.cards if c.state != "absent"])
+    sub: list[str] = []
+    state = [f"- {i}: {old[i]['state']} → {new[i]['state']}" for i in old if i in new and old[i]["state"] != new[i]["state"]]
+    ev = [f"- {i}: {old[i].get('evidence')} → {new[i].get('evidence')}" for i in old if i in new and old[i].get("evidence") != new[i].get("evidence")]
+    review = [f"- {c.card_id} ({c.state})" for c in fresh.analysis.cards if c.needs_review]
+    gone = [f"- {i}" for i in old if i not in new]
+    added = [f"- {i} ({new[i]['state']})" for i in new if i not in old]
+    ood = [f"- {o.field}: {o.quote} / {o.note}" for o in fresh.out_of_dictionary]
+    for title, rows in (("카드 상태 바뀜", state), ("근거 바뀜", ev), ("needs_review 카드", review),
+                        ("사라진 카드", gone), ("새 카드", added), ("out_of_dictionary", ood)):
+        sub.append(f"### {title}\n" + ("\n".join(rows) if rows else "- 없음"))
+    cur_kinds = {current_kind(x): x for x in current_signals if current_kind(x)}
+    new_kinds = {s.kind: s for s in fresh.signals}
+    sig_rows = [f"- 더해짐: {k}" for k in new_kinds if k not in cur_kinds] + [f"- 빠짐: {k}" for k in cur_kinds if k not in new_kinds]
+    sub.append("### 신호 더해짐·빠짐\n" + ("\n".join(sig_rows) if sig_rows else "- 없음"))
+    src = []
+    for k, s in new_kinds.items():
+        if k in cur_kinds and cur_kinds[k]["source"] != s.source:
+            tag = "배지 실제 → 모의" if (cur_kinds[k]["source"], s.source) == ("실제", "모의") else f"{cur_kinds[k]['source']} → {s.source}"
+            src.append(f"- {k}: {tag}")
+    sub.append("### 출처(실제·모의)\n" + ("\n".join(src) if src else "- 바뀜 없음"))
+    ob = {b["topic"]: b["status"] for b in current.get("blanks", [])}
+    nb = {b.topic: b.status for b in fresh.analysis.blanks}
+    blanks = [f"- {t}: {ob.get(t, '없음')} → {nb.get(t, '없음')}" for t in {**ob, **nb} if ob.get(t) != nb.get(t)]
+    sub.append("### 처우 빈칸 상태 바뀜\n" + ("\n".join(blanks) if blanks else "- 없음"))
+    return "\n".join(L) + "\n" + "\n\n".join(sub) + "\n"
+
+
+def _read(p: Path, default):
+    return json.loads(p.read_text(encoding="utf-8")) if p.is_file() else default
+
+
+def _write(p: Path, data) -> None:
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def load_env(root: Path) -> dict[str, str]:
+    # python-dotenv 없이 단순 KEY=VALUE 줄만 읽는다. 실제 환경변수가 우선한다.
+    env: dict[str, str] = {}
+    f = root / ".env"
+    if f.is_file():
+        for line in f.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                env[k.strip()] = v.strip().strip("'\"")
+    env.update(os.environ)
+    return env
+
+
+async def _run_all(agent: AnalysisAgent, postings: list[dict]) -> dict[str, AnalysisResponse | str]:
+    out: dict[str, AnalysisResponse | str] = {}
+    for p in postings:
+        try:
+            out[p["wantedAuthNo"]] = await agent.run(AnalysisRequest(posting=p, job=JOB))
+        except (LlmError, ApiError) as e:
+            out[p["wantedAuthNo"]] = getattr(e, "code", "error")
+    return out
+
+
+def main(argv: list[str] | None = None, root: Path = ROOT, env: Mapping[str, str] | None = None,
+         llm: Llm | None = None, http: httpx.AsyncClient | None = None) -> int:
+    ap = argparse.ArgumentParser(prog="analysis:regen")
+    ap.add_argument("--out", default="review/analysis-regen")
+    ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--only")
+    args = ap.parse_args(argv)
+    root = Path(root)
+    env = env if env is not None else load_env(root)
+    postings = [p for p in _read(root / "data/postings.json", []) if not args.only or p["wantedAuthNo"] == args.only]
+    if not postings:
+        print("대상 공고가 없어요")
+        return 1
+    agent = AnalysisAgent(llm or llm_from_env(env), root, env, http=http)
+    results = asyncio.run(_run_all(agent, postings))
+    cur_signals = _read(root / "data/signals.json", {})
+    out_dir = root / args.out
+    cand_signals, report, failed = {}, [report_header()], 0
+    for p in postings:
+        w, res = p["wantedAuthNo"], results[p["wantedAuthNo"]]
+        if isinstance(res, str):
+            failed += 1
+            report.append(f"\n## {w}\n\n- 실패(code={res}): 후보를 만들지 못했어요\n")
+            continue
+        current = _read(root / f"data/analysis/{w}.json", {"cards": [], "blanks": []})
+        cand = merge_candidate(current, res)
+        cand_signals[w] = merge_signals(cur_signals.get(w, []), res.signals)
+        _write(out_dir / "analysis" / f"{w}.json", cand)
+        report.append(report_section(w, current, cur_signals.get(w, []), res, cand_signals[w]))
+        if args.apply:
+            _write(root / f"data/analysis/{w}.json", cand)
+    _write(out_dir / "signals.json", cand_signals)
+    (out_dir / "report.md").write_text("\n".join(report), encoding="utf-8")
+    if args.apply and cand_signals:
+        _write(root / "data/signals.json", {**cur_signals, **cand_signals})
+    print(f"후보 {len(cand_signals)}건, 실패 {failed}건 -> {out_dir}")
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

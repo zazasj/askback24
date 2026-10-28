@@ -14,3 +14,4 @@ review/e2e-results.json
 .venv/
 __pycache__/
 .pytest_cache/
+review/analysis-regen/
