@@ -289,7 +289,7 @@ curl -X POST "{AI_ENDPOINT}/v1/final-judgements" \
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| `judgements` | array | 판정한 카드마다 하나. 판단이 어려운 카드는 빼도 됨(그 카드는 우리 단순 규칙으로 판정) |
+| `judgements` | array | 요청 `items` 순서대로, 검사를 통과한 판정만. 판단이 어려운 카드는 빼도 됨(빠진 카드는 우리 서버가 단순 규칙으로 판정) |
 | `judgements[].card_id` | string | 요청의 `card_id` 그대로. 필수 |
 | `judgements[].state` | string | `confirmed` · `mismatch` · `still_unknown`(「판정 상태」). 필수 |
 | `judgements[].basis` | string | 판정 근거 한 줄(1~160자, 해요체, 화면에 보임). 들은 답을 그대로 옮기지 않음. 필수 |
@@ -417,7 +417,7 @@ curl -X POST "{AI_ENDPOINT}/v1/final-questions" \
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| `questions` | array | 요청 `items`마다 하나씩, 순서·개수 그대로 |
+| `questions` | array | 요청 `items` 순서대로, 검사를 통과한 문항만(빠진 문항은 우리 서버가 검수 문장으로 채움) |
 | `questions[].key` | string | 요청의 `key` 그대로. 필수 |
 | `questions[].text` | string | 질문 문장(10~260자, 면접 비즈니스체). `cushion`이 있으면 맨 앞에 그대로. 필수 |
 | `questions[].evidence` | object | 선택. 돌려준다면 요청 값 그대로. 우리 서버는 요청의 근거를 씀 |
@@ -576,7 +576,7 @@ curl -X POST "{AI_ENDPOINT}/v1/final-questions" \
 | 규칙 | 우리 서버 검사 | 어기면 |
 |---|---|---|
 | 본문은 JSON 하나(설명 글·코드 울타리 없음) | 검사함 | 그 호출 전체 검수 문장 |
-| 요청 `items`마다 하나씩, `card_id`·`key` 그대로, 순서·개수 그대로 | 짝은 검사함 | 빠진 항목은 검수 문장, 요청에 없는 항목은 버림 |
+| 요청 `items`마다 하나씩, `card_id`·`key` 그대로, 요청 순서대로 통과한 것만 | 짝은 검사함 | 빠진 항목은 우리 서버가 검수 문장·단순 규칙으로 채움, 요청에 없는 항목은 버림 |
 | 문장 속 인용은 작은따옴표('…')만, 공고 원문과 **글자 그대로**(카드 이름 인용은 예외) | 검사함 | 그 문항 검수 문장 |
 | `state: "absent"` 항목에 "공고에 … 있던데/있는데"처럼 공고에 없는 업무를 전제하지 않음 | 이 꼴만 검사함 | 그 문항 검수 문장 |
 | 금지어(나이·결혼·출신·종교·임신·외모·가족·정치 성향, 회사를 깎아내리는 말) | 검사함 | 그 문항(판정은 그 카드) 검수 문장·단순 판정 |
