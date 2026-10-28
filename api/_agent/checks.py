@@ -107,3 +107,26 @@ def check_judgement(basis: str, state: str, heard: list[str]) -> list[str]:
     if any(p.search(b) for p in FORBIDDEN):
         issues.append("forbidden_word")
     return issues
+
+# 신호 질문은 회사를 평가하는 말도 막는다. 공용 FORBIDDEN(TS와 같은 목록)은 건드리지 않는다.
+SIGNAL_FORBIDDEN = [
+    re.compile(r"퇴사(?:가|율이?|자가?)\s*(?:많|높|잦)|이직률|사람이\s*(?:많이\s*)?(?:나가|그만)|자주\s*(?:그만|퇴사)"),
+    re.compile(r"체불(?:이|을|한)?\s*(?:있|하)|임금을?\s*안\s*주|문제\s*(?:있는|많은)\s*회사"),
+]
+
+
+def check_signal_ask(ask: str) -> list[str]:
+    """신호 질문 검사. Python에만 있다(TS는 실행 중에 신호 질문을 검사하지 않음). 숫자는 질문에 쓰지 않는다."""
+    t = squash(ask).strip()
+    if t == "":
+        return ["empty"]
+    issues: list[str] = []
+    if len(t) < TEXT_MIN:
+        issues.append("too_short")
+    if len(t) > TEXT_MAX:
+        issues.append("too_long")
+    if re.search(r"\d", t):
+        issues.append("has_number")
+    if any(p.search(t) for p in FORBIDDEN + SIGNAL_FORBIDDEN):
+        issues.append("forbidden_word")
+    return issues

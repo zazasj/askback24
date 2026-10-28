@@ -101,3 +101,6 @@ class FinalDraft(BaseModel):
 class FinalResponse(BaseModel):
     questions: list[FinalDraft]
     model: str
+
+
+SignalKind = Literal["reposting", "pension_flow", "industry_baseline", "small_giant", "wage_arrears"]

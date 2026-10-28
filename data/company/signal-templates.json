@@ -1,6 +1,6 @@
 {
   "meta": {
-    "note": "신호 종류별 문장 틀. 자리 {months} {count} {band} {direction} {rate} {net} {name} {year} {period}. ask_hint는 LLM에 보내는 숫자 없는 설명이고 template_ask는 LLM 질문이 규칙 검사에서 탈락했을 때 쓰는 검수 질문이다. caveat은 모의 값, caveat_mapped는 실제 공공데이터를 시연용 가상 회사에 붙인 값에 쓴다. 숫자는 모두 시연 값이다."
+    "note": "신호 종류별 문장 틀. 자리 {months} {count} {rate} {net} {name} {year} {period}. pension_flow는 퇴사가 입사보다 많을 때만 켜지므로 문장이 하나다. industry_baseline의 text_nation은 전국 행을 쓸 때의 문장이다. ask_hint는 LLM에 보내는 숫자 없는 설명이고 template_ask는 LLM 질문이 규칙 검사에서 탈락했을 때 쓰는 검수 질문이다. caveat은 모의 값, caveat_mapped는 실제 공공데이터를 시연용 가상 회사에 붙인 값에 쓴다. wage_arrears는 명단에 올라 있는 경우만 만든다. 숫자는 모두 시연 값이다."
   },
   "reposting": {
     "source_name": "고용24 공고 이력",
@@ -11,8 +11,7 @@
   },
   "pension_flow": {
     "source_name": "국민연금 사업장 가입자 현황",
-    "text": "{direction}",
-    "direction_out": "최근 12개월 퇴사 인원이 입사 인원보다 많아요",
+    "text": "최근 12개월 퇴사 인원이 입사 인원보다 많아요",
     "ask_hint": "최근 1년 사이 팀 구성에 변화가 있었을 수 있다는 점을 바탕으로, 신입이 적응하는 동안 받을 수 있는 도움을 돌려 묻는다",
     "template_ask": "최근 1년 사이 팀 구성에 변화가 있었다면, 신입은 적응하는 동안 어떤 도움을 받을 수 있나요?",
     "caveat": "{period} 기준 · 가입자 수 기준이라 실제와 다를 수 있어요",
@@ -21,6 +20,7 @@
   "industry_baseline": {
     "source_name": "고용보험 통계(EIS)",
     "text": "같은 업종·규모 사업장의 월 평균 상실률은 {rate}%, 순증은 {net}명이에요",
+    "text_nation": "전국 평균으로 보면 같은 업종·규모 사업장의 월 평균 상실률은 {rate}%, 순증은 {net}명이에요",
     "ask_hint": "업종 전체의 인원 흐름을 참고로 하되 이 회사를 평가하지 않고, 신입이 일하게 될 팀의 구성과 안정성을 돌려 묻는다",
     "template_ask": "팀원들이 함께 일한 기간은 보통 어느 정도이고, 신입은 누구에게 배우게 되나요?",
     "caveat": "회사와 상관없는 업종 기준값(추정)이에요. 이 회사가 높거나 낮다는 뜻이 아니에요"
@@ -30,13 +30,14 @@
     "text": "강소기업 명단에 '{name}'으로 {year}년에 올라 있어요",
     "ask_hint": null,
     "template_ask": null,
-    "caveat": "좋은 신호로만 보여 주고 질문으로 만들지 않아요"
+    "caveat": "좋은 신호로만 보여 주고 질문으로 만들지 않아요",
+    "caveat_mapped": "좋은 신호로만 보여 주고 질문으로 만들지 않아요. 실제 공공데이터 값을 시연용 가상 회사에 붙여 보여 줘요"
   },
   "wage_arrears": {
     "source_name": "임금체불 사업주 명단",
-    "text": "임금체불 명단공개 대상에는 올라 있지 않아요",
+    "text": "임금체불 명단공개 대상에 올라 있어요",
     "ask_hint": "급여 지급 시기와 방식을 확인하는 질문으로 돌려 묻는다",
     "template_ask": "급여 지급일과 지급 방식은 어떻게 되나요?",
-    "caveat": "명단은 체불로 유죄가 두 번 이상 확정된 일부 사업주만 공개해요. 명단에 없다고 체불이 없다는 뜻은 아니에요"
+    "caveat": "시연용 값이에요. 명단은 체불로 유죄가 두 번 이상 확정된 일부 사업주만 공개해요"
   }
 }
