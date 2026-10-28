@@ -68,7 +68,7 @@ export function parseCsv(text: string): string[][] {
 
 const num = (s: string | undefined): number => Number((s ?? '').replace(/,/g, '')) || 0
 
-/** 열 순서: 기준년월,업종코드,업종명,규모,시도,피보험자수,취득자수,상실자수. 머리 줄은 건너뛴다. nationLabel 은 시도 칸이 없는 전국 파일용 */
+/** 열 순서: 기준년월,업종코드,업종명,규모,시도,피보험자수,취득자수,상실자수. 머리 줄은 건너뛴다. sidoOverride 는 시도 칸이 없는 전국 파일용 */
 export function eisRowsFromCsv(text: string, sidoOverride?: string): EisRow[] {
   return parseCsv(text)
     .filter((c) => /^\d{4}-?\d{2}$/.test(c[0] ?? ''))
@@ -131,7 +131,7 @@ export function pickSmallGiants(
     const certs: { name: string; year: number }[] = []
     for (const r of [...giants, ...youth]) {
       const name = brandOf(r)
-      if (bizNoOf(r) !== biz || !name) continue
+      if (bizNoOf(r) !== biz || !name || !yearOf(r)) continue
       if (!certs.some((x) => x.name === name && x.year === yearOf(r))) certs.push({ name, year: yearOf(r) })
     }
     if (certs.length) out[no] = certs
@@ -184,4 +184,23 @@ export function youthRowsFromCsv(text: string): GiantRow[] {
   const [head, ...body] = parseCsv(text)
   if (!head) return []
   return body.map((cells) => Object.fromEntries(head.map((h, i) => [h, cells[i] ?? ''])))
+}
+
+/** 216L01 JSON 응답: 가장 긴 객체 배열을 회사 줄로 본다 */
+export function giantRowsFromJson(text: string): GiantRow[] {
+  let best: unknown[] = []
+  const walk = (v: unknown): void => {
+    if (Array.isArray(v)) {
+      if (v.length > best.length && v.every((x) => x && typeof x === 'object' && !Array.isArray(x))) best = v
+      v.forEach(walk)
+    } else if (v && typeof v === 'object') Object.values(v).forEach(walk)
+  }
+  try {
+    walk(JSON.parse(text.replace(/^\uFEFF/, '')))
+  } catch {
+    return []
+  }
+  return best.map((o) =>
+    Object.fromEntries(Object.entries(o as Record<string, unknown>).filter(([, x]) => typeof x === 'string' || typeof x === 'number').map(([k, x]) => [k, String(x).trim()])),
+  )
 }

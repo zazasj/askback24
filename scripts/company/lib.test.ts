@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EIS_SIZE_BANDS, eisBaseline, eisRowsFromCsv, pickSmallGiants, similarityWarnings, type EisRow } from './lib.ts'
+import { EIS_SIZE_BANDS, eisBaseline, giantRowsFromJson, eisRowsFromCsv, pickSmallGiants, similarityWarnings, type EisRow } from './lib.ts'
 
 const mk = (ym: string, over: Partial<EisRow> = {}): EisRow => ({ ym, ind: '58211', size: '5~29인', sido: '서울', insured: 100, gain: 5, loss: 10, ...over })
 const months = (): string[] => Array.from({ length: 12 }, (_, i) => `2025${String(i + 1).padStart(2, '0')}`)
@@ -48,6 +48,18 @@ describe('pickSmallGiants', () => {
     const json = JSON.stringify(out)
     expect(json).not.toContain('테스트실제')
     expect(json).not.toContain('0000000000')
+  })
+})
+
+describe('연도 없는 인증·JSON 원본', () => {
+  it('연도가 없는 인증은 뺀다', () => {
+    const map = { 'K-MOCK-0001': { name: '(주)테스트실제', bizNo: '0000000000' } }
+    expect(pickSmallGiants(map, [{ busiNo: '0000000000', sgBrandNm: '강소기업' }], [])).toEqual({})
+  })
+  it('JSON 응답에서 회사 줄을 읽는다', () => {
+    const rows = giantRowsFromJson('{"a":{"list":[{"busiNo":"1","sgBrandNm":"x","selYear":2024},{"busiNo":"2"}]}}')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]?.selYear).toBe('2024')
   })
 })
 

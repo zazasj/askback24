@@ -6,7 +6,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { digits, giantRowsFromXml, pickSmallGiants, similarityWarnings, youthRowsFromCsv, type GiantRow } from './lib.ts'
+import { digits, giantRowsFromJson, giantRowsFromXml, pickSmallGiants, similarityWarnings, youthRowsFromCsv, type GiantRow } from './lib.ts'
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url))
 const OUT = join(ROOT, 'data', 'company', 'small-giants.demo.json')
@@ -29,9 +29,13 @@ if (Object.keys(map).length === 0) {
   console.log('매핑 없음 — small-giants.demo.json 에 {} 를 썼어요')
 } else {
   const dir = join(ROOT, '.cache', 'work24', '216L01')
-  const giants: GiantRow[] = existsSync(dir)
-    ? readdirSync(dir).filter((f) => f.endsWith('.xml')).flatMap((f) => giantRowsFromXml(readFileSync(join(dir, f), 'utf8')))
-    : []
+  const names = existsSync(dir) ? readdirSync(dir) : []
+  const giants: GiantRow[] = names.flatMap((f) => {
+    if (f.endsWith('.xml')) return giantRowsFromXml(readFileSync(join(dir, f), 'utf8'))
+    if (f.endsWith('.json')) return giantRowsFromJson(readFileSync(join(dir, f), 'utf8'))
+    return []
+  })
+  if (names.length > 0 && giants.length === 0) console.warn('경고: 216L01 폴더에 파일은 있지만 회사 줄을 읽지 못했어요(.xml·.json만 읽어요)')
   if (giants.length === 0) console.warn('경고: .cache/work24/216L01 원본이 없어요(npm run fetch:work24 로 먼저 받으세요)')
   const yPath = join(ROOT, '.cache', 'company', 'youth-friendly.csv')
   let youth: GiantRow[] = []
@@ -42,15 +46,19 @@ if (Object.keys(map).length === 0) {
   save(picked)
   console.log(`→ data/company/small-giants.demo.json (공고 ${Object.keys(picked).length}/${Object.keys(map).length}건 맞음)`)
 
-  // 닮음 점검: 화면에만 찍는다(파일에는 쓰지 않는다)
-  const postings = JSON.parse(readFileSync(join(ROOT, 'data', 'postings.json'), 'utf8')) as Array<{ wantedAuthNo: string; indTpNm?: string; totPsncnt?: string; regionCd?: string }>
-  for (const [no, c] of Object.entries(map)) {
-    const posting = postings.find((p) => p.wantedAuthNo === no)
-    const row = giants.find((r) => digits(r.busiNo ?? r.bizNo) === digits(c.bizNo))
-    if (!posting || !row) {
-      if (!row) console.log(`${no}: 원본에서 못 찾음`)
-      continue
+  // 닮음 점검은 참고용: 실패해도 결과 파일은 이미 썼고 종료 코드는 0
+  try {
+    const postings = JSON.parse(readFileSync(join(ROOT, 'data', 'postings.json'), 'utf8')) as Array<{ wantedAuthNo: string; indTpNm?: string; totPsncnt?: string; regionCd?: string }>
+    for (const [no, c] of Object.entries(map)) {
+      const posting = postings.find((p) => p.wantedAuthNo === no)
+      const row = giants.find((r) => digits(r.busiNo ?? r.bizNo) === digits(c.bizNo))
+      if (!posting || !row) {
+        if (!row) console.log(`${no}: 원본에서 못 찾음`)
+        continue
+      }
+      for (const w of similarityWarnings(posting, row)) console.log(`${no}: ${w}`)
     }
-    for (const w of similarityWarnings(posting, row)) console.log(`${no}: ${w}`)
+  } catch {
+    console.warn('경고: 닮음 점검을 건너뛰었어요')
   }
 }
