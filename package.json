@@ -21,6 +21,8 @@
     "py:lock": "uv lock && uv export --no-dev --no-hashes -o requirements.txt",
     "check": "npm run build && npm run test:unit && npm run test:py && npm run test:e2e",
     "fetch:work24": "node --experimental-strip-types --no-warnings=ExperimentalWarning --env-file-if-exists=.env scripts/fetch-work24.ts",
+    "company:eis": "node --experimental-strip-types --no-warnings=ExperimentalWarning --env-file-if-exists=.env scripts/company/eis.ts",
+    "company:giants": "node --experimental-strip-types --no-warnings=ExperimentalWarning --env-file-if-exists=.env scripts/company/smallGiants.ts",
     "api:examples": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/api-examples.ts",
     "docs:api-pdf": "node scripts/spec-pdf.cjs"
   },
