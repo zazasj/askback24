@@ -14,7 +14,7 @@
 | 2-1 | 최종 면접: 1차 면접 답 판정 | `POST {AI_ENDPOINT}/v1/final-judgements` | 8초 안 |
 | 2-2 | 최종 면접·처우 질문 문장 생성 | `POST {AI_ENDPOINT}/v1/final-questions` | 10초 안 |
 | 3 | 공고 분석 (카드 상태·처우 빈칸·회사 신호) | `POST {AI_ENDPOINT}/v1/posting-analysis` | 함수 한도 안(공고당 한 번, 결과 저장) |
-| 4 | 업무 카드 초안 | `POST {AI_ENDPOINT}/v1/card-drafts` | 함수 한도 안(직무당 한 번, 사람 검수) |
+| 4 | 업무 카드 초안 | `POST {AI_ENDPOINT}/v1/card-drafts` | 지금은 CLI(`npm run cards:draft`)가 지원 경로. 엔드포인트는 시간 한계(55초)에 걸려 503일 수 있음(4.5단계에서 미리보기로 재서 정함) |
 | 내부 | 모델 미리 깨우기(화면을 열 때 우리 서버가 부름, 요청 본문 없음) | `POST {AI_ENDPOINT}/v1/warmup` | 15초 안, 200 `{"ok": true 또는 false}` |
 
 최종 면접은 2-1 → (우리 규칙이 질문 순서 결정) → 2-2 순서로 두 번 부릅니다. 화면이 지금 쓰는 것은 1·2번이고, 3·4번은 지금 개발자가 부르며 나중에 화면이 필요하면 우리 서버가 대신 부릅니다.
@@ -514,11 +514,11 @@ curl -X POST "{AI_ENDPOINT}/v1/final-questions" \
 
 | Body | 필수 | 타입 | 설명 |
 |---|---|---|---|
-| `job` | Y | string | 새 직무 ID(예: `frontend`) |
+| `job` | Y | string | 새 직무 ID(영문 소문자만, `^[a-z]+$`. 예: `frontend`) |
 | `job_label` | Y | string | 직무 이름(예: 프론트엔드 개발자) |
-| `ncs_subcategories` | Y | array | NCS 세분류 코드 목록(예: 응용SW엔지니어링 `20010202`) |
+| `ncs_subcategories` | Y | array | NCS 세분류 코드 목록(1~5개, 각 8자리 숫자. 예: 응용SW엔지니어링 `20010202`) |
 | `job_dictionary_code` | N | string | 한국직업사전 세세분류 코드(수행직무 문구를 붙일 때) |
-| `max_cards` | N | number | 묶은 뒤 카드 수 상한(기본 15) |
+| `max_cards` | N | number | 묶은 뒤 카드 수 상한(1~30, 기본 15) |
 
 ### 응답
 
@@ -530,8 +530,16 @@ curl -X POST "{AI_ENDPOINT}/v1/final-questions" \
 | `candidates[].used_in` | string | 묶인 카드 ID, 안 쓰였으면 `null` |
 | `cards` | array | 카드 초안(`shared/contract.ts` `CardDef` 모양: `id`·`label`·`plain`·`examples`·`ncs`·`posting_signals`·`questions`·`interpretation` …). 근무 방식 카드는 사람이 더함 |
 | `cards[].ncs[].ablt_unit` | string | 이 카드에 묶인 능력단위 코드(묶음 근거) |
+| `cards[].ncs[].subcategory` · `unit` | string | 묶인 능력단위의 세분류 이름 · 이름 |
+| `cards[].job_dictionary` · `cards[].example_question` | string | 없으면 `null`이 아니라 필드를 뺀다. 직업사전 문구는 카드별 수행직무가 아니라 직업 요약이라 `meta.job_dictionary`에 둔다 |
 | `issues` | array | 검사에 걸린 곳 `{ "card_id", "rule" }`(금지어, 질문 틀에 "공고" 등) |
 | `meta.graph_version` · `meta.model` · `meta.created_at` | string | 만든 그래프 버전 · 모델 · 시각 |
+| `meta.job_dictionary` | string | 직업사전(212D01)의 직업 한 줄 요약. `job_dictionary_code`가 없거나 못 찾으면 `null` |
+| `meta.sources` | object | 실제 부른 자료 출처별 `실제` · `실제 스냅숏` · `모의`(예: `ncs_gw: "모의"`). 모의를 실제로 알고 검수하지 않게 한다 |
+
+카드 ID는 서버가 `job` 앞 두 글자 대문자 + 두 자리 번호(`FR01`)로 정하고, 앞 12개는 `core: true`, `mapping_confidence`는 늘 `draft`입니다. 능력단위를 하나도 찾지 못하면 400 `invalid_request`(`no units`)입니다. 키가 있는 자료의 호출이 실패하거나 마감 안에 답하지 않으면 503 `unavailable`(`source is not available`), 모델이 못 쓰거나 빈 초안이면 503(`model is not ready`)입니다.
+
+**시간**: 엔드포인트는 전체 55초, LLM 한 번 45초 안에서 끝나야 합니다. 정확 모델의 실제 묶기 호출이 보통 그보다 길어(실측: 엔드포인트 45.7초에 timeout, CLI는 한도 170초로 66.6초에 성공) 지금은 엔드포인트가 503으로 끝날 수 있습니다. 직무를 넓힐 때는 CLI `npm run cards:draft`를 쓰고, 엔드포인트를 쓸지는 4.5단계에서 미리보기로 재서 정합니다.
 
 유형 이름·규칙표(`type_labels`·`gap_rules`)는 직무와 상관없어 초안에 넣지 않고 기존 사전의 것을 씁니다.
 

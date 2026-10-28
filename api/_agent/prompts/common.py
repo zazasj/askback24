@@ -2,7 +2,7 @@
 import json
 import re
 
-_TAG = re.compile(r"<(?=/?(?:공고|구직자 메모|들은 답)>)")
+_TAG = re.compile(r"<(?=/?(?:공고|구직자 메모|들은 답|직업사전|후보|예시 카드|다시 쓸 카드)>)")
 
 
 def _esc(s: str) -> str:

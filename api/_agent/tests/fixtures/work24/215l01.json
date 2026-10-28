@@ -1,0 +1,4 @@
+{"result": {"total": 2, "items": [
+ {"ablt_def": "가짜 설명 하나", "centerLabel": "가짜 구현 하나", "job_sdvn": "가짜세분류", "job_sdvn_cd": "http://lod.work.go.kr/task/직무/_99990001", "ablt_unit": "9999000101"},
+ {"ablt_def": "가짜 설명 둘", "centerLabel": "가짜 구현 둘", "job_sdvn": "가짜세분류", "job_sdvn_cd": "http://lod.work.go.kr/task/직무/_99990001", "ablt_unit": "9999000102"}
+]}}
