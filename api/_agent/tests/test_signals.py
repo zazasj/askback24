@@ -118,7 +118,7 @@ def test_ask_with_digit_falls_back_to_template():
     issues = check_signal_ask("최근 12개월에 퇴사가 많던데요?")
     assert "has_number" in issues and "forbidden_word" in issues
     assert check_signal_ask("") == ["empty"]
-    assert check_signal_ask("짧아요") == ["too_short"]
+    assert check_signal_ask("짧아요?") == ["too_short"]
     assert "too_long" in check_signal_ask("가" * 261)
     assert check_signal_ask("이번 채용은 새로 생긴 자리인가요, 기존 인원을 채우는 자리인가요?") == []
 
@@ -168,3 +168,25 @@ def test_sido_and_eis_loaded(tmp_path):
         json.dumps({"region": {"codes": [{"code": "11000", "name": "서울", "parent": None}]}}), encoding="utf-8")
     d = company_data_from_files(CompanyRef("K-Z", "biz_no", None, "0000000000"), POSTING, tmp_path)
     assert d.sido == "서울" and d.eis["size_bands"] == BANDS and len(d.eis["rows"]) == 1
+
+
+def test_signal_ask_without_question_mark_is_rejected():
+    assert check_signal_ask("신입이 적응하는 동안 어떤 도움을 받을 수 있나요") == ["no_question_mark"]
+
+
+def test_ask_hints_have_no_digits():
+    import re
+    from _agent.company.signals import _templates
+
+    for kind, t in _templates().items():
+        if kind != "meta" and t.get("ask_hint"):
+            assert not re.search(r"\d", t["ask_hint"]), kind
+
+
+def test_eis_row_with_non_numeric_value_is_unusable_only_that_signal_drops():
+    d = CompanyData(ind2="58", eis=eis([row(rate=None)]), sido="서울")
+    assert "industry_baseline" not in kinds(build_signal_facts(POSTING, d))
+    d2 = CompanyData(ind2="58", eis=eis([row(rate=None), row(sido="전국", rate=0.03, net=-2)]), sido="서울",
+                     reposting={"count": 3, "months": 6})
+    got = build_signal_facts(POSTING, d2)
+    assert kinds(got) == ["reposting", "industry_baseline"] and "전국 평균" in got[1].text

@@ -56,6 +56,8 @@ def _setup_logging() -> None:
     lg.propagate = False
     if not lg.handlers:
         lg.addHandler(logging.StreamHandler())
+    # 국민연금 호출 URL 에 serviceKey 와 사업장명이 쿼리로 실려 httpx 의 INFO 줄에 찍힐 수 있다.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 def create_app(

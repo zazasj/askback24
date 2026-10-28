@@ -9,7 +9,7 @@ _SPLIT = re.compile(r"[,\n·]")
 _SAL_VAGUE = re.compile(r"회사\s*내규|면접\s*(?:후|시)|협의|추후")
 _HOURS_JOB = re.compile(r"당직|코어타임|출퇴근|야간|주말")
 _HOURS_FIELD = re.compile(r"야간|주말|당직|시차|교대|연장")
-_PROB_MONTHS = re.compile(r"수습\s*\d+\s*개월")
+_PROB_MONTHS = re.compile(r"수습\s*(?:기간)?\s*\(?\s*\d+\s*개월")
 _ONSITE = re.compile(r"상주|파견")
 
 

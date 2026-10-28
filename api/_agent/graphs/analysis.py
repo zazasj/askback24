@@ -54,6 +54,8 @@ class State(TypedDict, total=False):
     issues_b: dict[str, list[str]]
     retried_a: bool
     retried_b: bool
+    tried_a: bool  # 다시 판정을 시도했는지(고리 종료용). retried 는 호출이 돌아왔을 때만 로그에 쓴다
+    tried_b: bool
     error_a: LlmError | None
     error_b: LlmError | None
     model_a: str
@@ -147,7 +149,7 @@ class AnalysisAgent:
 
         def after_check(run: str):
             def route(s: State) -> str:
-                if s[f"issues_{run}"] and not s.get(f"retried_{run}") and self._left(s) >= RECLASSIFY_MIN_LEFT_S:
+                if s[f"issues_{run}"] and not s.get(f"tried_{run}") and self._left(s) >= RECLASSIFY_MIN_LEFT_S:
                     return "reclassify"
                 return "settled"
 
@@ -161,9 +163,9 @@ class AnalysisAgent:
                 try:
                     res = await self._llm(s, "accurate", p_analysis.SYSTEM, msg)
                 except LlmError:
-                    return {f"retried_{run}": True}  # 걸린 카드는 그대로 남아 compare 가 채운다
+                    return {f"tried_{run}": True}  # 호출이 돌아오지 않았으니 retried 로 치지 않는다. 걸린 카드는 그대로 남아 compare 가 채운다
                 fixed = _first_by_id(res.data, set(only))
-                return {f"retried_{run}": True, f"raw_{run}": {**s[f"raw_{run}"], **fixed}}
+                return {f"tried_{run}": True, f"retried_{run}": True, f"raw_{run}": {**s[f"raw_{run}"], **fixed}}
 
             return reclassify
 
@@ -184,7 +186,8 @@ class AnalysisAgent:
             if ref.kind != "demo":
                 # 실제 회사에는 모의 연금 값을 대신 보여 주지 않는다.
                 data.pension, data.pension_source = None, None
-                if key:
+                # 검색에 이름이 필요해 bizNo 만 있는 공고는 부르지 않는다(공고 corpNm 연결은 아직 없음).
+                if key and ref.name and ref.biz_no:
                     client = self.http or httpx.AsyncClient()
                     try:
                         facts = await fetch_pension(ref, key, client, self.now().date())
@@ -207,7 +210,8 @@ class AnalysisAgent:
             return "signal_ask" if any(f.ask_hint for f in s["facts"]) else "signals_done"
 
         async def signal_ask(s: State) -> dict:
-            if self._left(s) < SIGNAL_ASK_MIN_LEFT_S:
+            # 판정이 둘 다 오류면 어차피 503 이라, 신호 질문으로 응답을 늦추지 않는다.
+            if self._left(s) < SIGNAL_ASK_MIN_LEFT_S or (s.get("error_a") and s.get("error_b")):
                 return {"asks": {}}
             hints, seen = [], set()
             for f in s["facts"]:
@@ -221,8 +225,10 @@ class AnalysisAgent:
             rows = res.data.get("asks") if isinstance(res.data, dict) else None
             asks: dict[str, str] = {}
             for r in rows if isinstance(rows, list) else []:
-                if isinstance(r, dict) and r.get("kind") in seen and isinstance(r.get("ask"), str) and r["kind"] not in asks:
-                    asks[r["kind"]] = squash(r["ask"]).strip()
+                kind = r.get("kind") if isinstance(r, dict) else None
+                # LLM 이 kind 를 목록·객체로 주면 `in set` 이 TypeError 라 문자열만 받는다.
+                if isinstance(kind, str) and kind in seen and isinstance(r.get("ask"), str) and kind not in asks:
+                    asks[kind] = squash(r["ask"]).strip()
             return {"asks": asks}
 
         def signal_check(s: State) -> dict:

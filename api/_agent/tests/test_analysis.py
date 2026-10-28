@@ -292,3 +292,54 @@ def test_compare_rules():
     assert out["Z"].state == "absent" and out["Z"].needs_review and out["Z"].reason == "공고에서 확인하지 못했어요"
     only_b = compare(["X"], None, b)
     assert only_b[0].needs_review and only_b[0].reason == "r2"
+
+
+# --- 최종 검토 보강 ---
+
+def test_signal_ask_non_string_kind_is_ignored_and_template_used():
+    llm = ScriptLlm(a=run_of(), b=run_of(), signal={"asks": [
+        {"kind": ["reposting"], "ask": "x"}, {"kind": {"a": 1}, "ask": "y"}, {"kind": "reposting", "ask": ["z"]}, "bad"]})
+    r = post(llm)
+    assert r.status_code == 200
+    assert signal_by_kind(r.json())["reposting"]["ask_source"] == "template"
+
+
+def test_both_classify_fail_skips_signal_llm():
+    llm = ScriptLlm(a=LlmError("timeout"), b=LlmError("timeout"), signal=ok_signal())
+    assert post(llm).status_code == 503
+    assert llm.keys() == ["a", "b"]
+
+
+def test_reclassify_llm_error_is_not_counted_as_retried(ai_log):
+    bad = run_of(BE07=card("BE07", "vague", "jobCont", "원문에 없는 문장"))
+    llm = ScriptLlm(a=bad, b=run_of(), re_a=LlmError("timeout"), signal=ok_signal())
+    assert post(llm).status_code == 200
+    assert "retried=- " in ai_log.text
+
+
+def test_httpx_logger_is_pinned_to_warning():
+    import logging
+
+    logging.getLogger("httpx").setLevel(logging.INFO)
+    create_app({}, llm=ScriptLlm(a=run_of(), b=run_of()))
+    assert logging.getLogger("httpx").level == logging.WARNING
+
+
+def test_whitespace_only_quote_fails_check():
+    ids = set(IDS)
+    row = {"card_id": "BE01", "state": "inferred", "reason": REASON, "evidence": {"field": "jobCont", "quote": "   "}}
+    assert check_card(row, ids, {**POSTING, "jobCont": "서버   개발"}) == ["evidence_not_in_posting"]
+
+
+def test_biz_no_only_ref_skips_nps_without_calls(ai_log):
+    calls = []
+
+    def handler(req):
+        calls.append(req)
+        return httpx.Response(500)
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    llm = ScriptLlm(a=run_of(), b=run_of(), signal=ok_signal())
+    r = post(llm, env={"DATA_GO_KR_KEY": "FAKE-KEY"}, http=client, body={"posting": {**POSTING, "bizNo": "000-00-00000"}, "job": "backend"})
+    assert r.status_code == 200 and calls == []
+    assert "nps:skip" in ai_log.text and "000-00-00000" not in ai_log.text

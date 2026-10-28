@@ -59,10 +59,14 @@ def _eis_row(posting: dict, data: CompanyData) -> tuple[dict, bool] | None:
     if not size:
         return None
 
+    def num(v: object) -> bool:
+        return isinstance(v, (int, float)) and not isinstance(v, bool)
+
     def find(sido: str | None) -> dict | None:
         for r in data.eis["rows"]:
             if isinstance(r, dict) and r.get("ind2") == ind2 and r.get("size") == size and r.get("sido") == sido:
-                return r
+                # 숫자가 아닌 칸이 있으면 그 행만 못 쓴다(문장을 만들다 터지지 않게).
+                return r if all(num(r.get(k)) for k in ("loss_rate", "net", "insured")) else None
         return None
 
     local = find(data.sido) if data.sido else None

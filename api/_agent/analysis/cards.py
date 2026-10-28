@@ -27,7 +27,7 @@ def check_card(card: dict, book_ids: set[str], posting: dict) -> list[str]:
             issues.append("evidence_field")
         else:
             text = posting.get(field)
-            if not isinstance(quote, str) or not quote or not isinstance(text, str) or quote not in text:
+            if not isinstance(quote, str) or not quote.strip() or not isinstance(text, str) or quote not in text:
                 issues.append("evidence_not_in_posting")
     reason = card.get("reason")
     r = squash(reason).strip() if isinstance(reason, str) else ""

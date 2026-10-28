@@ -79,3 +79,11 @@ def test_probation_vague_and_onsite_label():
     assert by["onsite"].label == "파견 근무 조건"
     r = find_blanks({"pfCond": "상주 가능자"}, TEMPLATES)
     assert {b.topic: b for b in r}["onsite"].label == "상주 근무 조건"
+
+
+def test_probation_months_phrasings():
+    for text in ("수습기간 3개월", "수습 기간 3개월", "수습(3개월)", "수습 3개월"):
+        b = {x.topic: x for x in find_blanks({"empTpNm": f"정규직, {text}"}, TEMPLATES)}
+        assert b["probation"].status == "check", text
+        assert b["probation"].evidence.quote == text
+    assert {x.topic: x for x in find_blanks({"empTpNm": "정규직 (수습)"}, TEMPLATES)}["probation"].status == "vague"

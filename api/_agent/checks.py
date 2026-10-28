@@ -127,6 +127,8 @@ def check_signal_ask(ask: str) -> list[str]:
         issues.append("too_long")
     if re.search(r"\d", t):
         issues.append("has_number")
+    if not t.endswith("?"):  # TS 데이터 시험 H1-04 가 신호 질문이 ?로 끝나기를 요구한다
+        issues.append("no_question_mark")
     if any(p.search(t) for p in FORBIDDEN + SIGNAL_FORBIDDEN):
         issues.append("forbidden_word")
     return issues
