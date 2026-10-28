@@ -2,6 +2,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import date
+from urllib.parse import unquote
 
 import httpx
 
@@ -89,7 +90,7 @@ async def _fetch(ref: CompanyRef, key: str, client: httpx.AsyncClient, today: da
         key,
         {FIELDS["search_name"]: ref.name, FIELDS["search_biz"]: prefix, "numOfRows": 10, "pageNo": 1},
     )
-    found = [i for i in found if str(i.get(FIELDS["search_biz"], prefix)).startswith(prefix)]
+    found = [i for i in found if str(i.get(FIELDS["search_biz"], "")).startswith(prefix)]
     if len(found) != 1 or FIELDS["seq"] not in found[0]:
         return None
     seq = found[0][FIELDS["seq"]]
@@ -131,6 +132,8 @@ async def _fetch(ref: CompanyRef, key: str, client: httpx.AsyncClient, today: da
 async def fetch_pension(ref: CompanyRef, key: str, client: httpx.AsyncClient, today: date) -> PensionFacts | None:
     if ref.kind == "demo":
         return None
+    # data.go.kr의 Encoding 키(%2B 등)를 그대로 넘기면 httpx가 다시 인코딩하므로 한 번 풀어 둔다.
+    key = unquote(key)
     try:
         return await asyncio.wait_for(_fetch(ref, key, client, today), NPS_BUDGET_S)
     except Exception as e:

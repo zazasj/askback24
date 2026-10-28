@@ -48,7 +48,7 @@ async def test_fetch_pension_sums_12_months():
     facts = await nps.fetch_pension(REF, KEY, client, TODAY)
     assert facts == nps.PensionFacts(members=42, gain_12m=36, loss_12m=12, months=12, period="2025년 3월~2026년 2월", ind2="58")
     assert len(calls) == 14
-    assert all(c.url.params["serviceKey"] == KEY and c.url.params["_type"] == "json" for c in calls)
+    assert all(c.url.params["serviceKey"] == "FAKE-KEY-abc123+" and c.url.params["_type"] == "json" for c in calls)
 
 
 async def test_search_not_exactly_one_drops():
@@ -115,5 +115,26 @@ async def test_key_not_in_errors(ai_log):
     client, _ = make_client(boom)
     assert await nps.fetch_pension(REF, KEY, client, TODAY) is None
     text = ai_log.text
+    assert "[ai] nps failed" in text
     for secret in (KEY, "FAKE-KEY", "테스트실제", "0000000000", "000000"):
         assert secret not in text
+
+
+async def test_encoding_and_decoding_key_send_same_service_key():
+    sent = []
+    for k in ("abc%2Bdef", "abc+def"):
+        client, calls = make_client(standard())
+        await nps.fetch_pension(REF, k, client, TODAY)
+        q = calls[0].url.query.decode()
+        assert "serviceKey=abc%2Bdef" in q and "%252B" not in q
+        sent.append(q.split("serviceKey=")[1].split("&")[0])
+    assert sent[0] == sent[1]
+
+
+async def test_search_filters_to_single_prefix_match():
+    item = fx("basic.json")["response"]["body"]["items"]["item"][0]
+    other = {**item, "seq": 1002, "bzowr_rgst_no": "999999"}
+    nobiz = {"seq": 1003, "wkpl_nm": "x"}
+    resp = {"response": {"header": {"resultCode": "00"}, "body": {"items": {"item": [item, other, nobiz]}, "totalCount": 3}}}
+    client, _ = make_client(standard(basic=resp))
+    assert await nps.fetch_pension(REF, KEY, client, TODAY) is not None
