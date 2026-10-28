@@ -2,7 +2,11 @@ import asyncio
 import hmac
 import logging
 import os
-from collections.abc import Mapping
+import time
+from collections.abc import Callable, Mapping
+from datetime import datetime, timezone
+
+import httpx
 
 from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -13,11 +17,12 @@ from pathlib import Path
 
 from .checks import load_card_labels
 from .errors import ApiError
+from .graphs.analysis import AnalysisAgent
 from .graphs.final import FinalAgent
 from .graphs.first import FirstAgent
 from .graphs.judge import JudgeAgent
 from .llm import Llm, LlmError, llm_from_env
-from .schemas import FinalRequest, FinalResponse, FirstRequest, FirstResponse, JudgeRequest, JudgeResponse
+from .schemas import AnalysisRequest, AnalysisResponse, FinalRequest, FinalResponse, FirstRequest, FirstResponse, JudgeRequest, JudgeResponse
 
 PREFIX = "/api/ai/v1"
 # TS 의 20초(WARMUP_TIMEOUT_MS)보다 먼저 끝내 ok 값이 로그에 닿게 한다.
@@ -53,7 +58,13 @@ def _setup_logging() -> None:
         lg.addHandler(logging.StreamHandler())
 
 
-def create_app(env: Mapping[str, str] | None = None, llm: Llm | None = None) -> FastAPI:
+def create_app(
+    env: Mapping[str, str] | None = None,
+    llm: Llm | None = None,
+    http: httpx.AsyncClient | None = None,
+    clock: Callable[[], float] = time.monotonic,
+    now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+) -> FastAPI:
     _setup_logging()
     env = os.environ if env is None else env
     llm = llm or llm_from_env(env)
@@ -61,6 +72,7 @@ def create_app(env: Mapping[str, str] | None = None, llm: Llm | None = None) -> 
     first_agent = FirstAgent(llm, labels)  # 그래프는 앱이 뜰 때 한 번만 compile
     judge_agent = JudgeAgent(llm)
     final_agent = FinalAgent(llm, labels)
+    analysis_agent = AnalysisAgent(llm, Path(__file__).resolve().parents[2], env, http, clock, now)
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
     @app.exception_handler(ApiError)
@@ -107,6 +119,15 @@ def create_app(env: Mapping[str, str] | None = None, llm: Llm | None = None) -> 
     async def final_questions(body: FinalRequest) -> FinalResponse:
         try:
             return await final_agent.run(body)
+        except LlmError:
+            raise ApiError(503, "unavailable", "model is not ready") from None
+
+    @router.post("/posting-analysis", response_model_exclude_none=True)
+    async def posting_analysis(body: AnalysisRequest) -> AnalysisResponse:
+        if not analysis_agent.has_job(body.job):
+            raise ApiError(400, "invalid_request", "invalid request")
+        try:
+            return await analysis_agent.run(body)
         except LlmError:
             raise ApiError(503, "unavailable", "model is not ready") from None
 
