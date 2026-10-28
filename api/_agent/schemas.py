@@ -104,3 +104,13 @@ class FinalResponse(BaseModel):
 
 
 SignalKind = Literal["reposting", "pension_flow", "industry_baseline", "small_giant", "wage_arrears"]
+
+
+class OfferBlank(BaseModel):
+    """shared/contract.ts 의 OfferBlank 과 같은 모양."""
+    topic: Literal["sal", "workHours", "probation", "onsite"]
+    status: Literal["missing", "vague", "check"]
+    label: str
+    basis: str
+    question: str
+    evidence: Evidence | None = None
