@@ -479,7 +479,7 @@ curl -X POST "{AI_ENDPOINT}/v1/final-questions" \
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | `analysis.wantedAuthNo` | string | 요청 공고 번호 |
-| `analysis.cards` | array | 사전의 카드마다 하나 |
+| `analysis.cards` | array | 사전의 카드 전부, 하나씩(사전 순서). `absent`도 포함. 저장 파일(`data/analysis/`)에는 `absent` 카드를 쓰지 않는다 |
 | `analysis.cards[].card_id` | string | 사전에 있는 카드 ID |
 | `analysis.cards[].state` | string | `explicit` · `inferred` · `vague` · `absent` |
 | `analysis.cards[].evidence` | object | `absent`가 아니면 `{ "field", "quote" }` — `quote`는 `posting[field]` 원문의 글자 그대로 일부(근거 칸 8개 중) |
