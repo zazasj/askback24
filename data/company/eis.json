@@ -1,0 +1,16 @@
+{
+  "meta": {
+    "source": "고용보험 EIS 파일(업종×규모×시도, 월별)",
+    "fetched_on": null,
+    "months": 12,
+    "note": "파일 받기 전",
+    "size_bands": [
+      { "min": 1, "max": 4, "label": "1~4인" },
+      { "min": 5, "max": 29, "label": "5~29인" },
+      { "min": 30, "max": 99, "label": "30~99인" },
+      { "min": 100, "max": 299, "label": "100~299인" },
+      { "min": 300, "max": null, "label": "300인 이상" }
+    ]
+  },
+  "rows": []
+}

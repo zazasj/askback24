@@ -101,7 +101,11 @@ export interface PostingAnalysis {
   wantedAuthNo: string
   cards: AnalysisCard[]
   blanks: OfferBlank[]
+  /** AI 분석 결과에만 붙는다(3단계) */
+  meta?: { graph_version: string; model: string; created_at: string }
 }
+
+export type SignalKind = 'reposting' | 'pension_flow' | 'industry_baseline' | 'small_giant' | 'wage_arrears'
 
 /** data/signals.json: 회사 신호. 회사를 평가하지 않고 "면접에서 확인할 근거"로만 쓴다 */
 export interface CompanySignal {
@@ -112,6 +116,9 @@ export interface CompanySignal {
   ask?: string
   /** 기준 시점·해석 한계(H1-04 라, 국민연금) */
   caveat?: string
+  kind?: SignalKind
+  /** ask를 AI가 썼는지 검수 질문 틀을 썼는지 */
+  ask_source?: 'ai' | 'template'
 }
 
 // ── 업무 카드 (data/cards.backend.json) ────────────────────────
