@@ -2,7 +2,7 @@
 import re
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_serializer
 
 
 class Evidence(BaseModel):
@@ -221,12 +221,21 @@ class CardDraft(BaseModel):
     plain: str
     examples: list[str]
     ncs: list[CardNcs]
-    job_dictionary: str | None
     mapping_confidence: Literal["draft"]
     posting_signals: CardSignals
     questions: dict[str, str]
-    example_question: str | None
+    example_question: str | None = None
     interpretation: CardInterpretation
+    job_dictionary: str | None = None
+
+    @model_serializer(mode="wrap")
+    def _omit_optional(self, handler):
+        # 명세의 선택 필드는 없으면 null 대신 빼고 낸다
+        d = handler(self)
+        for k in ("job_dictionary", "example_question"):
+            if d.get(k) is None:
+                d.pop(k, None)
+        return d
 
 
 class CardIssue(BaseModel):
@@ -239,6 +248,7 @@ class CardDraftMeta(BaseModel):
     model: str
     created_at: str
     sources: dict[str, Literal["실제", "실제 스냅숏", "모의"]]
+    job_dictionary: str | None = None  # 212D01의 직업 한 줄 요약(카드별 수행직무가 아니다)
 
 
 class CardDraftResponse(BaseModel):

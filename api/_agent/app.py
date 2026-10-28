@@ -140,8 +140,10 @@ def create_app(
     async def card_drafts(body: CardDraftRequest) -> CardDraftResponse:
         try:
             return await cards_agent.run(body)
-        except (LlmError, SourceError):
+        except LlmError:
             raise ApiError(503, "unavailable", "model is not ready") from None
+        except SourceError:
+            raise ApiError(503, "unavailable", "source is not available") from None
 
     @router.post("/warmup")
     async def warmup() -> dict:

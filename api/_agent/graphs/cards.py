@@ -109,11 +109,27 @@ class CardsAgent:
                     queries.append(q)
             sem = asyncio.Semaphore(_RECOMMEND_PARALLEL)
 
+            failed = asyncio.Event()
+
             async def rec(q: str) -> list[Unit]:
                 async with sem:
-                    return await src.recommend(q)
+                    if failed.is_set():  # 앞 호출이 실패했으면 대기하던 호출은 나가지 않는다
+                        return []
+                    try:
+                        return await src.recommend(q)
+                    except BaseException:
+                        failed.set()
+                        raise
 
-            found = await asyncio.gather(*(rec(q) for q in queries[:RECOMMEND_MAX_QUERIES]))
+            tasks = [asyncio.ensure_future(rec(q)) for q in queries[:RECOMMEND_MAX_QUERIES]]
+            try:
+                found = await asyncio.gather(*tasks)
+            except BaseException:
+                # 한 호출이 실패하면 대기 중인 나머지 호출을 멈춘다
+                for t in tasks:
+                    t.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
+                raise
             await src.job_code(req.job_label)  # 출처 사용 기록(meta.sources)용. 값은 쓰지 않는다
             return {"units": units, "duties": duties, "recommended": [u for f in found for u in f]}
 
@@ -122,7 +138,7 @@ class CardsAgent:
             try:
                 return await asyncio.wait_for(fetch_all(s), timeout=max(self._left(s), 0))
             except asyncio.TimeoutError:
-                raise LlmError("timeout") from None
+                raise SourceError("자료 출처가 마감 안에 답하지 않음", code="source_timeout") from None
 
         def candidates(s: State) -> dict:
             cands = build_candidates(s["units"], s["recommended"])
@@ -134,8 +150,8 @@ class CardsAgent:
             req = s["req"]
             res = await self._llm(s, p_cards.user_message(req, s["candidates"], s["duties"], self.example))
             rows = res.data.get("cards") if isinstance(res.data, dict) else None
-            if not isinstance(rows, list):
-                raise LlmError("not_json")
+            if not isinstance(rows, list) or not rows:
+                raise LlmError("not_json")  # 빈 목록도 쓸 수 있는 초안이 아니다
             return {"cards": rows[: req.max_cards], "truncated": len(rows) > req.max_cards, "model": res.model}
 
         def check(s: State) -> dict:
@@ -157,8 +173,8 @@ class CardsAgent:
         async def rewrite_cards(s: State) -> dict:
             cards, issues = s["cards"], s["issues"]
             positions = sorted(issues)
-            failing_units = {u for i in positions for u in _strs(_draft_dict(cards[i]).get("units"))}
-            taken = sorted({u for c in cards for u in _strs(_draft_dict(c).get("units"))} - failing_units)
+            # 통과한 카드가 쓴 능력단위만 막는다. 실패한 카드와 나눠 쓴 단위도 통과 카드가 쥔 것이다.
+            taken = sorted({u for i, c in enumerate(cards) if i not in issues for u in _strs(_draft_dict(c).get("units"))})
             msg = p_cards.user_message(
                 s["req"], s["candidates"], s["duties"], self.example,
                 only=[cards[i] for i in positions], issues=[issues[i] for i in positions], taken=taken,
@@ -170,10 +186,12 @@ class CardsAgent:
             rows = res.data.get("cards") if isinstance(res.data, dict) else None
             if not isinstance(rows, list):
                 return {"tried": True}
-            new = list(cards)
+            new, replaced = list(cards), False
             for pos, row in zip(positions, rows):
                 if isinstance(row, dict):
-                    new[pos] = row
+                    new[pos], replaced = row, True
+            if not replaced:
+                return {"tried": True}
             return {"tried": True, "retried": True, "cards": new}
 
         def finish(s: State) -> dict:
@@ -194,7 +212,7 @@ class CardsAgent:
                         id=ids[i], kind="task", core=i < CORE_COUNT, label=_str(d.get("label")), plain=_str(d.get("plain")),
                         examples=_strs(d.get("examples")),
                         ncs=[CardNcs(subcategory=c.subcategory, unit=c.unit, ablt_unit=c.ablt_unit) for c in listed],
-                        job_dictionary=" ".join(s["duties"]) or None, mapping_confidence="draft",
+                        mapping_confidence="draft",
                         posting_signals=CardSignals(explicit=_strs(sig.get("explicit")), implicit=_strs(sig.get("implicit"))),
                         questions={k: v for k, v in qs.items() if isinstance(k, str) and isinstance(v, str)} if isinstance(qs, dict) else {},
                         example_question=d.get("example_question") if isinstance(d.get("example_question"), str) else None,
@@ -217,7 +235,8 @@ class CardsAgent:
                 ],
                 cards=cards, issues=issues,
                 meta=CardDraftMeta(graph_version=CARDS_GRAPH_VERSION, model=s["model"], created_at=self.now().isoformat(),
-                                   sources={k: _SOURCE_KO[v] for k, v in used.items()}),  # type: ignore[misc]
+                                   sources={k: _SOURCE_KO[v] for k, v in used.items()},
+                                   job_dictionary=" ".join(s["duties"]) or None),  # type: ignore[misc]
             )
             log.info(
                 "[ai] cards job=%s candidates=%d cards=%d issues=%d retried=%d sources=%s ms=%d model=%s",
@@ -247,7 +266,7 @@ class CardsAgent:
         try:
             final = await self.graph.ainvoke({"req": req, "started": started, "sources": sources})
         except (LlmError, SourceError) as e:
-            code = e.code if isinstance(e, LlmError) else "source"
+            code = e.code
             log.info("[ai] cards unavailable code=%s ms=%d", code, int((self.clock() - started) * 1000))
             raise
         return final["result"]

@@ -30,6 +30,10 @@ class Unit:
 class SourceError(Exception):
     """키가 있는데 호출이 실패했다. 키·응답 본문이 섞이지 않게 고정 글만 쓴다."""
 
+    def __init__(self, message: str = "", code: str = "source") -> None:
+        super().__init__(message)
+        self.code = code
+
 
 def load_ncs_gw_fields() -> dict:
     return json.loads(_FIELDS_PATH.read_text(encoding="utf-8"))
