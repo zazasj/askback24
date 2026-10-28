@@ -531,7 +531,11 @@ curl -X POST "{AI_ENDPOINT}/v1/final-questions" \
 | `cards` | array | 카드 초안(`shared/contract.ts` `CardDef` 모양: `id`·`label`·`plain`·`examples`·`ncs`·`posting_signals`·`questions`·`interpretation` …). 근무 방식 카드는 사람이 더함 |
 | `cards[].ncs[].ablt_unit` | string | 이 카드에 묶인 능력단위 코드(묶음 근거) |
 | `issues` | array | 검사에 걸린 곳 `{ "card_id", "rule" }`(금지어, 질문 틀에 "공고" 등) |
+| `cards[].ncs[].subcategory` · `unit` | string | 묶인 능력단위의 세분류 이름 · 이름 |
 | `meta.graph_version` · `meta.model` · `meta.created_at` | string | 만든 그래프 버전 · 모델 · 시각 |
+| `meta.sources` | object | 실제 부른 자료 출처별 `실제` · `실제 스냅숏` · `모의`(예: `ncs_gw: "모의"`). 모의를 실제로 알고 검수하지 않게 한다 |
+
+카드 ID는 서버가 `job` 앞 두 글자 대문자 + 두 자리 번호(`FR01`)로 정하고, 앞 12개는 `core: true`, `mapping_confidence`는 늘 `draft`입니다. 능력단위를 하나도 찾지 못하면 400 `invalid_request`(`no units`)이고, 키가 있는 자료의 호출이 실패하면 503 `unavailable`입니다.
 
 유형 이름·규칙표(`type_labels`·`gap_rules`)는 직무와 상관없어 초안에 넣지 않고 기존 사전의 것을 씁니다.
 
