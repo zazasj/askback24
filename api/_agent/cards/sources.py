@@ -35,6 +35,16 @@ def load_ncs_gw_fields() -> dict:
     return json.loads(_FIELDS_PATH.read_text(encoding="utf-8"))
 
 
+def _ncs_gw_configured(conf: dict) -> bool:
+    # 일부만 채워진 설정으로 실제 호출을 하지 않도록, 필수 칸이 모두 있을 때만 실제로 본다(아니면 모의).
+    try:
+        return all(
+            [conf["base_url"], conf["operation"], conf["params"]["subcategory"], conf["fields"]["code"], conf["fields"]["name"]]
+        )
+    except (KeyError, TypeError):
+        return False
+
+
 def _read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -88,9 +98,10 @@ class CardSources:
         self._client = client
         self.used: dict[str, SourceKind] = {}
 
-    def _key(self, name: str) -> str:
-        # data.go.kr의 Encoding 키(%2B 등)는 httpx가 다시 인코딩하므로 한 번 풀어 둔다.
-        return unquote((self._env.get(name) or "").strip())
+    def _key(self, name: str, decode: bool = False) -> str:
+        k = (self._env.get(name) or "").strip()
+        # data.go.kr의 Encoding 키(%2B 등)만 풀어 둔다(httpx가 다시 인코딩). 고용24 키는 그대로.
+        return unquote(k) if decode else k
 
     async def _get(self, url: str, params: dict) -> httpx.Response:
         async def go(c: httpx.AsyncClient) -> httpx.Response:
@@ -116,8 +127,8 @@ class CardSources:
     # ── NCS 정보_GW ──
     async def units(self, subcategory_code: str) -> list[Unit]:
         conf = load_ncs_gw_fields()
-        key = self._key("DATA_GO_KR_KEY")
-        if key and conf.get("base_url"):
+        key = self._key("DATA_GO_KR_KEY", decode=True)
+        if key and _ncs_gw_configured(conf):
             out = await self._units_real(conf, key, subcategory_code)
             self.used["ncs_gw"] = "real"
             return out
@@ -138,16 +149,17 @@ class CardSources:
         f = conf["fields"]
         try:
             items = _ncs_gw_items(ET.fromstring(r.text))
-            return [
+            out = [
                 Unit(
                     _text(i.find(f["code"])),
                     _text(i.find(f["name"])),
-                    _int_or_none(_text(i.find(f["level"]))),
-                    _text(i.find(f["subcategory_code"])) or subcategory_code,
-                    _text(i.find(f["subcategory"])),
+                    _int_or_none(_text(i.find(f["level"]))) if f.get("level") else None,
+                    (_text(i.find(f["subcategory_code"])) if f.get("subcategory_code") else "") or subcategory_code,
+                    _text(i.find(f["subcategory"])) if f.get("subcategory") else "",
                 )
                 for i in items
             ]
+            return [u for u in out if u.code and u.name]
         except Exception:
             raise SourceError("자료 출처 응답을 읽지 못함") from None
 
@@ -159,7 +171,9 @@ class CardSources:
             text = await self._work24("215L01", key, {"returnType": "JSON", "jobCont": query, "limit": "10"})
             try:
                 items: list[dict] = []
-                _walk_items(json.loads(text), items)
+                # 빈 응답은 맞는 것이 없다는 뜻이다(띄어쓰기가 든 말 등). 글이 있는데 JSON이 아니면 실패.
+                if text.strip():
+                    _walk_items(json.loads(text), items)
                 out = []
                 for i in items:
                     sc = str(i.get("job_sdvn_cd", ""))
@@ -172,6 +186,7 @@ class CardSources:
                             str(i.get("job_sdvn", "")),
                         )
                     )
+                out = [u for u in out if u.code and u.name]
             except Exception:
                 raise SourceError("자료 출처 응답을 읽지 못함") from None
             self.used["duty"] = "real"

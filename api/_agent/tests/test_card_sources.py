@@ -154,3 +154,67 @@ def test_mock_file_units_match_backend_book():
     want = {n["unit"] for c in book["cards"] for n in c["ncs"] if n["subcategory"] == "응용SW엔지니어링"}
     names = [u["name"] for u in mock["units"]]
     assert set(names) == want and len(names) == len(set(names))
+
+
+@pytest.mark.parametrize("kind", ["connect", "http500"])
+async def test_ncs_gw_key_present_failure_raises(monkeypatch, kind):
+    monkeypatch.setattr(sources, "load_ncs_gw_fields", lambda: CONF)
+
+    def h(req):
+        if kind == "connect":
+            raise httpx.ConnectError(f"boom {SECRET}")
+        return httpx.Response(500, text=SECRET)
+
+    s, _ = make({"DATA_GO_KR_KEY": SECRET}, h)
+    with pytest.raises(SourceError) as e:
+        await s.units("S1")
+    assert SECRET not in str(e.value)
+    assert "ncs_gw" not in s.used
+
+
+async def test_215l01_empty_body_is_no_match_but_garbage_fails():
+    s, _ = make({"WORK24_KEY_DUTY": SECRET}, lambda r: httpx.Response(200, text="  \n"))
+    assert await s.recommend("가짜") == []
+    assert s.used == {"duty": "real"}
+    s2, _ = make({"WORK24_KEY_DUTY": SECRET}, lambda r: httpx.Response(200, text="<html>x</html>"))
+    with pytest.raises(SourceError):
+        await s2.recommend("가짜")
+
+
+async def test_only_data_go_kr_key_is_unquoted(monkeypatch):
+    monkeypatch.setattr(sources, "load_ncs_gw_fields", lambda: CONF)
+    s, calls = make({"WORK24_KEY_DUTY": "a%2Bb"}, lambda r: httpx.Response(200, text="{}"))
+    await s.recommend("가짜")
+    assert calls[0].url.params["authKey"] == "a%2Bb"
+    s2, calls2 = make({"DATA_GO_KR_KEY": "a%2Bb"}, lambda r: httpx.Response(200, text=body("ncs_gw", "empty.xml")))
+    await s2.units("S1")
+    assert calls2[0].url.params["serviceKey"] == "a+b"
+
+
+async def test_real_units_without_code_or_name_dropped(monkeypatch):
+    monkeypatch.setattr(sources, "load_ncs_gw_fields", lambda: CONF)
+    xml = (
+        "<response><header><resultCode>00</resultCode></header><body><items>"
+        "<item><cd></cd><nm>이름만</nm></item><item><cd>C1</cd><nm></nm></item><item><cd>C2</cd><nm>정상</nm></item>"
+        "</items></body></response>"
+    )
+    s, _ = make({"DATA_GO_KR_KEY": "k"}, lambda r: httpx.Response(200, text=xml))
+    assert [u.code for u in await s.units("S1")] == ["C2"]
+    js = '{"items":[{"ablt_def":"x","centerLabel":"","ablt_unit":"1"},{"ablt_def":"x","centerLabel":"n","ablt_unit":""},{"ablt_def":"x","centerLabel":"n","ablt_unit":"2"}]}'
+    s2, _ = make({"WORK24_KEY_DUTY": "k"}, lambda r: httpx.Response(200, text=js))
+    assert [u.code for u in await s2.recommend("가짜")] == ["2"]
+
+
+@pytest.mark.parametrize("hole", [("operation",), ("params", "subcategory"), ("fields", "code"), ("fields", "name")])
+async def test_ncs_gw_partial_config_is_mock(monkeypatch, hole):
+    import copy
+
+    conf = copy.deepcopy(CONF)
+    d = conf
+    for k in hole[:-1]:
+        d = d[k]
+    d[hole[-1]] = None
+    monkeypatch.setattr(sources, "load_ncs_gw_fields", lambda: conf)
+    s, calls = make({"DATA_GO_KR_KEY": "k"}, lambda r: httpx.Response(500))
+    assert await s.units("20010202")
+    assert calls == [] and s.used == {"ncs_gw": "mock"}
