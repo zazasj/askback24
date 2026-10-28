@@ -53,3 +53,9 @@ def test_failure_exit_code_and_no_files(tmp_path, capsys):
     assert code == 1
     assert "timeout" in capsys.readouterr().out
     assert not (tmp_path / "backend.json").exists()
+
+
+def test_cli_raises_llm_call_cap_with_deadline(tmp_path):
+    llm = FakeLlm([drafts(1)])
+    assert cards_draft.main([*ARGS, "--out", str(tmp_path)], root=ROOT, env={}, llm=llm) == 0
+    assert llm.calls[0]["timeout_s"] > 45

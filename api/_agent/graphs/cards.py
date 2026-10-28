@@ -71,9 +71,10 @@ class CardsAgent:
         clock: Callable[[], float] = time.monotonic,
         now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
         deadline_s: float = CARDS_DEADLINE_S,
+        llm_max_s: float = CARDS_LLM_MAX_S,
     ) -> None:
         self.llm, self.root, self.env, self.http, self.clock, self.now = llm, Path(root), env, http, clock, now
-        self.deadline_s = deadline_s
+        self.deadline_s, self.llm_max_s = deadline_s, llm_max_s
         self.example = self._load_example()
         # 요청마다 다시 만들지 않도록 생성할 때 한 번만 compile 한다.
         self.graph = self._build()
@@ -92,10 +93,10 @@ class CardsAgent:
         left = self._left(s)
         if left <= 0:
             raise LlmError("timeout")
-        return await call_with_deadline(self.llm, "accurate", p_cards.SYSTEM, user, min(CARDS_LLM_MAX_S, left))
+        return await call_with_deadline(self.llm, "accurate", p_cards.SYSTEM, user, min(self.llm_max_s, left))
 
     def _build(self):
-        async def fetch(s: State) -> dict:
+        async def fetch_all(s: State) -> dict:
             req, src = s["req"], s["sources"]
             units: list[Unit] = []
             for code in req.ncs_subcategories:
@@ -115,6 +116,13 @@ class CardsAgent:
             found = await asyncio.gather(*(rec(q) for q in queries[:RECOMMEND_MAX_QUERIES]))
             await src.job_code(req.job_label)  # 출처 사용 기록(meta.sources)용. 값은 쓰지 않는다
             return {"units": units, "duties": duties, "recommended": [u for f in found for u in f]}
+
+        async def fetch(s: State) -> dict:
+            # 느린 출처가 마감을 넘기지 않게 남은 시간으로 끊는다
+            try:
+                return await asyncio.wait_for(fetch_all(s), timeout=max(self._left(s), 0))
+            except asyncio.TimeoutError:
+                raise LlmError("timeout") from None
 
         def candidates(s: State) -> dict:
             cands = build_candidates(s["units"], s["recommended"])

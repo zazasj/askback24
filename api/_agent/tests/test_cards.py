@@ -215,3 +215,24 @@ def test_malformed_card_stays_with_shape_issue():
     data = res.json()
     assert res.status_code == 200 and len(data["cards"]) == 2
     assert {"card_id": "FR02", "rule": "shape"} in data["issues"]
+
+
+def test_fetch_bounded_by_deadline_returns_503_timeout():
+    import asyncio
+    from fastapi.testclient import TestClient as TC
+
+    env = {"WORK24_KEY_DUTY": "k", "WORK24_KEY_JOB": "k", "WORK24_KEY_COMMONCODE": "k"}
+
+    async def slow(request):
+        await asyncio.sleep(5)
+        return httpx.Response(200, text="{}")
+
+    http = httpx.AsyncClient(transport=httpx.MockTransport(slow))
+    from _agent.graphs.cards import CardsAgent
+    from _agent.schemas import CardDraftRequest
+    import pytest
+
+    agent = CardsAgent(FakeLlm([]), ROOT, env, http=http, deadline_s=0.2)
+    with pytest.raises(LlmError) as e:
+        asyncio.run(agent.run(CardDraftRequest(**BODY, job_dictionary_code="K000001176")))
+    assert e.value.code == "timeout"

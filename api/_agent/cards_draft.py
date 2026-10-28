@@ -10,6 +10,7 @@ import httpx
 
 from .cards.sources import SourceError
 from .errors import ApiError
+from .budget import CARDS_LLM_MAX_S
 from .llm import Llm, LlmError, llm_from_env
 from .graphs.cards import CardsAgent
 from .regen import load_env
@@ -17,6 +18,8 @@ from .schemas import CardDraftRequest, CardDraftResponse
 
 ROOT = Path(__file__).resolve().parents[2]
 CLI_DEADLINE_S = 180.0
+# 한 번 부르는 상한도 전체 한도에 맞춰 늘린다(묶기 호출이 45초를 넘길 수 있음). 다시 쓰기 몫 10초를 남긴다.
+LLM_HEADROOM_S = 10.0
 
 
 def _norm(s: str) -> str:
@@ -93,7 +96,8 @@ def main(argv: list[str] | None = None, root: Path = ROOT, env: Mapping[str, str
         except (OSError, ValueError, KeyError):
             print("비교할 사전을 읽지 못했어요")
             return 1
-    agent = CardsAgent(llm or llm_from_env(env), root, env, http=http, deadline_s=args.deadline)
+    agent = CardsAgent(llm or llm_from_env(env), root, env, http=http, deadline_s=args.deadline,
+                       llm_max_s=max(CARDS_LLM_MAX_S, args.deadline - LLM_HEADROOM_S))
     try:
         res = asyncio.run(agent.run(req))
     except (LlmError, ApiError) as e:
