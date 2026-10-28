@@ -37,19 +37,27 @@ def _question_texts(card: dict) -> list[str]:
     return out
 
 
+def _strs(v) -> list[str]:
+    return [x for x in v if isinstance(x, str)] if isinstance(v, list) else []
+
+
 def _all_texts(card: dict) -> list[str]:
-    out = [str(card.get("label", "")), str(card.get("plain", ""))]
-    out += [x for x in card.get("examples", []) if isinstance(x, str)]
-    sig = card.get("posting_signals") or {}
-    for k in ("explicit", "implicit"):
-        out += [x for x in sig.get(k, []) if isinstance(x, str)]
+    out = [x for x in (card.get("label"), card.get("plain")) if isinstance(x, str)]
+    out += _strs(card.get("examples"))
+    sig = card.get("posting_signals")
+    if isinstance(sig, dict):
+        out += _strs(sig.get("explicit")) + _strs(sig.get("implicit"))
     out += _question_texts(card)
-    out += [v for v in (card.get("interpretation") or {}).values() if isinstance(v, str)]
+    interp = card.get("interpretation")
+    if isinstance(interp, dict):
+        out += [v for v in interp.values() if isinstance(v, str)]
     return out
 
 
 def check_card_draft(card: dict, candidate_codes: set[str], used_codes: set[str]) -> list[str]:
     issues: list[str] = []
+    if not isinstance(card, dict):
+        card = {}  # 모양이 아닌 초안도 예외 없이 shape로 낸다
     if not _shape_ok(card):
         issues.append("shape")
     units = card.get("units") if _is_str_list(card.get("units")) else []

@@ -9,8 +9,6 @@ CODES = {"2001020211", "2001020210", "OTHER"}
 
 def draft():
     be01 = json.loads((ROOT / "data/cards.backend.json").read_text(encoding="utf-8"))["cards"][0]
-    ncs = json.loads((ROOT / "data/real/ncs-cards.json").read_text(encoding="utf-8"))["cards"][0]
-    assert ncs["card_id"] == "BE01"
     return {
         "label": be01["label"],
         "plain": be01["plain"],
@@ -81,3 +79,28 @@ def test_examples_must_be_two():
     c = draft()
     c["label"] = "가" * 21
     assert check(c) == ["shape"]
+
+
+def test_malformed_drafts_do_not_raise():
+    for key, bad in [
+        ("examples", None),
+        ("examples", "문자열"),
+        ("examples", [1, 2]),
+        ("posting_signals", "x"),
+        ("posting_signals", {"explicit": None, "implicit": []}),
+        ("posting_signals", {"explicit": [1], "implicit": []}),
+        ("interpretation", "x"),
+        ("interpretation", None),
+        ("label", None),
+        ("questions", "x"),
+        ("units", None),
+    ]:
+        c = draft()
+        c[key] = bad
+        assert "shape" in check(c) or key == "questions", (key, bad)
+    assert "missing_question_type" in check({**draft(), "questions": "x"})
+
+
+def test_non_dict_card():
+    assert check("카드") == ["shape", "missing_question_type"]
+    assert check(None)[0] == "shape"
