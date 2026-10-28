@@ -17,12 +17,14 @@ from pathlib import Path
 
 from .checks import load_card_labels
 from .errors import ApiError
+from .cards.sources import SourceError
 from .graphs.analysis import AnalysisAgent
+from .graphs.cards import CardsAgent
 from .graphs.final import FinalAgent
 from .graphs.first import FirstAgent
 from .graphs.judge import JudgeAgent
 from .llm import Llm, LlmError, llm_from_env
-from .schemas import AnalysisRequest, AnalysisResponse, FinalRequest, FinalResponse, FirstRequest, FirstResponse, JudgeRequest, JudgeResponse
+from .schemas import CardDraftRequest, CardDraftResponse, AnalysisRequest, AnalysisResponse, FinalRequest, FinalResponse, FirstRequest, FirstResponse, JudgeRequest, JudgeResponse
 
 PREFIX = "/api/ai/v1"
 # TS 의 20초(WARMUP_TIMEOUT_MS)보다 먼저 끝내 ok 값이 로그에 닿게 한다.
@@ -75,6 +77,7 @@ def create_app(
     judge_agent = JudgeAgent(llm)
     final_agent = FinalAgent(llm, labels)
     analysis_agent = AnalysisAgent(llm, Path(__file__).resolve().parents[2], env, http, clock, now)
+    cards_agent = CardsAgent(llm, Path(__file__).resolve().parents[2], env, http, clock, now)
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
     @app.exception_handler(ApiError)
@@ -131,6 +134,13 @@ def create_app(
         try:
             return await analysis_agent.run(body)
         except LlmError:
+            raise ApiError(503, "unavailable", "model is not ready") from None
+
+    @router.post("/card-drafts")
+    async def card_drafts(body: CardDraftRequest) -> CardDraftResponse:
+        try:
+            return await cards_agent.run(body)
+        except (LlmError, SourceError):
             raise ApiError(503, "unavailable", "model is not ready") from None
 
     @router.post("/warmup")
