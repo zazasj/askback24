@@ -53,23 +53,17 @@ def _giants(v: Any) -> list[dict]:
     return [g for g in v if isinstance(g, dict) and isinstance(g.get("name"), str) and _int(g.get("year")) is not None]
 
 
-def _sido(posting: dict, root: Path) -> str | None:
-    region = str(posting.get("regionCd") or "")
-    if len(region) < 2:
-        return None
-    want = region[:2] + "000"
-    codes = _dict(_dict(_load(root / "data/real/common-codes.json")).get("region")).get("codes")
-    for c in codes if isinstance(codes, list) else []:
-        if isinstance(c, dict) and c.get("code") == want and isinstance(c.get("name"), str):
-            return c["name"]
-    return None
+def _sido(posting: dict) -> str | None:
+    # 세종은 공통코드 시도 목록에 없어 지역 코드 앞 두 자리를 그대로 쓴다(eis.json 의 sido 와 같은 값)
+    s = str(posting.get("regionCd") or "")[:2]
+    return s if s.isascii() and s.isdigit() and len(s) == 2 and s != "00" else None
 
 
 def company_data_from_files(ref: CompanyRef, posting: dict, root: Path) -> CompanyData:
     root = Path(root)
     demo = _dict(_dict(_load(root / "data/company/demo.json")).get(ref.wanted_auth_no))
     ind2 = demo.get("ind2") if isinstance(demo.get("ind2"), str) else None
-    d = CompanyData(ind2=ind2, mapped=ref.kind == "mapped", sido=_sido(posting, root))
+    d = CompanyData(ind2=ind2, mapped=ref.kind == "mapped", sido=_sido(posting))
 
     rp = _dict(demo.get("reposting"))
     if _int(rp.get("count")) is not None and _int(rp.get("months")) is not None:
