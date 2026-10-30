@@ -189,3 +189,11 @@ def test_eis_row_with_non_numeric_value_is_unusable_only_that_signal_drops():
                      reposting={"count": 3, "months": 6})
     got = build_signal_facts(POSTING, d2)
     assert kinds(got) == ["reposting", "industry_baseline"] and "전국 평균" in got[1].text
+
+
+def test_eis_row_with_rate_outside_0_to_1_is_skipped():
+    d = CompanyData(ind2="58", eis=eis([row(sido="전국", rate=60.088)]), sido="11")
+    assert "industry_baseline" not in kinds(build_signal_facts(POSTING, d))
+    d2 = CompanyData(ind2="58", eis=eis([row(rate=1.5), row(sido="전국", rate=0.03, net=-2)]), sido="11")
+    got = build_signal_facts(POSTING, d2)
+    assert kinds(got) == ["industry_baseline"] and "전국 평균" in got[0].text and "3.0%" in got[0].text
