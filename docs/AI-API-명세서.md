@@ -535,7 +535,7 @@ curl -X POST "{AI_ENDPOINT}/v1/final-questions" \
 | `issues` | array | 검사에 걸린 곳 `{ "card_id", "rule" }`(금지어, 질문 틀에 "공고" 등) |
 | `meta.graph_version` · `meta.model` · `meta.created_at` | string | 만든 그래프 버전 · 모델 · 시각 |
 | `meta.job_dictionary` | string | 직업사전(212D01)의 직업 한 줄 요약. `job_dictionary_code`가 없거나 못 찾으면 `null` |
-| `meta.sources` | object | 실제 부른 자료 출처별 `실제` · `실제 스냅숏` · `모의`(예: `ncs_gw: "모의"`). 모의를 실제로 알고 검수하지 않게 한다 |
+| `meta.sources` | object | 실제 부른 자료 출처별 `실제` · `실제 스냅숏` · `모의`(키는 `ncs_gw`·`duty`·`job` 중 부른 것만, 예: `ncs_gw: "모의"`). 모의를 실제로 알고 검수하지 않게 한다 |
 
 카드 ID는 서버가 `job` 앞 두 글자 대문자 + 두 자리 번호(`FR01`)로 정하고, 앞 12개는 `core: true`, `mapping_confidence`는 늘 `draft`입니다. 능력단위를 하나도 찾지 못하면 400 `invalid_request`(`no units`)입니다. 키가 있는 자료의 호출이 실패하거나 마감 안에 답하지 않으면 503 `unavailable`(`source is not available`), 모델이 못 쓰거나 빈 초안이면 503(`model is not ready`)입니다.
 

@@ -71,6 +71,11 @@ def _ncs_gw_items(root: ET.Element) -> list[ET.Element]:
     return list(root.findall(".//items/item"))
 
 
+def spaceless(s: str) -> str:
+    # scripts/fetch-work24.ts의 spaceless와 같다. 괄호 안(영문 보충 등)은 215L01 질의에서 빈 응답이 된다.
+    return re.sub(r"\s+", "", re.sub(r"\([^)]*\)", "", s))
+
+
 def _walk_items(v: object, out: list[dict]) -> None:
     if isinstance(v, list):
         for x in v:
@@ -83,20 +88,8 @@ def _walk_items(v: object, out: list[dict]) -> None:
                 _walk_items(x, out)
 
 
-def _code_rows(root: ET.Element) -> list[tuple[str, str]]:
-    # fetch-work24.ts codeRows와 같다: 잎 자식 중 …Cd·…Nm 짝이 있는 노드마다 한 줄.
-    rows: list[tuple[str, str]] = []
-    for node in root.iter():
-        leaves = {c.tag: _text(c) for c in node if len(c) == 0}
-        cd = next((k for k in leaves if k.lower().endswith("cd")), None)
-        nm = next((k for k in leaves if k.lower().endswith("nm")), None)
-        if cd and nm and leaves[cd]:
-            rows.append((leaves[cd], leaves[nm]))
-    return rows
-
-
 class CardSources:
-    def __init__(self, env: Mapping[str, str], root: Path, client: httpx.AsyncClient | None = None):
+    def __init__(self, env: Mapping[str, str], root: Path, client: httpx.AsyncClient):
         self._env = env
         self._root = root
         self._client = client
@@ -116,10 +109,7 @@ class CardSources:
             return r
 
         try:
-            if self._client is not None:
-                return await go(self._client)
-            async with httpx.AsyncClient() as c:
-                return await go(c)
+            return await go(self._client)
         except Exception:
             # 예외 글에 키(URL)가 섞일 수 있어 버린다.
             raise SourceError("자료 출처 호출 실패") from None
@@ -234,18 +224,3 @@ class CardSources:
         if d.get("jobCd") == job_dictionary_code and d.get("summary"):
             return [d["summary"]]
         return []
-
-    # ── 21L01 공통코드 ──
-    async def job_code(self, job_label: str) -> str | None:
-        key = self._key("WORK24_KEY_COMMONCODE")
-        if key:
-            text = await self._work24("21L01", key, {"returnType": "XML", "target": "CMCD", "dtlGb": "2"})
-            try:
-                rows = _code_rows(ET.fromstring(text))
-            except Exception:
-                raise SourceError("자료 출처 응답을 읽지 못함") from None
-            self.used["codes"] = "real"
-            return next((c for c, n in rows if n == job_label), None)
-        self.used["codes"] = "snapshot"
-        d = _read_json(self._root / "data" / "real" / "common-codes.json")
-        return next((c["code"] for c in d.get("jobs", {}).get("codes", []) if c.get("name") == job_label), None)

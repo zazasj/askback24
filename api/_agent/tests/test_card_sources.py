@@ -5,7 +5,7 @@ import httpx
 import pytest
 
 from _agent.cards import sources
-from _agent.cards.sources import CardSources, SourceError
+from _agent.cards.sources import CardSources, SourceError, spaceless
 
 ROOT = Path(__file__).resolve().parents[3]
 FX = Path(__file__).parent / "fixtures"
@@ -28,7 +28,7 @@ def make(env, handler):
 
 
 async def test_no_keys_uses_snapshot_and_mock():
-    s = CardSources({}, ROOT)
+    s = CardSources({}, ROOT, httpx.AsyncClient())
     units = await s.units("20010202")
     assert {u.name for u in units} >= {"서버프로그램 구현", "화면 구현"}
     assert all(u.subcategory == "응용SW엔지니어링" and u.subcategory_code == "20010202" for u in units)
@@ -37,18 +37,21 @@ async def test_no_keys_uses_snapshot_and_mock():
     assert rec[0].subcategory == "응용SW엔지니어링" and rec[0].subcategory_code == "20010202"
     assert await s.duties("K000001176")
     assert await s.duties("K-other") == []
-    await s.job_code("응용소프트웨어개발자")
-    assert s.used == {"ncs_gw": "mock", "duty": "snapshot", "job": "snapshot", "codes": "snapshot"}
+    assert s.used == {"ncs_gw": "mock", "duty": "snapshot", "job": "snapshot"}
+
+
+def test_spaceless_strips_parentheses():
+    assert spaceless("서버 프로그램 구현(Java)") == "서버프로그램구현"
 
 
 async def test_unused_source_absent():
-    s = CardSources({}, ROOT)
+    s = CardSources({}, ROOT, httpx.AsyncClient())
     await s.recommend("서버프로그램구현")
     assert s.used == {"duty": "snapshot"}
 
 
 async def test_unknown_subcategory_mock_empty():
-    assert await CardSources({}, ROOT).units("99999999") == []
+    assert await CardSources({}, ROOT, httpx.AsyncClient()).units("99999999") == []
 
 
 async def test_duty_query_strips_spaces():
@@ -78,20 +81,11 @@ async def test_real_212d01_parses_fixture():
     assert s.used == {"job": "real"}
 
 
-async def test_real_21l01_parses_fixture():
-    s, calls = make({"WORK24_KEY_COMMONCODE": SECRET}, lambda r: httpx.Response(200, text=body("work24", "21l01.xml")))
-    assert await s.job_code("가짜 개발자") == "011100"
-    assert await s.job_code("없는 직업") is None
-    assert calls[0].url.params["target"] == "CMCD"
-    assert s.used == {"codes": "real"}
-
-
 @pytest.mark.parametrize(
     "env,call",
     [
         ({"WORK24_KEY_DUTY": SECRET}, lambda s: s.recommend("가짜")),
         ({"WORK24_KEY_JOB": SECRET}, lambda s: s.duties("K1")),
-        ({"WORK24_KEY_COMMONCODE": SECRET}, lambda s: s.job_code("가짜")),
     ],
 )
 async def test_key_present_failure_raises(env, call):
