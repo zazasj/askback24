@@ -29,7 +29,9 @@ FIELDS = {
     "ym": "dataCrtYm",
 }
 MIN_MONTHS = 9
+_LEGAL = re.compile(r"\(주\)|㈜|주식회사")
 _NOISE = re.compile(r"\(주\)|㈜|주식회사|\s+")
+_YM = re.compile(r"\d{6}")
 
 
 @dataclass(frozen=True)
@@ -46,10 +48,12 @@ def _norm(name: object) -> str:
     return _NOISE.sub("", str(name or ""))
 
 
-def _items(content: bytes) -> list[dict[str, str]]:
+def _items(content: bytes, total: list[int] | None = None) -> list[dict[str, str]]:
     root = ET.fromstring(content)
     if (root.findtext("header/resultCode") or "").strip() != "00":
         raise ValueError("result")
+    if total is not None:
+        total.append(int((root.findtext("body/totalCount") or "0").strip() or 0))
     return [{c.tag: (c.text or "").strip() for c in it} for it in root.findall("body/items/item")]
 
 
@@ -57,13 +61,13 @@ def _int(v: object) -> int:
     return int(str(v).strip())
 
 
-async def _call(client: httpx.AsyncClient, op: str, key: str, params: dict) -> list[dict[str, str]]:
+async def _call(client: httpx.AsyncClient, op: str, key: str, params: dict, total: list[int] | None = None) -> list[dict[str, str]]:
     r = await asyncio.wait_for(
         client.get(f"{BASE}/{op}", params={"serviceKey": key, **params}, timeout=NPS_CALL_TIMEOUT_S),
         NPS_CALL_TIMEOUT_S,
     )
     r.raise_for_status()
-    return _items(r.content)
+    return _items(r.content, total)
 
 
 def _digits6(v: object) -> str:
@@ -76,17 +80,24 @@ async def _fetch(ref: CompanyRef, key: str, client: httpx.AsyncClient, today: da
     if not ref.name or not ref.biz_no:
         return None
     prefix = ref.biz_no[:6]
+    # 서버가 받은 글로 부분 일치를 하므로 법인 꼴 낱말은 뺀다(비교는 아래 _norm이 한다).
+    query = _LEGAL.sub("", ref.name).strip()
+    total: list[int] = []
     found = await _call(
         client,
         "getBassInfoSearchV2",
         key,
-        {FIELDS["search_name"]: ref.name, FIELDS["search_biz"]: prefix, "numOfRows": 100, "pageNo": 1},
+        {FIELDS["search_name"]: query, FIELDS["search_biz"]: prefix, "numOfRows": 100, "pageNo": 1},
+        total,
     )
+    # 100줄을 넘으면 같은 이름의 다른 사업장이 뒤쪽에 숨을 수 있다.
+    if total and total[0] > len(found):
+        return None
     want = _norm(ref.name)
     rows = [
         i
         for i in found
-        if _norm(i.get(FIELDS["name"])) == want and _digits6(i.get(FIELDS["biz"])) == prefix and i.get(FIELDS["ym"]) and i.get(FIELDS["seq"])
+        if _norm(i.get(FIELDS["name"])) == want and _digits6(i.get(FIELDS["biz"])) == prefix and _YM.fullmatch(i.get(FIELDS["ym"], "")) and i.get(FIELDS["seq"])
     ]
     if not rows:
         return None

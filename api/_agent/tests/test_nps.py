@@ -1,4 +1,5 @@
 import asyncio
+import re
 from datetime import date
 
 import httpx
@@ -8,20 +9,20 @@ from _agent.company.resolve import CompanyRef
 
 KEY = "FAKE-KEY-abc123%2B"
 TODAY = date(2026, 10, 30)  # 달 범위는 자료에서 정해지므로 값은 상관없다
-REF = CompanyRef("K-MOCK-0001", "mapped", "가나소프트(주)", "0000000000")
+REF = CompanyRef("K-MOCK-0001", "mapped", "OO소프트(주)", "0000000000")
 YMS = [f"2025{m:02d}" for m in range(10, 13)] + [f"2026{m:02d}" for m in range(1, 10)]  # 12개월
 
 
-def wrap(items: str, code: str = "00") -> httpx.Response:
+def wrap(items: str, code: str = "00", total: int = 0) -> httpx.Response:
     body = f"<items>{items}</items>" if items else "<items/>"
     xml = (
         f"<response><header><resultCode>{code}</resultCode><resultMsg>X</resultMsg></header>"
-        f"<body>{body}<numOfRows>100</numOfRows><pageNo>1</pageNo><totalCount>0</totalCount></body></response>"
+        f"<body>{body}<numOfRows>100</numOfRows><pageNo>1</pageNo><totalCount>{total}</totalCount></body></response>"
     )
     return httpx.Response(200, content=xml.encode("utf-8"), headers={"content-type": "application/xml"})
 
 
-def row(seq: int, ym: str, name: str = "가나소프트(주)", emd: str = "101", biz: str = "000000****") -> str:
+def row(seq: int, ym: str, name: str = "OO소프트(주)", emd: str = "101", biz: str = "000000****") -> str:
     return (
         f"<item><bzowrRgstNo>{biz}</bzowrRgstNo><dataCrtYm>{ym}</dataCrtYm><ldongAddrMgplDgCd>11</ldongAddrMgplDgCd>"
         f"<ldongAddrMgplSgguCd>680</ldongAddrMgplSgguCd><ldongAddrMgplSgguEmdCd>{emd}</ldongAddrMgplSgguEmdCd>"
@@ -39,7 +40,7 @@ def make_client(handler):
     return httpx.AsyncClient(transport=httpx.MockTransport(h)), calls
 
 
-def standard(basic: str | None = None, empty_seqs: set[str] = frozenset(), name: str = "가나소프트(주)", gain: int = 3, loss: int = 1):
+def standard(basic: str | None = None, empty_seqs: set[str] = frozenset(), name: str = "OO소프트(주)", gain: int = 3, loss: int = 1):
     # 달 i의 seq는 100+i. 옛 달(앞 3개월)에만 주소가 다른 같은 이름 사업장이 있다.
     if basic is None:
         basic = "".join(row(100 + i, ym, name=name) for i, ym in enumerate(YMS))
@@ -48,7 +49,10 @@ def standard(basic: str | None = None, empty_seqs: set[str] = frozenset(), name:
     def handler(req: httpx.Request):
         op = req.url.path.rsplit("/", 1)[-1]
         if op == "getBassInfoSearchV2":
-            return wrap(basic)
+            # 서버처럼 보낸 이름이 사업장 이름에 들어 있는 줄만 돌려준다.
+            q = req.url.params["wkplNm"]
+            rows = re.findall(r"<item>.*?</item>", basic)
+            return wrap("".join(r for r in rows if q in re.search(r"<wkplNm>(.*?)</wkplNm>", r).group(1)))
         if op == "getDetailInfoSearchV2":
             assert req.url.params["seq"] == "111"  # 최신 달 seq
             return wrap(f"<item><jnngpCnt>42</jnngpCnt><wkplIntpCd>582019</wkplIntpCd><wkplNm>{name}</wkplNm></item>")
@@ -66,7 +70,7 @@ async def test_v2_happy_path():
     assert facts == nps.PensionFacts(members=42, gain_12m=36, loss_12m=12, months=12, period="2025년 10월~2026년 9월", ind2="58")
     assert len(calls) == 14
     q = calls[0].url.params
-    assert q["wkplNm"] == "가나소프트(주)" and q["bzowrRgstNo"] == "000000" and q["numOfRows"] == "100"
+    assert q["wkplNm"] == "OO소프트" and q["bzowrRgstNo"] == "000000" and q["numOfRows"] == "100"
     assert all("_type" not in c.url.params and c.url.params["serviceKey"] == "FAKE-KEY-abc123+" for c in calls)
     monthly = sorted(c.url.params["seq"] for c in calls if c.url.path.endswith("Sttus" + "InfoSearchV2"))
     assert monthly == sorted(str(100 + i) for i in range(12))
@@ -86,11 +90,32 @@ async def test_duplicate_row_same_month_none():
 
 
 async def test_name_normalized():
-    ref = CompanyRef("K-MOCK-0001", "mapped", "(주)가나소프트", "0000000000")
-    basic = "".join(row(100 + i, ym, name="가나소프트 주식회사") for i, ym in enumerate(YMS))
+    ref = CompanyRef("K-MOCK-0001", "mapped", "(주)OO소프트", "0000000000")
+    basic = "".join(row(100 + i, ym, name="OO소프트 주식회사") for i, ym in enumerate(YMS))
     client, _ = make_client(standard(basic=basic))
     facts = await nps.fetch_pension(ref, KEY, client, TODAY)
     assert facts is not None and facts.months == 12
+
+
+async def test_total_beyond_received_none():
+    basic = "".join(row(100 + i, ym) for i, ym in enumerate(YMS))
+    handler = standard(basic=basic)
+
+    def h(req: httpx.Request):
+        if req.url.path.endswith("getBassInfoSearchV2"):
+            return wrap(basic, total=101)
+        return handler(req)
+
+    client, calls = make_client(h)
+    assert await nps.fetch_pension(REF, KEY, client, TODAY) is None
+    assert len(calls) == 1
+
+
+async def test_malformed_ym_ignored():
+    basic = "".join(row(100 + i, ym) for i, ym in enumerate(YMS)) + row(7, "ABCDEF") + row(8, "")
+    client, _ = make_client(standard(basic=basic))
+    facts = await nps.fetch_pension(REF, KEY, client, TODAY)
+    assert facts is not None and facts.months == 12 and facts.period.endswith("2026년 9월")
 
 
 async def test_other_name_or_biz_filtered():
@@ -150,7 +175,7 @@ async def test_key_not_in_errors(ai_log):
     assert await nps.fetch_pension(REF, KEY, client, TODAY) is None
     text = ai_log.text
     assert "[ai] nps failed" in text
-    for secret in (KEY, "FAKE-KEY", "가나소프트", "0000000000", "000000"):
+    for secret in (KEY, "FAKE-KEY", "OO소프트", "0000000000", "000000"):
         assert secret not in text
 
 
