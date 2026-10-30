@@ -14,7 +14,7 @@
 | 2-1 | 최종 면접: 1차 면접 답 판정 | `POST {AI_ENDPOINT}/v1/final-judgements` | 8초 안 |
 | 2-2 | 최종 면접·처우 질문 문장 생성 | `POST {AI_ENDPOINT}/v1/final-questions` | 10초 안 |
 | 3 | 공고 분석 (카드 상태·처우 빈칸·회사 신호) | `POST {AI_ENDPOINT}/v1/posting-analysis` | 함수 한도 안(공고당 한 번, 결과 저장) |
-| 4 | 업무 카드 초안 | `POST {AI_ENDPOINT}/v1/card-drafts` | 지금은 CLI(`npm run cards:draft`)가 지원 경로. 엔드포인트는 시간 한계(55초)에 걸려 503일 수 있음(4.5단계에서 미리보기로 재서 정함) |
+| 4 | 업무 카드 초안 | `POST {AI_ENDPOINT}/v1/card-drafts` | 지금은 CLI(`npm run cards:draft`)가 지원 경로. 엔드포인트는 시간 한계(55초)에 걸려 503일 수 있음(4.5단계에서 총 168.2초로 재어 CLI 전용으로 정함, D-368) |
 | 내부 | 모델 미리 깨우기(화면을 열 때 우리 서버가 부름, 요청 본문 없음) | `POST {AI_ENDPOINT}/v1/warmup` | 15초 안, 200 `{"ok": true 또는 false}` |
 
 최종 면접은 2-1 → (우리 규칙이 질문 순서 결정) → 2-2 순서로 두 번 부릅니다. 화면이 지금 쓰는 것은 1·2번이고, 3·4번은 지금 개발자가 부르며 나중에 화면이 필요하면 우리 서버가 대신 부릅니다.
@@ -539,7 +539,7 @@ curl -X POST "{AI_ENDPOINT}/v1/final-questions" \
 
 카드 ID는 서버가 `job` 앞 두 글자 대문자 + 두 자리 번호(`FR01`)로 정하고, 앞 12개는 `core: true`, `mapping_confidence`는 늘 `draft`입니다. 능력단위를 하나도 찾지 못하면 400 `invalid_request`(`no units`)입니다. 키가 있는 자료의 호출이 실패하거나 마감 안에 답하지 않으면 503 `unavailable`(`source is not available`), 모델이 못 쓰거나 빈 초안이면 503(`model is not ready`)입니다.
 
-**시간**: 엔드포인트는 전체 55초, LLM 한 번 45초 안에서 끝나야 합니다. 정확 모델의 실제 묶기 호출이 보통 그보다 길어(실측: 엔드포인트 45.7초에 timeout, CLI는 한도 170초로 66.6초에 성공) 지금은 엔드포인트가 503으로 끝날 수 있습니다. 직무를 넓힐 때는 CLI `npm run cards:draft`를 쓰고, 엔드포인트를 쓸지는 4.5단계에서 미리보기로 재서 정합니다.
+**시간**: 엔드포인트는 전체 55초, LLM 한 번 45초 안에서 끝나야 합니다. 정확 모델의 실제 묶기 호출이 보통 그보다 길어(실측: 엔드포인트 45.7초에 timeout, CLI는 한도 170초로 66.6초에 성공) 지금은 엔드포인트가 503으로 끝날 수 있습니다. 직무를 넓힐 때는 CLI `npm run cards:draft`를 쓰고, 4.5단계에서 실제 출처로 잰 총 시간이 168.2초(엔드포인트 55초의 약 3배)라, 엔드포인트는 남기되 지금 모델로는 지원 경로가 아니고 ⓪은 CLI 전용으로 정했습니다(D-368).
 
 유형 이름·규칙표(`type_labels`·`gap_rules`)는 직무와 상관없어 초안에 넣지 않고 기존 사전의 것을 씁니다.
 
