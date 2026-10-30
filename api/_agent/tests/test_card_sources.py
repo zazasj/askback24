@@ -16,6 +16,14 @@ def body(*parts: str) -> str:
     return (FX.joinpath(*parts)).read_text(encoding="utf-8")
 
 
+def no_network():
+    # 키 없는 경로는 어떤 요청도 보내면 안 된다. 보내면 시험이 바로 깨진다.
+    def boom(req: httpx.Request):
+        raise AssertionError(f"unexpected request {req.url.host}")
+
+    return httpx.AsyncClient(transport=httpx.MockTransport(boom))
+
+
 def make(env, handler):
     calls: list[httpx.Request] = []
 
@@ -28,16 +36,17 @@ def make(env, handler):
 
 
 async def test_no_keys_uses_snapshot_and_mock():
-    s = CardSources({}, ROOT, httpx.AsyncClient())
-    units = await s.units("20010202")
-    assert {u.name for u in units} >= {"서버프로그램 구현", "화면 구현"}
-    assert all(u.subcategory == "응용SW엔지니어링" and u.subcategory_code == "20010202" for u in units)
-    rec = await s.recommend("서버프로그램구현")
-    assert [u.code for u in rec] == ["2001020211"]
-    assert rec[0].subcategory == "응용SW엔지니어링" and rec[0].subcategory_code == "20010202"
-    assert await s.duties("K000001176")
-    assert await s.duties("K-other") == []
-    assert s.used == {"ncs_gw": "mock", "duty": "snapshot", "job": "snapshot"}
+    async with no_network() as c:
+        s = CardSources({}, ROOT, c)
+        units = await s.units("20010202")
+        assert {u.name for u in units} >= {"서버프로그램 구현", "화면 구현"}
+        assert all(u.subcategory == "응용SW엔지니어링" and u.subcategory_code == "20010202" for u in units)
+        rec = await s.recommend("서버프로그램구현")
+        assert [u.code for u in rec] == ["2001020211"]
+        assert rec[0].subcategory == "응용SW엔지니어링" and rec[0].subcategory_code == "20010202"
+        assert await s.duties("K000001176")
+        assert await s.duties("K-other") == []
+        assert s.used == {"ncs_gw": "mock", "duty": "snapshot", "job": "snapshot"}
 
 
 def test_spaceless_strips_parentheses():
@@ -45,13 +54,15 @@ def test_spaceless_strips_parentheses():
 
 
 async def test_unused_source_absent():
-    s = CardSources({}, ROOT, httpx.AsyncClient())
-    await s.recommend("서버프로그램구현")
+    async with no_network() as c:
+        s = CardSources({}, ROOT, c)
+        await s.recommend("서버프로그램구현")
     assert s.used == {"duty": "snapshot"}
 
 
 async def test_unknown_subcategory_mock_empty():
-    assert await CardSources({}, ROOT, httpx.AsyncClient()).units("99999999") == []
+    async with no_network() as c:
+        assert await CardSources({}, ROOT, c).units("99999999") == []
 
 
 async def test_duty_query_strips_spaces():

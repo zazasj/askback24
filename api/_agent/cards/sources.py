@@ -144,7 +144,7 @@ class CardSources:
         params = {"serviceKey": key, conf["params"]["subcategory"]: code, **conf["params"].get("fixed", {}), **override}
         r = await self._get(url, params)
         try:
-            return _ncs_gw_rows(ET.fromstring(r.text), conf)
+            return _ncs_gw_rows(ET.fromstring(r.content), conf)
         except Exception:
             raise SourceError("자료 출처 응답을 읽지 못함") from None
 
