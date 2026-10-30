@@ -1,7 +1,12 @@
 {
-  "base_url": null,
-  "operation": null,
-  "params": {"subcategory": null},
-  "fields": {"code": null, "name": null, "level": null, "subcategory_code": null, "subcategory": null},
-  "note": "data.go.kr 15157547 활용신청 뒤 swagger로 채움(4.5단계)"
+  "base_url": "https://apis.data.go.kr/B490007/ncsInfo",
+  "operation": "ncsCompeUnitInfo",
+  "name_operation": "ncsDutyInfo",
+  "params": {"subcategory": "dutyCd", "fixed": {"numOfRows": "100", "pageNo": "1", "returnType": "xml"}},
+  "item_path": "data/row",
+  "result_code_path": "dataInfo/code",
+  "ok_codes": ["000"],
+  "empty_codes": ["002"],
+  "fields": {"code": "ncsClCd", "name": "compUnitName", "level": "compUnitLevel", "subcategory_code": "dutyCd", "subcategory": "dutyNm"},
+  "note": "2026-10-30 활용신청 상세 기능 경로와 실제 응답으로 채움(4.5단계)"
 }
