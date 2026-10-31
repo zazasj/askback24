@@ -17,7 +17,7 @@ from .regen import load_env
 from .schemas import CardDraftRequest, CardDraftResponse
 
 ROOT = Path(__file__).resolve().parents[2]
-CLI_DEADLINE_S = 180.0
+CLI_DEADLINE_S = 300.0
 # 한 번 부르는 상한도 전체 한도에 맞춰 늘린다(묶기 호출이 45초를 넘길 수 있음). 10초만 남기므로 호출이 상한까지 가면
 # 남은 시간이 다시 쓰기 기준(20초)에 못 미쳐 다시 쓰기를 건너뛴다. 보통은 그보다 일찍 끝난다.
 LLM_HEADROOM_S = 10.0

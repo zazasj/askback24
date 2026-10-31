@@ -28,7 +28,7 @@ def eis(rows):
     return {"rows": rows, "size_bands": BANDS}
 
 
-def row(sido="서울", insured=5000, rate=0.021, net=-3):
+def row(sido="11", insured=5000, rate=0.021, net=-3):
     return {"ind2": "58", "size": "5~29인", "sido": sido, "loss_rate": rate, "net": net, "insured": insured}
 
 
@@ -64,7 +64,7 @@ def test_pension_text_band_and_direction():
 
 
 def test_eis_row_found():
-    d = CompanyData(pension=pf(members=5), pension_source="실제", eis=eis([row()]), sido="서울")
+    d = CompanyData(pension=pf(members=5), pension_source="실제", eis=eis([row()]), sido="11")
     f = build_signal_facts(POSTING, d)[0]
     assert f.kind == "industry_baseline" and f.source == "실제"
     assert "2.1%" in f.text and "-3" in f.text and "전국 평균" not in f.text
@@ -72,20 +72,20 @@ def test_eis_row_found():
 
 def test_eis_uses_nation_when_small_cell():
     nation = row(sido="전국", insured=90000, rate=0.015, net=7)
-    d = CompanyData(pension=pf(members=5), pension_source="실제", eis=eis([row(insured=800), nation]), sido="서울")
+    d = CompanyData(pension=pf(members=5), pension_source="실제", eis=eis([row(insured=800), nation]), sido="11")
     f = build_signal_facts(POSTING, d)[0]
     assert "전국 평균" in f.text and "1.5%" in f.text
 
 
 def test_eis_without_ind2_drops():
-    d = CompanyData(eis=eis([row()]), sido="서울")
+    d = CompanyData(eis=eis([row()]), sido="11")
     assert build_signal_facts(POSTING, d) == []
-    d = CompanyData(ind2="58", eis=eis([row()]), sido="서울")
+    d = CompanyData(ind2="58", eis=eis([row()]), sido="11")
     assert kinds(build_signal_facts(POSTING, d)) == ["industry_baseline"]
 
 
 def test_eis_size_outside_bands_drops():
-    d = CompanyData(ind2="58", eis=eis([row()]), sido="서울")
+    d = CompanyData(ind2="58", eis=eis([row()]), sido="11")
     assert build_signal_facts({**POSTING, "totPsncnt": "500"}, d) == []
     assert build_signal_facts({**POSTING, "totPsncnt": "abc"}, d) == []
 
@@ -107,7 +107,7 @@ def test_wage_arrears_only_when_listed():
 def test_order():
     d = CompanyData(
         reposting={"count": 3, "months": 6}, pension=pf(), pension_source="모의", ind2="58",
-        eis=eis([row()]), sido="서울", giants=[{"name": "A", "year": 2025}], giants_source="모의",
+        eis=eis([row()]), sido="11", giants=[{"name": "A", "year": 2025}], giants_source="모의",
         wage_arrears={"listed": True},
     )
     assert kinds(build_signal_facts(POSTING, d)) == [
@@ -161,13 +161,12 @@ def test_mapped_giants_from_small_giants_file(tmp_path):
 
 def test_sido_and_eis_loaded(tmp_path):
     (tmp_path / "data/company").mkdir(parents=True)
-    (tmp_path / "data/real").mkdir(parents=True)
     (tmp_path / "data/company/eis.json").write_text(
         json.dumps({"meta": {"size_bands": BANDS}, "rows": [row()]}), encoding="utf-8")
-    (tmp_path / "data/real/common-codes.json").write_text(
-        json.dumps({"region": {"codes": [{"code": "11000", "name": "서울", "parent": None}]}}), encoding="utf-8")
-    d = company_data_from_files(CompanyRef("K-Z", "biz_no", None, "0000000000"), POSTING, tmp_path)
-    assert d.sido == "서울" and d.eis["size_bands"] == BANDS and len(d.eis["rows"]) == 1
+    d = company_data_from_files(CompanyRef("K-Z", "biz_no", None, "0000000000"), {**POSTING, "regionCd": "36110"}, tmp_path)
+    assert d.sido == "36" and d.eis["size_bands"] == BANDS and len(d.eis["rows"]) == 1
+    for region in ("00000", "", None, "ab123"):
+        assert company_data_from_files(CompanyRef("K-Z", "biz_no", None, "0000000000"), {**POSTING, "regionCd": region}, tmp_path).sido is None
 
 
 def test_signal_ask_without_question_mark_is_rejected():
@@ -184,9 +183,17 @@ def test_ask_hints_have_no_digits():
 
 
 def test_eis_row_with_non_numeric_value_is_unusable_only_that_signal_drops():
-    d = CompanyData(ind2="58", eis=eis([row(rate=None)]), sido="서울")
+    d = CompanyData(ind2="58", eis=eis([row(rate=None)]), sido="11")
     assert "industry_baseline" not in kinds(build_signal_facts(POSTING, d))
-    d2 = CompanyData(ind2="58", eis=eis([row(rate=None), row(sido="전국", rate=0.03, net=-2)]), sido="서울",
+    d2 = CompanyData(ind2="58", eis=eis([row(rate=None), row(sido="전국", rate=0.03, net=-2)]), sido="11",
                      reposting={"count": 3, "months": 6})
     got = build_signal_facts(POSTING, d2)
     assert kinds(got) == ["reposting", "industry_baseline"] and "전국 평균" in got[1].text
+
+
+def test_eis_row_with_rate_outside_0_to_1_is_skipped():
+    d = CompanyData(ind2="58", eis=eis([row(sido="전국", rate=60.088)]), sido="11")
+    assert "industry_baseline" not in kinds(build_signal_facts(POSTING, d))
+    d2 = CompanyData(ind2="58", eis=eis([row(rate=1.5), row(sido="전국", rate=0.03, net=-2)]), sido="11")
+    got = build_signal_facts(POSTING, d2)
+    assert kinds(got) == ["industry_baseline"] and "전국 평균" in got[0].text and "3.0%" in got[0].text

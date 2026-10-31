@@ -171,7 +171,7 @@ def test_used_in_filled():
 def test_meta_sources_mock_and_snapshot():
     res = post(FakeLlm([drafts(1)]), body={**BODY, "job_dictionary_code": "K000001176"})
     assert res.json()["meta"]["sources"] == {
-        "ncs_gw": "모의", "duty": "실제 스냅숏", "job": "실제 스냅숏", "codes": "실제 스냅숏",
+        "ncs_gw": "모의", "duty": "실제 스냅숏", "job": "실제 스냅숏",
     }
 
 
@@ -185,7 +185,7 @@ def test_log_shape(ai_log):
     line = next(r.getMessage() for r in ai_log.records if r.getMessage().startswith("[ai] cards job="))
     assert re.fullmatch(
         r"\[ai\] cards job=frontend candidates=12 cards=2 issues=0 retried=0 "
-        r"sources=ncs_gw:mock,duty:snapshot,codes:snapshot ms=\d+ model=fake",
+        r"sources=ncs_gw:mock,duty:snapshot ms=\d+ model=fake",
         line,
     )
     assert "카드이름" not in ai_log.text
@@ -279,7 +279,7 @@ def test_fetch_deadline_is_source_timeout_503(ai_log, monkeypatch):
     from _agent.graphs.cards import CardsAgent
 
     monkeypatch.setattr(app_mod, "CardsAgent", functools.partial(CardsAgent, deadline_s=0.2))
-    env = {"WORK24_KEY_DUTY": "k", "WORK24_KEY_JOB": "k", "WORK24_KEY_COMMONCODE": "k"}
+    env = {"WORK24_KEY_DUTY": "k", "WORK24_KEY_JOB": "k"}
 
     async def slow(request):
         await asyncio.sleep(5)
@@ -289,3 +289,74 @@ def test_fetch_deadline_is_source_timeout_503(ai_log, monkeypatch):
     res = post(FakeLlm([]), env=env, http=http, body={**BODY, "job_dictionary_code": "K000001176"})
     assert res.status_code == 503 and res.json()["error"]["message"] == "source is not available"
     assert "cards unavailable code=source_timeout ms=" in ai_log.text
+
+
+def _units(names):
+    from _agent.cards.sources import Unit
+
+    return [Unit(f"U{i:03d}", n, 3, "20010202", "응용SW엔지니어링") for i, n in enumerate(names)]
+
+
+def test_recommend_query_uses_spaceless(monkeypatch):
+    from _agent.cards.sources import CardSources
+
+    async def fake_units(self, code):
+        return _units(["서버 프로그램 구현(Java)"])
+
+    monkeypatch.setattr(CardSources, "units", fake_units)
+    seen = []
+
+    def handler(req):
+        seen.append(req.url.params.get("jobCont"))
+        return httpx.Response(200, text="")
+
+    http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    post(FakeLlm([drafts(1)]), env={"WORK24_KEY_DUTY": "k"}, http=http)
+    assert seen == ["서버프로그램구현"]
+
+
+def test_extra_recommended_units_capped(monkeypatch):
+    from _agent.cards.sources import CardSources, Unit
+
+    async def fake_units(self, code):
+        return _units(["하나", "둘"])
+
+    async def fake_recommend(self, q):
+        # 세분류 목록에 있는 U000 + 추천에서만 온 15개
+        return [Unit("U000", "하나", 3, "20010202", "x")] + [
+            Unit(f"X{i:02d}", f"추가{i}", None, "99", "y") for i in range(15)
+        ]
+
+    monkeypatch.setattr(CardSources, "units", fake_units)
+    monkeypatch.setattr(CardSources, "recommend", fake_recommend)
+    res = post(FakeLlm([{"cards": [draft(1, units=["U000"])]}]))
+    codes = [c["ablt_unit"] for c in res.json()["candidates"]]
+    assert codes == ["U000", "U001"] + [f"X{i:02d}" for i in range(10)]
+
+
+def test_one_client_per_request(monkeypatch):
+    opened = []
+
+    class Counting(httpx.AsyncClient):
+        def __init__(self, *a, **k):
+            opened.append(1)
+            super().__init__(*a, **k)
+
+    monkeypatch.setattr(httpx, "AsyncClient", Counting)
+    res = post(FakeLlm([drafts(1)]), http=None)  # 키 없음: 실제 호출은 나가지 않는다
+    assert res.status_code == 200
+    assert len(opened) == 1
+
+
+def test_no_commoncode_call():
+    urls = []
+
+    def handler(req):
+        urls.append(str(req.url))
+        return httpx.Response(200, text="")
+
+    http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    res = post(FakeLlm([drafts(1)]), env={"WORK24_KEY_COMMONCODE": "k"}, http=http)
+    assert res.status_code == 200
+    assert not any("21L01" in u for u in urls) and urls == []
+    assert "codes" not in res.json()["meta"]["sources"]

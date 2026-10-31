@@ -1,8 +1,8 @@
 """⓪ 업무 카드 초안(설계 §9-5). 능력단위 후보는 규칙이, 카드 글은 LLM이 쓰고 사람이 검수한다."""
 import asyncio
+import contextlib
 import json
 import logging
-import re
 import time
 from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
@@ -12,10 +12,10 @@ from typing import Any, TypedDict
 import httpx
 from langgraph.graph import END, START, StateGraph
 
-from ..budget import CARDS_DEADLINE_S, CARDS_LLM_MAX_S, CARDS_REWRITE_MIN_LEFT_S, RECOMMEND_MAX_QUERIES
+from ..budget import CARDS_DEADLINE_S, CARDS_LLM_MAX_S, CARDS_REWRITE_MIN_LEFT_S, RECOMMEND_MAX_EXTRA_UNITS, RECOMMEND_MAX_QUERIES
 from ..cards.candidates import Candidate, build_candidates
 from ..cards.checks import check_card_draft
-from ..cards.sources import CardSources, SourceError, Unit
+from ..cards.sources import CardSources, SourceError, Unit, spaceless
 from ..errors import ApiError
 from ..llm import Llm, LlmError
 from ..prompts import cards as p_cards
@@ -104,7 +104,7 @@ class CardsAgent:
             duties = await src.duties(req.job_dictionary_code)
             queries: list[str] = []
             for u in units:
-                q = re.sub(r"\s+", "", u.name)
+                q = spaceless(u.name)
                 if q and q not in queries:
                     queries.append(q)
             sem = asyncio.Semaphore(_RECOMMEND_PARALLEL)
@@ -130,8 +130,16 @@ class CardsAgent:
                     t.cancel()
                 await asyncio.gather(*tasks, return_exceptions=True)
                 raise
-            await src.job_code(req.job_label)  # 출처 사용 기록(meta.sources)용. 값은 쓰지 않는다
-            return {"units": units, "duties": duties, "recommended": [u for f in found for u in f]}
+            listed = {u.code for u in units}
+            recommended: list[Unit] = []
+            extra: set[str] = set()
+            for u in (u for f in found for u in f):
+                if u.code not in listed and u.code not in extra:
+                    if len(extra) >= RECOMMEND_MAX_EXTRA_UNITS:
+                        continue
+                    extra.add(u.code)
+                recommended.append(u)
+            return {"units": units, "duties": duties, "recommended": recommended}
 
         async def fetch(s: State) -> dict:
             # 느린 출처가 마감을 넘기지 않게 남은 시간으로 끊는다
@@ -262,9 +270,12 @@ class CardsAgent:
 
     async def run(self, req: CardDraftRequest) -> CardDraftResponse:
         started = self.clock()
-        sources = CardSources(self.env, self.root, self.http)  # used 는 요청마다 따로 쌓는다
         try:
-            final = await self.graph.ainvoke({"req": req, "started": started, "sources": sources})
+            # http 가 없으면 요청 하나에 클라이언트 하나를 열어 모든 출처 호출이 나눠 쓴다
+            async with contextlib.AsyncExitStack() as stack:
+                http = self.http or await stack.enter_async_context(httpx.AsyncClient())
+                sources = CardSources(self.env, self.root, http)  # used 는 요청마다 따로 쌓는다
+                final = await self.graph.ainvoke({"req": req, "started": started, "sources": sources})
         except (LlmError, SourceError) as e:
             code = e.code
             log.info("[ai] cards unavailable code=%s ms=%d", code, int((self.clock() - started) * 1000))

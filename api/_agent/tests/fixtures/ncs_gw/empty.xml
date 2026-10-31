@@ -1,2 +1,2 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<response><header><resultCode>00</resultCode></header><body><items/></body></response>
+<root><data/><dataInfo><code>002</code><message>dutyCd S1 값은 존재하지 않습니다.</message></dataInfo></root>

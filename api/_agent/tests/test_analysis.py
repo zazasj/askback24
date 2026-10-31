@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from _agent.analysis.cards import check_card, compare
 from _agent.app import create_app
 from _agent.llm import LlmError, LlmResult
-from _agent.tests.test_nps import fx, make_client
+from _agent.tests.test_nps import make_client, standard
 
 ROOT = Path(__file__).resolve().parents[3]
 POSTING = next(p for p in json.loads((ROOT / "data/postings.json").read_text(encoding="utf-8")) if p["wantedAuthNo"] == "K-MOCK-0001")
@@ -187,19 +187,7 @@ def test_no_ask_needed_skips_signal_llm():
 
 
 def nps_client(loss=2, gain=0):
-    def handler(req: httpx.Request):
-        op = req.url.path.rsplit("/", 1)[-1]
-        if op == "getBassInfoSearchV2":
-            return httpx.Response(200, json=fx("basic.json"))
-        if op == "getDetailInfoSearchV2":
-            return httpx.Response(200, json=fx("detail.json"))
-        m = json.loads(json.dumps(fx("monthly.json")))
-        item = m["response"]["body"]["items"]["item"]
-        for it in item if isinstance(item, list) else [item]:
-            it["nwAcqzrCnt"], it["lssJnngpCnt"] = gain, loss
-        return httpx.Response(200, json=m)
-
-    return make_client(handler)[0]
+    return make_client(standard(name="(주)테스트실제", gain=gain, loss=loss))[0]
 
 
 REAL_ENV = {
