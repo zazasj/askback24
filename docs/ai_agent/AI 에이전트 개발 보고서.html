@@ -171,7 +171,7 @@ footer { margin-top: 56px; color: var(--muted); font-size: 13.5px; }
 <tr><td>고용보험 EIS</td><td>(추가)</td><td><span class="tag real">실제</span> 피보험자현황 파일(2025년 10월~2026년 9월) → <code>data/company/eis.json</code></td><td>OPIB 형식 확인</td></tr>
 <tr><td>임금체불 · 채용정보 · 구직자 입력</td><td>모의(7 · 1 · 8번)</td><td><span class="tag mock">모의</span></td><td>그대로</td></tr>
 </tbody></table></div>
-<p class="muted">지금 <code>data/signals.json</code>의 국민연금 줄 5개는 손으로 쓴 시연 값인데 "실제" 배지가 붙어 있습니다(D-024에서 옴). 다시 만들기는 옛 줄을 지우지 않고 합치므로, 손으로 쓴 국민연금 줄 4개(0003~0006)는 <code>--apply</code> 검토 때 보고서의 ⚠ 표시를 보고 사람이 직접 지워야 바로잡힙니다.</p>
+<p class="muted">손으로 쓴 시연 값인데 "실제" 배지가 붙어 있던 국민연금 줄 5개(D-024에서 옴)는 시연 7건 회사 신호를 적용하면서 모두 "모의"로 바로잡았습니다(D-370).</p>
 
 <h2>4. 시험</h2>
 <div class="table-wrap"><table>
@@ -191,7 +191,7 @@ footer { margin-top: 56px; color: var(--muted); font-size: 13.5px; }
   <li class="done">NCS 정보_GW 활용신청 → <code>api/_agent/cards/ncs_gw_fields.json</code> 채우기</li>
   <li class="done">EIS 파일 받아 <code>npm run company:eis</code> (OPIB 키 필요 여부 · 응답 형식 기록은 남음)</li>
   <li class="done">다시 만들기 보고서 보강 뒤 <code>npm run analysis:regen</code>으로 후보와 보고서 만듦(공고당 26.3~32.7초, 실패 0)</li>
-  <li>보고서(<code>review/analysis-regen/report.md</code>) 검토 → <code>--apply</code> → <code>npm run check</code></li>
+  <li class="done">시연 7건 회사 신호 적용(D-370). 업무 카드 판정 적용은 시연 시나리오(S4-13 등)가 바뀌어 보류</li>
   <li class="done">⓪ 엔드포인트를 쓸지 결정: 실측 168.2초라 CLI 전용(D-368)</li>
   <li>Vercel 미리보기에서 ①②③ 처리 시간 측정(판정 · 최종 문장 · 콜드 스타트 따로)</li>
   <li class="done">4단계에서 넘어온 것: 공통코드 호출 빼기(D-366) · 직무정보 질의의 괄호 빼기와 추천 개수 상한 · NCS 정보_GW 실제 호출 시험 · 요청마다 HTTP 클라이언트 하나 · ① 정확 모델 지연 측정</li>
