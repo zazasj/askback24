@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build:mock",
+  "buildCommand": "npm run build",
   "rewrites": [
     {
       "source": "/api/ai/(.*)",

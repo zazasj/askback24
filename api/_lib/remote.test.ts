@@ -461,13 +461,13 @@ describe('AS-07 키는 api/ 에서만 읽고, 기본값·배포 설정은 그대
     expect(hits).toEqual([])
   })
 
-  it('AS-07 기본은 가짜 공급자, remote 는 LLM_PROVIDER=remote 일 때만. vercel.json 은 build:mock 그대로', () => {
+  it('AS-07 기본은 가짜 공급자, remote 는 LLM_PROVIDER=remote 일 때만. vercel.json 은 실제 모드 build(D-371)', () => {
     expect(providerFor({}).name).toBe('mock')
     expect(providerFor({ AI_ENDPOINT: ENDPOINT, AI_API_KEY: KEY }).name).toBe('mock')
     expect(providerFor({ LLM_PROVIDER: 'remote' }).name).toBe('remote')
     expect(providerFor({ LLM_PROVIDER: 'ennoia' }).name).toBe('mock')
     const vercel = JSON.parse(readFileSync(join(root, 'vercel.json'), 'utf8')) as { buildCommand?: string }
-    expect(vercel.buildCommand).toBe('npm run build:mock')
+    expect(vercel.buildCommand).toBe('npm run build')
     const envExample = readFileSync(join(root, '.env.example'), 'utf8')
     expect(envExample).toMatch(/^LLM_PROVIDER=mock$/m)
     expect(envExample).toMatch(/^AI_ENDPOINT=$/m)
