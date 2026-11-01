@@ -11,8 +11,8 @@
 | 번호 | 이름 | Method · URL | 답하는 시간 |
 |---|---|---|---|
 | 1 | 1차 질문 문장 생성 | `POST {AI_ENDPOINT}/v1/first-questions` | 18초 안 |
-| 2-1 | 최종 면접: 1차 면접 답 판정 | `POST {AI_ENDPOINT}/v1/final-judgements` | 8초 안 |
-| 2-2 | 최종 면접·처우 질문 문장 생성 | `POST {AI_ENDPOINT}/v1/final-questions` | 10초 안 |
+| 2-1 | 최종 면접: 1차 면접 답 판정 | `POST {AI_ENDPOINT}/v1/final-judgements` | 7초 안 |
+| 2-2 | 최종 면접·처우 질문 문장 생성 | `POST {AI_ENDPOINT}/v1/final-questions` | 13초 안 |
 | 3 | 공고 분석 (카드 상태·처우 빈칸·회사 신호) | `POST {AI_ENDPOINT}/v1/posting-analysis` | 함수 한도 안(공고당 한 번, 결과 저장) |
 | 4 | 업무 카드 초안 | `POST {AI_ENDPOINT}/v1/card-drafts` | 지금은 CLI(`npm run cards:draft`)가 지원 경로. 엔드포인트는 시간 한계(55초)에 걸려 503일 수 있음(4.5단계에서 총 168.2초로 재어 CLI 전용으로 정함, D-368) |
 | 내부 | 모델 미리 깨우기(화면을 열 때 우리 서버가 부름, 요청 본문 없음) | `POST {AI_ENDPOINT}/v1/warmup` | 15초 안, 200 `{"ok": true 또는 false}` |
@@ -28,7 +28,7 @@
 | URL (테스트) | 로컬 시험은 `http://localhost:<port>` · `http://127.0.0.1:<port>`도 됩니다 |
 | `Authorization` | `Bearer {AI_API_KEY}` — 키는 별도 전달(우리 서버 환경변수에만 둠). 운영에서 키가 없으면 우리 서버가 부르지 않습니다 |
 | `Content-Type` | `application/json; charset=utf-8` (응답도 UTF-8 JSON 하나, 한글 그대로) |
-| 시간 제한 | 우리 서버는 요청 하나에 **20초**에 끊고 다시 부르지 않습니다. 최종은 2-1과 2-2가 20초를 나눠 씁니다(8초 + 10초 권장). AI 서버는 검사에 걸린 문항만, 자기 몫의 시간에 여유가 있으면 한 번 더 써도 됩니다 |
+| 시간 제한 | 우리 서버는 요청 하나에 **20초**에 끊고 다시 부르지 않습니다. 최종은 2-1과 2-2가 20초를 나눠 씁니다(7초 + 13초 권장). AI 서버는 검사에 걸린 문항만, 자기 몫의 시간에 여유가 있으면 한 번 더 써도 됩니다 |
 | 개인정보 | 요청·응답 본문을 저장·기록·학습에 쓰지 않습니다. 로그에는 `card_id`/`key`, 글자 수, 처리 시간, 모델 이름만 남깁니다. 경험 한 줄(`experience`)과 들은 답(`heard`)은 특히 저장하지 않습니다 |
 
 ### 오류
