@@ -56,6 +56,8 @@ describe('API-02 예시 구직자 A × (주)△△커머스', () => {
   const ranked = rankPicks(PRESETS.A, COMMERCE)
   const top = pickTop5(PRESETS.A, COMMERCE)
   const withoutPostedUnsure = { picks: PRESETS.A.picks.filter((p) => !['BE09', 'BE11'].includes(p.card_id)), experience: PRESETS.A.experience }
+  // S4-16 장면: 공고에 나온 모르겠어요(배포·테스트)와 걱정돼요(배치·정산)를 풀면 상주 질문이 5개에 든다.
+  const withoutPostedPicks = { picks: PRESETS.A.picks.filter((p) => !['BE06', 'BE09', 'BE11'].includes(p.card_id)), experience: PRESETS.A.experience }
 
   it('API-02 BE15(고객사 상주)는 prevent(미리 확인)', () => {
     expect(ranked.find((q) => q.card_id === 'BE15')?.type).toBe('prevent')
@@ -67,15 +69,23 @@ describe('API-02 예시 구직자 A × (주)△△커머스', () => {
     expect(ranked.find((q) => q.card_id === 'BE15')?.template_text).toContain('투입되는 경우도 있나요')
   })
 
-  it('API-02 순서 = 기회 확인 2 → 깊이 확인 → 탐색(공고에 있음) 2, 공고에 적힌 모르겠어요 카드를 빼면 미리 확인 2', () => {
+  it('API-02 순서 = 차이 확인(배치·정산) → 기회 확인 2 → 깊이 확인 → 탐색(공고에 있음), 공고에 적힌 모르겠어요·걱정돼요 카드를 빼면 미리 확인 2', () => {
+    // 우대 "주문·정산 데이터를 다뤄 본 경험"으로 배치·정산(BE06)이 유추되고, 예시 A는 BE06을 걱정돼요로 골랐다(D-374).
     expect(top.map((q) => [q.card_id, q.type])).toEqual([
+      ['BE06', 'conflict'],
       ['BE02', 'opportunity'],
       ['BE03', 'opportunity'],
       ['BE01', 'depth'],
       ['BE09', 'explore'],
-      ['BE11', 'explore'],
     ])
     expect(pickTop5(withoutPostedUnsure, COMMERCE).map((q) => [q.card_id, q.type])).toEqual([
+      ['BE06', 'conflict'],
+      ['BE02', 'opportunity'],
+      ['BE03', 'opportunity'],
+      ['BE01', 'depth'],
+      ['BE07', 'prevent'],
+    ])
+    expect(pickTop5(withoutPostedPicks, COMMERCE).map((q) => [q.card_id, q.type])).toEqual([
       ['BE02', 'opportunity'],
       ['BE03', 'opportunity'],
       ['BE01', 'depth'],
@@ -176,16 +186,19 @@ describe('U-03 더 알아볼 질문(pickExplore)', () => {
 
   it('예시 A × (주)OO소프트 = 공고와 관련 있는 모르겠어요 카드부터 3개, 질문 5개와 겹치지 않음', () => {
     const explore = pickExplore(PRESETS.A, OO)
-    // 공고에 적힌 카드(산출물 작성, 3.5)가 먼저, 그다음 유추한 카드(SQL 우대조건 · 요구사항 협의)가 고른 순서대로(H2-07 ③)
-    expect(explore.map((r) => r.card_id)).toEqual(['BE14', 'BE04', 'BE12'])
+    // 공고에 적힌 카드(산출물 작성, 3.5)가 먼저, 그다음 유추한 카드(SQL 자격요건 · 단위 테스트 결과서)가 고른 순서대로(H2-07 ③, D-374)
+    expect(explore.map((r) => r.card_id)).toEqual(['BE14', 'BE04', 'BE11'])
     expect(explore.every((r) => r.type === 'explore' && r.pref === 'unsure')).toBe(true)
     const top = new Set(pickTop5(PRESETS.A, OO).map((r) => r.card_id))
     expect(explore.some((r) => top.has(r.card_id))).toBe(false)
     expect(explore[0]?.template_text.length).toBeGreaterThan(10)
   })
 
-  it('예시 A × (주)△△커머스 = 공고에 나온 카드(장애 대응·SQL) 먼저, 공고에 적힌 배포·테스트는 질문 5개에 들어감(H2-07 ③)', () => {
-    expect(pickExplore(PRESETS.A, COMMERCE).map((r) => r.card_id)).toEqual(['BE08', 'BE04', 'BE05'])
+  it('예시 A × (주)△△커머스 = 공고에 적힌 테스트(질문 5개에서 밀림)가 먼저, 그다음 공고에 없는 카드가 고른 순서대로(H2-07 ③, D-374)', () => {
+    const explore = pickExplore(PRESETS.A, COMMERCE).map((r) => r.card_id)
+    expect(explore).toEqual(['BE11', 'BE08', 'BE04'])
+    const top = new Set(pickTop5(PRESETS.A, COMMERCE).map((r) => r.card_id))
+    expect(top.has('BE09') && !top.has('BE11')).toBe(true)
   })
 
   it('모르겠어요가 없으면 빈 목록', () => {

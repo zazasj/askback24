@@ -23,9 +23,10 @@ describe('AI 분석 요약 — 먼저 볼 두 곳(F-04)', () => {
     if (!posting || !analysis) throw new Error('K-MOCK-0001 없음')
     const looks = firstLooks(checkPoints(analysis), spotResolver(posting, analysis))
     expect(looks.map((l) => l.quote)).toEqual(['기타 업무 지원', '고객사 상주 가능자'])
+    // 이유는 ① 파이프라인 글(D-374). 인용을 되풀이하지 않는 것은 아래 "모든 공고" 시험이 본다.
     expect(looks.map((l) => l.reason)).toEqual([
-      '범위가 모호해 기존 시스템 유지보수가 포함될 수 있어요',
-      '고객사 상주 개발 · 상주 가능자를 우대해 신입도 고객사에 나가 일할 수 있어요. 기간과 비율을 확인해 볼 만해요',
+      '기존 시스템 유지보수 · 기타 지원에 기존 시스템 오류 수정이나 기능 보완이 포함되는지, 신규 개발과 유지보수 비중은 어떤지 확인하면 좋아요.',
+      '고객사 상주 개발 · 실제 상주 비중과 장소, 프로젝트별 기간 및 배정 방식, 선배와 함께 상주하는지 확인하면 좋아요.',
     ])
   })
 
@@ -119,16 +120,20 @@ describe('A3-r2-03 더 알아볼 질문 꼬리표 = ① postingTag', () => {
     expect(tagged).toBeGreaterThan(0)
   })
 
-  it('(주)OO소프트: SQL 작성·쿼리 개선·요구사항 협의 = 공고에서 유추 · (주)△△커머스: 장애 대응·온콜(근거 없는 유추) = 꼬리표 없음', () => {
+  it('(주)OO소프트: SQL 작성·쿼리 개선·테스트·품질 검증 = 공고에서 유추 · (주)△△커머스: 장애 대응·온콜(분석에 없음)·근거 없는 유추 = 꼬리표 없음', () => {
     const oo = getAnalysis('K-MOCK-0001')
     const commerce = getAnalysis('K-MOCK-0002')
     if (!oo || !commerce) throw new Error('분석 없음')
-    expect(exploresOf(oo)).toEqual(['BE14', 'BE04', 'BE12'])
+    expect(exploresOf(oo)).toEqual(['BE14', 'BE04', 'BE11'])
     expect(exploreTag(oo, 'BE04')).toBe('공고에서 유추')
-    expect(exploreTag(oo, 'BE12')).toBe('공고에서 유추')
+    expect(exploreTag(oo, 'BE11')).toBe('공고에서 유추')
     expect(exploreTag(oo, 'BE14')).toBe(postingTag(oo.cards.find((c) => c.card_id === 'BE14')))
     expect(exploresOf(commerce)).toContain('BE08')
+    expect(commerce.cards.some((c) => c.card_id === 'BE08')).toBe(false)
     expect(exploreTag(commerce, 'BE08')).toBeNull()
+    // 근거 없는 유추 카드는 지금 시연 데이터에 없어(D-374) 같은 공고에 하나 붙여 본다.
+    const noQuote = { ...commerce, cards: [...commerce.cards, { card_id: 'BE08', state: 'inferred' as const, reason: '팀 규모로 보아 장애 대응을 함께 맡을 수 있어요' }] }
+    expect(exploreTag(noQuote, 'BE08')).toBeNull()
     expect(exploreTag(commerce, 'BE99')).toBeNull()
     expect(exploreTag(undefined, 'BE04')).toBeNull()
   })

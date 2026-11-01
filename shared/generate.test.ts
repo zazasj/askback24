@@ -65,7 +65,8 @@ describe('API-04 가짜 공급자 → 응답 형식 그대로', () => {
   // H2-07 ③(세진 승인 2026-10-25): 예시 A 그대로면 공고에 적힌 모르겠어요 카드(배포·테스트)가 앞서 상주 질문이 5개에 들지 않아
   // 그 두 카드를 뺀 선택으로 본다(ACCEPTANCE S4-16)
   it('S4-16 (주)△△커머스: 상주 질문은 미리 확인이고 "공고에 고객사 상주" 전제가 없다', async () => {
-    const picks = PRESETS.A.picks.filter((p) => !['BE09', 'BE11'].includes(p.card_id))
+    // 배치·정산(BE06)이 공고에서 유추되어 걱정돼요 차이 확인이 앞서므로 함께 푼다(D-374, SPEC-ISSUES S4-16).
+    const picks = PRESETS.A.picks.filter((p) => !['BE06', 'BE09', 'BE11'].includes(p.card_id))
     for (const variant of [0, 1, 2]) {
       const res = await generateFirst({ ...reqA(COMMERCE), picks }, { provider: createMockProvider({ variant }) })
       expect(res.questions.every((q) => q.source === 'ai')).toBe(true)
