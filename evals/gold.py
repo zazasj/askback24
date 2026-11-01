@@ -192,6 +192,17 @@ def _dump(g: Gold) -> dict:
     }
 
 
+def load_gold_json(path: Path) -> Gold:
+    """_dump가 쓴 gold.json을 Gold로 되돌린다."""
+    d = json.loads(path.read_text(encoding="utf-8"))
+    return Gold(
+        cards={(r["wantedAuthNo"], r["card_id"]): GoldCard(r["state"], r["field"]) for r in d["cards"]},
+        blanks={(r["wantedAuthNo"], r["topic"]): r["status"] for r in d["blanks"]},
+        overlap={(r["wantedAuthNo"], r["card_id"]): r["labelers"] for r in d["overlap"]},
+        judgements=[GoldJudgement(**j) for j in d["judgements"]],
+    )
+
+
 def main(data_dir: Path | None = None) -> int:
     data = data_dir or _ROOT / "evals" / "data"
     try:

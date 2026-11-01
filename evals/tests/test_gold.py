@@ -158,3 +158,15 @@ def test_cli_exit_1_on_errors(tmp_path, capsys):
     _sheet(tmp_path / "sheet", cards=["E1,BE01,explicit,,,A,Y"])
     assert gold.main(tmp_path) == 1
     assert "cards.csv 2행" in capsys.readouterr().out
+
+
+def test_load_gold_json_roundtrip(tmp_path):
+    g = gold.Gold(
+        cards={("E1", "BE01"): gold.GoldCard("explicit", "jobCont"), ("E1", "BE02"): gold.GoldCard("absent", None)},
+        blanks={("E1", "sal"): "missing"},
+        overlap={("E1", "BE01"): {"A": "explicit", "B": "vague"}},
+        judgements=[gold.GoldJudgement("E1", "BE01", "q", "h", "p", "confirmed")],
+    )
+    path = tmp_path / "gold.json"
+    path.write_text(json.dumps(gold._dump(g), ensure_ascii=False), encoding="utf-8")
+    assert gold.load_gold_json(path) == g
