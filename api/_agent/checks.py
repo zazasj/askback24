@@ -21,6 +21,10 @@ FORBIDDEN = [
 ]
 PRESUPPOSE = re.compile(r"공고에[^.?!]*?(?:있던데|있는데)")
 EXPERIENCE_CLAIM = re.compile(r"(?<![가-힣])(?:제가|저는|저도|제)\s*[^.?!]{0,30}?(?:경험|해\s*봤|해봤|해\s*본\s*적|맡아\s*(?:봤|본))")
+INTERVIEWER_QUOTE = re.compile(r"아까|하셨는데|말씀하신")
+JUDGE_BASIS_MAX = 160
+HEARD_QUOTE_MIN = 6
+JUDGE_STATES = ("confirmed", "mismatch", "still_unknown")
 _QUOTE = re.compile(r"['‘]([^'‘’\n]+)['’]")
 
 
@@ -47,8 +51,8 @@ def quotes_not_in_posting(text: str, posting: dict, card_labels: set[str]) -> li
     return [q for q in quotes_in(text) if q not in card_labels and squash(q) not in source]
 
 
-def check_first(text: str, state: str, has_exp: bool, posting: dict, card_labels: set[str]) -> list[str]:
-    t = text.strip()
+def _common_issues(t: str, posting: dict, card_labels: set[str]) -> list[str]:
+    # TS commonIssues 와 같은 순서(근거 대조 evidence_not_in_posting 만 TS 전용)
     if not t:
         return ["empty"]
     issues: list[str] = []
@@ -60,8 +64,46 @@ def check_first(text: str, state: str, has_exp: bool, posting: dict, card_labels
         issues.append("quote_not_in_posting")
     if any(p.search(t) for p in FORBIDDEN):
         issues.append("forbidden_word")
+    return issues
+
+
+def check_first(text: str, state: str, has_exp: bool, posting: dict, card_labels: set[str]) -> list[str]:
+    t = text.strip()
+    issues = _common_issues(t, posting, card_labels)
+    if issues == ["empty"]:
+        return issues
     if state == "absent" and PRESUPPOSE.search(t):
         issues.append("absent_presupposition")
     if not has_exp and EXPERIENCE_CLAIM.search(t):
         issues.append("experience_claim")
+    return issues
+
+
+def check_final(text: str, state: str | None, posting: dict, card_labels: set[str]) -> list[str]:
+    """TS checkFinalQuestion 과 같은 순서. 들은 답 대조는 요청에 들은 답이 없어 TS 가 마지막에 본다."""
+    t = text.strip()
+    issues = _common_issues(t, posting, card_labels)
+    if issues == ["empty"]:
+        return issues
+    if state == "absent" and PRESUPPOSE.search(t):
+        issues.append("absent_presupposition")
+    if INTERVIEWER_QUOTE.search(t):
+        issues.append("interviewer_quote")
+    return issues
+
+
+def check_judgement(basis: str, state: str, heard: list[str]) -> list[str]:
+    """TS judgementIssues(shared/generate.ts)와 같은 순서."""
+    b = squash(basis).strip()
+    issues: list[str] = []
+    if state not in JUDGE_STATES:
+        issues.append("bad_state")
+    if b == "":
+        issues.append("basis_empty")
+    if len(b) > JUDGE_BASIS_MAX:
+        issues.append("basis_too_long")
+    if any(len(h.strip()) >= HEARD_QUOTE_MIN and h.strip() in b for h in heard):
+        issues.append("basis_heard")
+    if any(p.search(b) for p in FORBIDDEN):
+        issues.append("forbidden_word")
     return issues

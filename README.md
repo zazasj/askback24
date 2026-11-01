@@ -88,7 +88,7 @@ npm run check          # 위 네 가지(build · test:unit · test:py · test:e2
 
 ## 실제 AI 연결
 
-질문 문장 쓰기와 1차 면접 답 판정은 AI 서버가 맡는다. AI 서버는 같은 배포의 Python 함수 `/api/ai`(`api/ai/index.py`, FastAPI + LangGraph, LLM은 엔노이아)다. 우리 서버 함수(`api/questions.ts`)가 그 서버의 주소 `POST {AI_ENDPOINT}/v1/first-questions` · `/v1/final-judgements` · `/v1/final-questions`를 부른다. 요청·응답 형식, 응답 규칙, 실패 처리는 명세 [`docs/API-SPEC.md`](docs/API-SPEC.md)에 있다. 연결 코드는 `shared/providers/remote.ts`이고, 지금 배포는 가짜 응답 모드(`mock`) 그대로다. 형원에게 넘길 요약 명세(필드 표 양식)는 `docs/AI-API-명세서.md`·`.pdf`(다시 뽑기 `npm run docs:api-pdf`), 배경·규칙의 자세한 설명은 `docs/API-SPEC.md`.
+질문 문장 쓰기와 1차 면접 답 판정, 최종 면접의 판정·질문 문장도 AI 서버가 맡는다. AI 서버는 같은 배포의 Python 함수 `/api/ai`(`api/ai/index.py`, FastAPI + LangGraph, LLM은 엔노이아)다. 우리 서버 함수(`api/questions.ts`)가 그 서버의 주소 `POST {AI_ENDPOINT}/v1/first-questions` · `/v1/final-judgements` · `/v1/final-questions`를 부른다. 요청·응답 형식, 응답 규칙, 실패 처리는 명세 [`docs/API-SPEC.md`](docs/API-SPEC.md)에 있다. 연결 코드는 `shared/providers/remote.ts`이고, 지금 배포는 가짜 응답 모드(`mock`) 그대로다. 형원에게 넘길 요약 명세(필드 표 양식)는 `docs/AI-API-명세서.md`·`.pdf`(다시 뽑기 `npm run docs:api-pdf`), 배경·규칙의 자세한 설명은 `docs/API-SPEC.md`.
 
 | 환경변수 | 값 | 넣는 곳 |
 |---|---|---|

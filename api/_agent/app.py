@@ -2,7 +2,6 @@ import asyncio
 import hmac
 import logging
 import os
-import time
 from collections.abc import Mapping
 
 from fastapi import APIRouter, Depends, FastAPI, Request
@@ -14,9 +13,11 @@ from pathlib import Path
 
 from .checks import load_card_labels
 from .errors import ApiError
-from .graphs.first import run_first
+from .graphs.final import FinalAgent
+from .graphs.first import FirstAgent
+from .graphs.judge import JudgeAgent
 from .llm import Llm, LlmError, llm_from_env
-from .schemas import FirstRequest, FirstResponse
+from .schemas import FinalRequest, FinalResponse, FirstRequest, FirstResponse, JudgeRequest, JudgeResponse
 
 PREFIX = "/api/ai/v1"
 # TS 의 20초(WARMUP_TIMEOUT_MS)보다 먼저 끝내 ok 값이 로그에 닿게 한다.
@@ -57,6 +58,9 @@ def create_app(env: Mapping[str, str] | None = None, llm: Llm | None = None) -> 
     env = os.environ if env is None else env
     llm = llm or llm_from_env(env)
     labels = load_card_labels(Path(__file__).resolve().parents[2])
+    first_agent = FirstAgent(llm, labels)  # 그래프는 앱이 뜰 때 한 번만 compile
+    judge_agent = JudgeAgent(llm)
+    final_agent = FinalAgent(llm, labels)
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
     @app.exception_handler(ApiError)
@@ -86,12 +90,24 @@ def create_app(env: Mapping[str, str] | None = None, llm: Llm | None = None) -> 
 
     @router.post("/first-questions")
     async def first_questions(body: FirstRequest) -> FirstResponse:
-        started = time.monotonic()
         try:
-            return await run_first(body, llm, labels)
-        except LlmError as e:
-            ms = int((time.monotonic() - started) * 1000)
-            logging.getLogger("askback24.ai").info("[ai] first unavailable code=%s ms=%d", e.code, ms)
+            return await first_agent.run(body)
+        except LlmError:
+            # 로그 한 줄은 LoopAgent 가 남겼다.
+            raise ApiError(503, "unavailable", "model is not ready") from None
+
+    @router.post("/final-judgements")
+    async def final_judgements(body: JudgeRequest) -> JudgeResponse:
+        try:
+            return await judge_agent.run(body)
+        except LlmError:
+            raise ApiError(503, "unavailable", "model is not ready") from None
+
+    @router.post("/final-questions")
+    async def final_questions(body: FinalRequest) -> FinalResponse:
+        try:
+            return await final_agent.run(body)
+        except LlmError:
             raise ApiError(503, "unavailable", "model is not ready") from None
 
     @router.post("/warmup")

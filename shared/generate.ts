@@ -246,6 +246,20 @@ function cleanReview(review: InterviewReview): InterviewReview {
   return out
 }
 
+const JUDGE_STATES: readonly string[] = ['confirmed', 'mismatch', 'still_unknown']
+
+/** 판정 수용 조건에서 걸린 이름(빈 배열이면 수용). Python 검사와 예시 파일로 맞추려고 따로 뺐다 */
+export function judgementIssues(basis: string, state: unknown, heard: readonly string[]): string[] {
+  const b = basis.replace(/\s+/g, ' ').trim()
+  const issues: string[] = []
+  if (!JUDGE_STATES.includes(state as string)) issues.push('bad_state')
+  if (b === '') issues.push('basis_empty')
+  if (b.length > JUDGE_BASIS_MAX) issues.push('basis_too_long')
+  if (quotesHeard(b, heard)) issues.push('basis_heard')
+  if (hasForbiddenWord(b)) issues.push('forbidden_word')
+  return issues
+}
+
 /** 공급자 판정을 받아 쓴다: 물어봤고 들은 답이 있는 카드만, 근거가 있고 들은 답을 옮기지 않은 것만 */
 function mergeJudgements(
   base: Judged[],
@@ -255,19 +269,13 @@ function mergeJudgements(
   issues: GenerateReport['issues'],
 ): { judged: Judged[]; accepted: number } {
   if (!Array.isArray(got)) return { judged: base, accepted: 0 }
-  const STATES: ReadonlyArray<Judgement['state']> = ['confirmed', 'mismatch', 'still_unknown']
   let accepted = 0
   const judged = base.map((j) => {
     if (!asked.has(j.card_id)) return j
     const g = (got as Array<Partial<Judgement> | null>).find((x) => x && x.card_id === j.card_id)
     if (!g) return j
     const basis = typeof g.basis === 'string' ? g.basis.replace(/\s+/g, ' ').trim() : ''
-    const ok =
-      STATES.includes(g.state as Judgement['state']) &&
-      basis !== '' &&
-      basis.length <= JUDGE_BASIS_MAX &&
-      !quotesHeard(basis, heard) &&
-      !hasForbiddenWord(basis)
+    const ok = judgementIssues(basis, g.state, heard).length === 0
     if (!ok) {
       issues.push('judge_rejected')
       return j
