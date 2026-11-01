@@ -21,7 +21,7 @@ def test_fixture(case):
         return
     # TS 시험·generate.ts 와 같이 공백을 한 칸으로 줄인 뒤 검사한다
     text = re.sub(r"\s+", " ", case["text"]).strip()
-    posting = POSTINGS[case["posting"]]
+    posting = {**POSTINGS[case["posting"]], **case.get("posting_patch", {})}
     if kind == "final":
         assert check_final(text, case["state"], posting, LABELS) == case["expect"]
     else:

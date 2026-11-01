@@ -37,5 +37,12 @@
   {"kind": "judgement", "name": "판정: 상태와 근거 둘 다 틀림", "basis": "", "state": "yes", "heard": [], "expect": ["bad_state", "basis_empty"]},
   { "name": "공고 밖 기술", "posting": "K-MOCK-0001", "text": "Kafka로 주문 이벤트를 처리하는 일을 신입도 맡나요?", "state": "explicit", "has_exp": false, "expect": ["unknown_term"] },
   { "name": "공고 안 기술은 통과", "posting": "K-MOCK-0001", "text": "Java·Spring 기반 서버 개발에서 신입은 어느 모듈부터 맡나요?", "state": "explicit", "has_exp": false, "expect": [] },
-  { "name": "이력서에 있으면 통과", "posting": "K-MOCK-0001", "text": "Kafka로 주문 이벤트를 처리하는 일을 신입도 맡나요?", "state": "explicit", "has_exp": false, "resume_text": "Kafka 메시지 처리 프로젝트", "expect": [] }
+  { "name": "이력서에 있으면 통과", "posting": "K-MOCK-0001", "text": "Kafka로 주문 이벤트를 처리하는 일을 신입도 맡나요?", "state": "explicit", "has_exp": false, "resume_text": "Kafka 메시지 처리 프로젝트", "expect": [] },
+  { "name": "근접어: Spring 공고에 Spring Boot 질문", "posting": "K-MOCK-0004", "text": "Spring Boot로 만든 서비스를 신입도 맡게 되나요?", "state": "explicit", "has_exp": false, "expect": [] },
+  { "name": "근접어: eGovFrame 공고에 Spring 질문", "posting": "K-MOCK-0005", "text": "Spring 기반 개발 업무를 신입도 맡게 되나요?", "state": "explicit", "has_exp": false, "expect": [] },
+  { "name": "근접어: Spring-Boot 공고에 Spring Boot 질문", "posting": "K-MOCK-0007", "posting_patch": { "etcPfCond": "Spring-Boot 경험자" }, "text": "Spring Boot 개발 업무를 신입도 맡게 되나요?", "state": "explicit", "has_exp": false, "expect": [] },
+  { "name": "근접어: Spring 없는 공고에 Spring Boot 질문은 걸림", "posting": "K-MOCK-0007", "text": "Spring Boot 개발 업무를 신입도 맡게 되나요?", "state": "explicit", "has_exp": false, "expect": ["unknown_term"] },
+  { "name": "근접어: Postgre 공고에 PostgreSQL 질문", "posting": "K-MOCK-0007", "posting_patch": { "etcPfCond": "Postgre 사용 경험" }, "text": "PostgreSQL 운영 업무를 신입도 맡게 되나요?", "state": "explicit", "has_exp": false, "expect": [] },
+  { "name": "REST 는 실행 검사에서 뺌", "posting": "K-MOCK-0007", "text": "REST API 설계 업무를 신입도 맡게 되나요?", "state": "explicit", "has_exp": false, "expect": [] },
+  { "name": "MSA 는 공고에 없으면 걸림", "posting": "K-MOCK-0007", "text": "MSA 구조로 바꾸는 업무를 신입도 맡게 되나요?", "state": "explicit", "has_exp": false, "expect": ["unknown_term"] }
 ] }

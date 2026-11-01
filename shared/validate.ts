@@ -4,7 +4,7 @@
  */
 import type { Evidence, Posting, PostingState } from './contract.js'
 import { CARDS } from './catalog.js'
-import { termsIn } from './terms.js'
+import { unknownIn } from './terms.js'
 
 export type Issue =
   | 'empty'
@@ -96,11 +96,10 @@ function commonIssues(text: string, evidence: Evidence | undefined, posting: Pos
   return issues
 }
 
-/** 질문의 기술·분야 낱말 중 공고 모든 칸(과 이력서)에 없는 것. Python unknown_terms 와 같은 규칙 */
+/** 질문의 기술·분야 낱말 중 공고 모든 칸(과 이력서)에 없는 것(함의 허용, 실행 중 제외 낱말 뺌). Python unknown_terms 와 같은 규칙 */
 export function unknownTerms(text: string, posting: Posting, resumeText = ''): string[] {
   const source = [...Object.values(posting).filter((v): v is string => typeof v === 'string'), resumeText].join('\n')
-  const known = new Set(termsIn(source))
-  return termsIn(text).filter((t) => !known.has(t))
+  return unknownIn(text, source, { runtime: true })
 }
 
 export interface FirstQuestionCheck {

@@ -54,5 +54,21 @@
   { "name": "허용하는 오탐: 하이픈 뒤 영어는 낱말 경계라서 Go 가 걸림", "text": "Go-live 일정", "expect": ["go"] },
   { "name": "허용하는 오탐: 영문 뒤 한글은 경계라서 SM 이 걸림", "text": "SM엔터 면접", "expect": ["sm"] },
   { "text": "", "expect": [] },
-  { "text": "기술 이야기가 없는 질문입니다", "expect": [] }
+  { "text": "기술 이야기가 없는 질문입니다", "expect": [] },
+  { "name": "여러 낱말 형태 사이 하이픈은 띄어쓰기처럼", "text": "Spring-Boot 기반", "expect": ["spring", "springboot"] },
+  { "name": "GitHub-Actions 도 같은 낱말", "text": "GitHub-Actions로 배포", "expect": ["githubactions"] },
+  { "name": "Postgre 줄임 표기", "text": "Postgre 사용 경험", "expect": ["postgresql"] },
+  { "name": "PostgreSQL 은 Postgre 와 같은 낱말", "text": "PostgreSQL 운영", "expect": ["postgresql"] }
+],
+"unknown_cases": [
+  { "name": "Spring 이 있으면 Spring Boot 허용", "text": "Spring Boot 기반 API", "allowed": "Java, Spring 개발", "unknown": [], "runtime": [] },
+  { "name": "eGovFrame 이 있으면 Spring 허용", "text": "Spring 기반 개발", "allowed": "eGovFrame, Java", "unknown": [], "runtime": [] },
+  { "name": "Spring Boot 가 있으면 Spring 허용", "text": "Spring 기반 개발", "allowed": "스프링부트 경험", "unknown": [], "runtime": [] },
+  { "name": "Spring-Boot 공고에 Spring Boot 질문", "text": "Spring Boot 개발", "allowed": "Spring-Boot 경험자", "unknown": [], "runtime": [] },
+  { "name": "Postgre 공고에 PostgreSQL 질문", "text": "PostgreSQL 운영", "allowed": "Postgre 사용", "unknown": [], "runtime": [] },
+  { "name": "Java 만 있으면 Spring Boot 는 둘 다 모름", "text": "Spring Boot 개발", "allowed": "Java 개발", "unknown": ["spring", "springboot"], "runtime": ["spring", "springboot"] },
+  { "name": "eGovFrame 은 Spring Boot 를 허용하지 않음", "text": "Spring Boot 개발", "allowed": "eGovFrame", "unknown": ["springboot"], "runtime": ["springboot"] },
+  { "name": "REST 는 지표에만", "text": "REST API 설계", "allowed": "Java 개발", "unknown": ["rest"], "runtime": [] },
+  { "name": "MSA 는 실행 중에도 검사", "text": "MSA 구조", "allowed": "Java 개발", "unknown": ["msa"], "runtime": ["msa"] },
+  { "name": "공고 밖 기술", "text": "Kafka 처리", "allowed": "Spring 개발", "unknown": ["kafka"], "runtime": ["kafka"] }
 ] }
