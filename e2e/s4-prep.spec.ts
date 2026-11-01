@@ -352,7 +352,9 @@ test('S4-16 (주)△△커머스 + "1차·기술 면접" + 예시 A(공고에 �
 
 test('S4-17 ?apiFail=1 → "미리 검수한 문장" 안내, 질문 5개마다 "검수 문장" 라벨, 유형 순서는 S4-13과 같다', async ({ page }) => {
   await makeFirstQuestions(page, 'oo', { apiFail: true })
-  await expect(page.getByText(/미리 검수한 문장/).first()).toBeVisible()
+  // 화면낭독기 알림(1px)도 "미리 검수한 문장으로 질문 n개…"라 그 줄이 아니라 눈에 보이는 안내를 찾는다(A4-23, D-378)
+  await expect(page.getByText(/미리 검수한 문장으로 보여 드려요/).first()).toBeVisible()
+  await expect(page.locator('[aria-live="polite"]').filter({ hasText: '미리 검수한 문장으로 질문 5개를 보여 드려요.' })).toHaveCount(1)
   const items = questionItems(page)
   await expect(items).toHaveCount(5)
   for (let i = 0; i < 5; i++) {

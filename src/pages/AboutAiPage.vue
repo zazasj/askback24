@@ -8,10 +8,14 @@ import { CARD_BOOK } from '@shared/catalog'
 import { API_MODE } from '@/api/client'
 import AiLabel from '@/components/ui/AiLabel.vue'
 import MockModeTag from '@/components/ui/MockModeTag.vue'
-import { TEAM_MEASURE, auditNumbers, sourceRows, wageBlankRate } from '@/features/about/aboutData'
+import { TEAM_MEASURE, analysisMade, auditNumbers, sourceRows, wageBlankRate } from '@/features/about/aboutData'
+import { modeCopy } from '@/lib/modeCopy'
 
 const router = useRouter()
 const isMock = API_MODE === 'mock'
+// 무엇이 어디로 가는지는 모드마다 사실이 다르다. 실제 모드는 지금 시연에서도 엔노이아로 넘어간다(D-371, PLAN-4 T4)
+const copy = modeCopy(isMock)
+const made = analysisMade()
 const numbers = auditNumbers()
 const sources = sourceRows()
 const typeOrder = Object.values(CARD_BOOK.type_labels).join(' → ')
@@ -51,10 +55,7 @@ function goBack(): void {
       </p>
       <p class="purpose-source">출처: 국가데이터처 MDIS 경제활동인구조사 청년층 부가조사(2024~2026.5) 팀 자체 분석</p>
     </section>
-    <p class="lead">
-      면접 역질문 준비는 AI 혼자 질문을 정하지 않아요. 공고 근거와 정해 둔 순서 규칙이 먼저 질문을 고르고, AI는 그 질문의 문장을 써요. AI가 쓴
-      문장도 검사를 통과해야 화면에 나와요.
-    </p>
+    <p class="lead">{{ copy.aboutLead }}</p>
     <!-- 결과·만드는 중 화면과 같은 태그(D-082). 확인하러 온 이 자리에서 실제 AI 결과로 읽히지 않게(DR-r2-04) -->
     <p v-if="isMock" class="mock-note">
       <MockModeTag />
@@ -71,9 +72,12 @@ function goBack(): void {
           <span class="step-no" aria-hidden="true">1</span>
           <div class="step-body">
             <h3 class="step-title">공고 근거 확인</h3>
+            <!-- 끝 문장은 누가 언제 만들었는지(D-374). 모델·날짜는 분석 파일 meta 에서 읽는다(날짜는 한국 시각) -->
             <p>
               AI가 공고 문장을 백엔드 업무 카드 {{ numbers.cards }}개와 맞춰 봐요. 근거는 공고 원문의 글자 그대로만 써요. 원문에 없는 근거는 형광펜이 칠해지지
               않고 질문에도 쓰지 않아요.
+              지금 시연 공고 {{ numbers.postings }}건은 AI 공고 분석 파이프라인(엔노이아, {{ made.model }})이 {{ made.date }}에 만든 초안을
+              팀이 공고 원문에 비춰 검수해 미리 넣어 두었어요.
             </p>
           </div>
         </li>
@@ -99,17 +103,17 @@ function goBack(): void {
           </div>
         </li>
       </ol>
-      <p class="after">
-        1차 면접을 다녀와 물어본 질문과 들은 답을 정리하면, 아직 모르는 것과 처우(임금·근무시간·수습) 질문을 최종 면접용으로 다시 골라요. 들은 답은
-        구체적이었는지만 보고 회사를 평가하지 않아요. 걱정한 업무는 답이 구체적이어도 걱정이 풀렸는지 알 수 없어 아직 모름으로 남겨요.
-      </p>
+      <p class="after">{{ copy.aboutFinal }}</p>
       <!-- 운영 그림(H1-07 ①②). 앞날 일은 약속이 아니라 계획으로 적고, 추정치가 없는 비용 숫자는 넣지 않는다 -->
       <section class="plan" aria-labelledby="about-plan">
         <h3 id="about-plan" class="plan-title">고용24에 붙이면</h3>
         <ul class="plan-list">
           <li>공고 분석은 공고마다 한 번 만들고, 공고가 고쳐지면 다시 만들 계획이에요.</li>
-          <li>AI 문장은 "질문 만들기"를 누를 때만 써요.</li>
-          <li>처음에는 백엔드 개발 공고부터 다룰 계획이에요. 지금 시연의 모의 공고 {{ numbers.postings }}건은 미리 분석해 둔 결과예요.</li>
+          <li>AI 문장은 "질문 만들기"·"최종 질문 만들기"·"AI로 다시 만들기"를 누를 때만 써요.</li>
+          <li>
+            처음에는 백엔드 개발 공고부터 다룰 계획이에요. 지금 시연의 모의 공고 {{ numbers.postings }}건은 AI 초안을 팀이 검수해 미리 만들어
+            둔 결과예요.
+          </li>
           <li>채용정보 상세에서도 면접을 준비하도록 넓힐 계획이에요.</li>
         </ul>
       </section>
@@ -146,10 +150,12 @@ function goBack(): void {
           </dd>
         </div>
       </dl>
-      <p class="muted small">근거 인용이 원문에 없으면 형광펜이 칠해지지 않아요. 그래서 두 숫자가 같아야 해요.</p>
+      <p class="muted small">
+        근거 인용이 원문에 없으면 형광펜이 칠해지지 않아요. 두 숫자가 같으면 모든 근거가 공고 원문에 글자 그대로 있다는 뜻이에요.
+      </p>
       <!-- 이용 기록은 모으지 않는다(H1-19 나). 품질은 팀이 직접 재는 점검으로 말한다 -->
       <p class="muted small">
-        이용 기록(복사·인쇄 누름)은 모으지 않아요. 품질은 팀 점검으로 재요. 공고 분석 근거가 원문과 맞는지, 질문이
+        이용 기록(복사·인쇄를 누른 횟수 같은 것)은 모으지 않아요. 품질은 팀 점검으로 재요. 공고 분석 근거가 원문과 맞는지, 질문이
         공고에 없는 일을 있는 것처럼 말하지 않는지 팀이 직접 확인해요.
       </p>
     </section>
@@ -199,7 +205,7 @@ function goBack(): void {
 
     <!-- 기획안과 화면이 다른 곳을 밝힌다(H1-20). 근거는 DECISIONS D-182·D-183·D-191 -->
     <section class="block" aria-labelledby="about-changes">
-      <h2 id="about-changes" class="section-title">기획안 뒤 달라진 점</h2>
+      <h2 id="about-changes" class="section-title">제출 기획안(v9)과 달라진 점</h2>
       <ul class="changes">
         <li>질문 유형 "충돌 확인"을 "차이 확인"으로 바꿨어요. 회사와 맞서는 말로 읽힐 수 있어서예요.</li>
         <li>
@@ -215,21 +221,15 @@ function goBack(): void {
       <ul class="privacy">
         <!-- 최종 요청(shared/contract.ts InterviewReview)에 실리는 것을 빠짐없이 적는다(A2-09).
              우리 서버로 가는 것과 AI 처리 기관으로 가는 것을 나눈다(A3-r1-09, docs/API-SPEC.md 「화면 입력 → 요청 값」).
-             시연(가짜 응답 모드)은 브라우저 밖으로 나가는 것이 없어 두 줄은 "실제 서비스에서"로 시점을 밝힌다(A3-r2-05) -->
-        <li>
-          실제 서비스에서 우리 서버로 보내는 것은 고른 카드·경험 한 줄이고, 최종 면접 준비 때는 1차 면접 정리(들은 답·못 물은 이유·면접
-          분위기·회사가 물어본 업무)까지예요. 이력서 전체는 보내지 않아요.
-        </li>
-        <li>
-          실제 서비스에서 AI로 넘기는 것은 공고 원문과, 1차 질문 때는 질문에 쓸 상위 5개 카드와 그 카드의 기대·걱정, 붙일 질문이 있을 때의
-          경험 한 줄이에요. 최종 면접 준비 때 답 판정에는 들은 답·구체적이었는지·기대·걱정을, 질문 문장에는 물어봤는지·회사가 물어본
-          업무·1차 판정 결과·면접 분위기에 맞춘 말투를 넘기고, 들은 답은 넘기지 않아요.
-        </li>
+             실제 모드는 지금 시연에서도 엔노이아로 넘어가 그렇게 적고(A4-01), 가짜 응답 모드는 브라우저 밖으로 나가는 것이 없어
+             "실제 서비스에서"로 시점을 밝힌다(A3-r2-05). 글은 lib/modeCopy -->
+        <li>{{ copy.privacySend }}</li>
+        <li>{{ copy.privacyAi }}</li>
         <li v-if="isMock">
           지금 시연은 가짜 응답 모드라 고른 것과 적은 글이 이 브라우저 밖으로 나가지 않아요(우리 서버·AI 모두). 질문도 이 브라우저 안에서
           만들어요.
         </li>
-        <li>서버는 경험 한 줄·들은 답·면접 분위기를 저장하거나 기록하지 않아요.</li>
+        <li>{{ copy.privacyServer }}</li>
         <li>고른 카드·경험 한 줄과 질문 결과는 이 브라우저에만 저장되고, 들은 답은 브라우저에도 저장하지 않아요.</li>
         <!-- 함께 쓰는 PC(H1-22)와 실제로 붙일 때의 계획(H2-05). 공공 서비스의 약속이 아니라 계획으로 적는다 -->
         <li>함께 쓰는 PC라면 다 본 뒤 "시연 도구"의 시연 초기화로 지워 주세요.</li>

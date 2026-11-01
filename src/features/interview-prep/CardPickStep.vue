@@ -6,8 +6,9 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { CARDS, CARD_BOOK, getCard } from '@shared/catalog'
 import type { PostingAnalysis, Pref } from '@shared/contract'
-import { EXPERIENCE_LEAD, experienceAnchor } from '@shared/rules'
+import { experienceAnchor } from '@shared/rules'
 import { API_MODE } from '@/api/client'
+import { experienceHintText } from '@/lib/modeCopy'
 import { PERSONA } from '@/demoData'
 import { JOB_INFO } from '@/realData'
 import { PICK_TOUR } from '@/features/tour/tourSteps'
@@ -88,19 +89,15 @@ function jumpToExperience(): void {
   document.getElementById('experience-input')?.focus()
 }
 
-// 경험 한 줄은 AI에 보내므로 사람·학교·회사를 알아볼 말을 빼 달라고 늘 같이 적는다(개인정보, A1-07).
-// 어디에 남고 어디로 가는지도 한 곳에서 같이 적는다(브라우저 저장 D-031, 실제 서비스의 AI 전달 — A3-r2-05)
-const EXPERIENCE_PRIVACY = '이름·학교·회사 이름은 빼고 적어 주세요. 적은 글은 이 브라우저에 저장되고, 실제 서비스에서는 질문을 만들 때 AI로 보내요.'
-// 붙이는 규칙을 그대로 적는다(picks.ts experienceTarget). 관련 있는 질문을 고르는 장치는 없다(A2-07)
+// 붙이는 규칙(picks.ts experienceTarget)과 어디에 남고 어디로 가는지를 같이 적는다(글은 lib/modeCopy). 관련 있는 질문을 고르는 장치는 없다(A2-07)
 const experienceHint = computed(() => {
-  if (!experience.value.trim()) return `"기대돼요"를 고른 질문 하나 앞에 붙여요(이력서 칩은 그 업무 질문). 비워 둬도 돼요. ${EXPERIENCE_PRIVACY}`
+  const mock = API_MODE === 'mock'
+  if (!experience.value.trim()) return experienceHintText(mock, { kind: 'empty' })
   const target = experienceTarget(selection.value)
-  if (!target) return `"기대돼요"를 고른 카드가 있으면 그 질문 앞에 붙여요. ${EXPERIENCE_PRIVACY}`
+  if (!target) return experienceHintText(mock, { kind: 'no-target' })
   const label = getCard(target)?.label ?? target
-  // 끝말을 이을 수 없으면 경험 글 대신 중립 앞말이 붙는다(A2-06). 그렇다고 미리 알린다
-  if (!experienceAnchor(experience.value)?.quoted)
-    return `"${label}" 질문 앞에 "${EXPERIENCE_LEAD.trim()}"로 이어요. 경험을 그대로 넣으려면 "…했는데"처럼 끝내 주세요. ${EXPERIENCE_PRIVACY}`
-  return `"${label}" 질문 앞에 붙여요. ${EXPERIENCE_PRIVACY}`
+  // 끝말을 이을 수 없으면 검수 문장에는 경험 글 대신 중립 앞말이 붙는다(A2-06). 그렇다고 미리 알린다
+  return experienceHintText(mock, { kind: experienceAnchor(experience.value)?.quoted ? 'quoted' : 'lead', label })
 })
 </script>
 
@@ -183,7 +180,7 @@ const experienceHint = computed(() => {
         <p class="counter" aria-live="polite">
           <strong class="count">{{ total }}개 골랐어요</strong>
           <span class="count-detail">({{ breakdown }})</span>
-          <span v-if="total > 0 && total < 3" class="count-tip">3개 이상이면 더 정확해요</span>
+          <span v-if="total > 0 && total < 3" class="count-tip">3개 이상 고르면 질문이 더 잘 맞아요</span>
         </p>
         <!-- 카드 17개 아래 맨 끝의 "경험 한 줄"을 직접 고르는 사람도 보게(H2-20). 경험이 비어 있을 때만 -->
         <button v-if="!experience.trim()" type="button" class="exp-jump tap-target" @click="jumpToExperience">경험 한 줄 붙이기(선택)</button>

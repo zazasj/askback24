@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import type { TourStep } from '@/stores/tour'
-import { FINAL_RESULT_TOUR, FIRST_RESULT_TOUR, JOBS_TOUR, JOB_TOUR, PICK_TOUR, RESUME_TOUR, REVIEW_TOUR, S1_TOUR, postingTour } from './tourSteps'
+import { FINAL_RESULT_TOUR, JOBS_TOUR, JOB_TOUR, PICK_TOUR, RESUME_TOUR, REVIEW_TOUR, S1_TOUR, firstResultTour, postingTour } from './tourSteps'
 
 const SCREEN_TOURS: Record<string, readonly TourStep[]> = {
   jobs: JOBS_TOUR,
@@ -13,7 +13,8 @@ const SCREEN_TOURS: Record<string, readonly TourStep[]> = {
   'posting(1차)': postingTour('내 기대·걱정 고르기'),
   'posting(최종)': postingTour('1차 면접 정리하기'),
   pick: PICK_TOUR,
-  first: FIRST_RESULT_TOUR,
+  'first(실제)': firstResultTour(false),
+  'first(가짜 응답)': firstResultTour(true),
   review: REVIEW_TOUR,
   final: FINAL_RESULT_TOUR,
 }
@@ -50,6 +51,29 @@ describe('S1 서비스 안내는 사이트 기능 전체를 소개한다(TR-01)'
 
   it('① 안내는 그 면접 종류의 다음 단계 버튼 이름을 쓴다', () => {
     expect(textOf(postingTour('1차 면접 정리하기'))).toContain('"1차 면접 정리하기"')
+  })
+})
+
+describe('4차 F1 안내 사실 맞추기', () => {
+  it('A4-29 ③ 1차 안내 첫 단계: 실제 모드는 순서는 규칙, 문장은 AI라고 밝히고, 가짜 응답 모드는 지난 글 그대로', () => {
+    expect(firstResultTour(false)[0]?.text).toBe(
+      '질문 순서는 공고 근거와 내가 고른 것으로 정해 둔 규칙이 정하고, 문장은 AI가 써요. "왜 이 질문인가요"를 펼치면 근거와 주의할 답이 보여요.',
+    )
+    expect(firstResultTour(true)[0]?.text).toBe('공고 근거와 내가 고른 것으로 만든 질문이에요. "왜 이 질문인가요"를 펼치면 근거와 주의할 답이 보여요.')
+    // 나머지 단계는 두 모드가 같다
+    expect(firstResultTour(false).slice(1)).toEqual(firstResultTour(true).slice(1))
+  })
+
+  it('A4-20 ② 안내는 질문을 "최대 5개" 받는다고 말한다(고른 카드가 적으면 그만큼)', () => {
+    const last = PICK_TOUR[PICK_TOUR.length - 1]?.text ?? ''
+    expect(last).toContain('1차 질문을 최대 5개 받아요.')
+    expect(last).not.toContain('1차 질문 5개를 받아요')
+  })
+
+  it('A4-31 1차 면접 정리 안내와 S1 시연 도구 안내가 채우기 버튼(R-04 "1차 면접 다녀온 것으로 채우기")을 알린다', () => {
+    expect(REVIEW_TOUR[0]?.text).toContain('시연 도구의 "1차 면접 다녀온 것으로 채우기"로 한 번에 채울 수 있어요.')
+    const tools = S1_TOUR.find((s) => s.title === '시연 도구')?.text ?? ''
+    expect(tools).toContain('예시로 한 번에 채울 수도 있어요(1차는 예시 구직자, 최종은 1차 면접 다녀온 것)')
   })
 })
 

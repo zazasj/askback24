@@ -27,7 +27,7 @@ AI 담당 서버에 아래 **호출 3가지**를 만들어 주세요. 우리 서
 |---|---|---|---|
 | ? 1 | 답하는 시간 1차 8초 · 판정 3초 · 문장 5초 | 이대로. 판정이 어려우면 `{ "judgements": [] }`만 돌려줘도 단순 판정으로 돕니다 | AI 담당 → 세진 |
 | ? 2 | AI 서버 주소(`AI_ENDPOINT`)와 키(`AI_API_KEY`) 넘기는 방법 | 키는 메신저에 붙이지 않고 세진이 Vercel 환경변수에 직접 넣기 | AI 담당 · 세진 |
-| ? 3 | 공고 분석 7건을 AI 파이프라인으로 다시 만들 시점(「부록 B」) | 해결(2026-11-01, D-374): 파이프라인 초안 + 팀 검수로 바꿈 | AI 담당 |
+| ? 3 | 공고 분석 7건을 AI 파이프라인으로 다시 만들 시점(「부록 B」) | 해결(2026-11-01, D-373·D-374): 파이프라인(엔노이아 `openai/gpt-6.1-sol`)이 2026-10-31에 만든 초안을 팀이 검수해 `--apply-candidates analysis`로 넣음. /about-ai 처리 단계 1과 데이터 출처 표 「공고 분석 7건」 줄에도 같은 말(모델·날짜는 파일 `meta`에서 읽음) | AI 담당 |
 | ? 4 | AI 서버가 쓰는 모델과 업체 · 처리 위치(국내/국외 이전 여부) · 하위 처리자 · 업체 쪽 보관 기간 · 학습 제외 설정 · 요청·응답 로그 보관 여부(「공통」 개인정보) | AI 담당이 적어 회신. 업체 쪽 보관 기간은 0일, 학습 제외는 켜기를 권장. 받은 내용은 /about-ai 위탁 고지(D-224)에 씁니다 | AI 담당 → 세진 |
 
 ### 바뀌는 것과 바뀌지 않는 것
@@ -206,7 +206,7 @@ flowchart LR
 
 ## 부록 B — 공고 분석 데이터 `data/analysis/<wantedAuthNo>.json`
 
-공고 분석은 AI 파이프라인이 미리 만들어 우리 레포 `data/analysis/<wantedAuthNo>.json`으로 넣습니다(공고 한 건에 파일 하나). 화면과 우리 서버는 이 파일을 **읽기만** 합니다. 지금 7건(`K-MOCK-0001`~`0007`)은 ① 공고 분석 파이프라인(`npm run analysis:regen`, 엔노이아)이 만든 초안을 팀이 공고 원문에 비춰 검수한 것입니다(2026-11-01, D-374). 파일 `meta`에 파이프라인 버전·모델·만든 때와 적용한 날(`applied_on`)이 있습니다. 검수에서 고친 내역은 `docs/ai_agent/카드 판정 검수 기록.md`에 있습니다.
+공고 분석은 AI 파이프라인이 미리 만들어 우리 레포 `data/analysis/<wantedAuthNo>.json`으로 넣습니다(공고 한 건에 파일 하나). 화면과 우리 서버는 이 파일을 **읽기만** 합니다. 지금 7건(`K-MOCK-0001`~`0007`)은 ① 공고 분석 파이프라인(`npm run analysis:regen`, 엔노이아 `openai/gpt-6.1-sol`, `graph_version` `analysis-1`)이 2026-10-31(한국 시각, `meta.created_at`은 UTC 2026-10-30 15:38~15:41)에 만든 초안을 팀이 공고 원문에 비춰 검수해, 2026-11-01에 `npm run analysis:regen -- --apply-candidates analysis`로 넣은 것입니다(D-373·D-374). 파일 `meta`에 파이프라인 버전·모델·만든 때와 적용한 날(`applied_on`)이 있습니다. 검수에서 고친 내역은 `docs/ai_agent/카드 판정 검수 기록.md`에 있습니다. 화면은 /about-ai 처리 단계 1과 데이터 출처 표 「공고 분석 7건」 줄(구분 "모의", 공고가 모의라서)에 "AI 초안 + 팀 검수"와 이 모델·날짜를 보여 줍니다.
 
 ```json
 {
@@ -233,6 +233,7 @@ flowchart LR
 | `cards[].reason` | 화면 말풍선 한 줄(해요체). 어디에 적혔는지만 말하지 않고 확인해 볼 이유를 말함. 회사를 평가하지 않음 |
 | `cards[].questions` | 선택. 이 공고에서만 카드 질문 틀을 덮어씀(카드 틀이 근거와 맞지 않을 때만). 모양은 `{ "conflict" \| "opportunity" \| "depth" \| "prevent" \| "explore": "틀 문장" }` — 질문 유형 키(1차 `type`과 같은 이름)마다 틀 문장 하나, 필요한 유형만. 틀 문장에 `{anchor}`를 두면 그 자리에 경험 한 줄이 들어갑니다(없으면 경험을 붙이지 않음). 예: `K-MOCK-0007`의 `BE15` → `"questions": { "conflict": "물류센터 현장 지원에 개발자가 나가는 일이 있다면, 얼마나 자주 나가고 가서는 어떤 일을 맡게 되나요?" }` |
 | `blanks[]` | 처우 질문 재료: `topic`(`sal`·`workHours`·`probation`·`onsite`) · `status`(`missing` 공고에 없음 · `vague` 모호 · `check` 확인 필요) · `label` · `basis` · `evidence`(선택, 인용 규칙 같음) · `question`(검수 처우 질문) |
+| `meta` | 파이프라인이 붙임: `graph_version` · `model` · `created_at`(UTC) · `applied_on`(적용한 날). /about-ai가 `model`과 `created_at`의 한국 날짜를 읽어 보여 줍니다(`src/features/about/aboutData.ts` `analysisMade`) |
 | 화면의 "확인할 곳 N군데" | N = `cards[]` 중 카드 ID가 17개 안에 있는 것 전부(파일의 카드는 모두 `explicit`·`inferred`·`vague`) + `blanks[]` 중 `status`가 `missing`·`vague`인 것. `check`(적혀 있지만 물어볼 것)는 최종 처우 질문 재료라 세지 않습니다 |
 
 넣은 뒤 확인하는 시험:
