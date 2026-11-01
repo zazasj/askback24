@@ -105,11 +105,141 @@ def test_default_does_not_touch_data(tmp_path):
     assert (out / "report.md").is_file()
 
 
-def test_apply_writes_data(tmp_path):
+class NoLlm:
+    """후보 적용은 LLM 을 부르지 않아야 한다."""
+
+    async def complete_json(self, *a, **k):
+        raise AssertionError("후보 적용 중 LLM 호출")
+
+
+def _jread(p: Path):
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
+def _jwrite(p: Path, data) -> None:
+    p.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _apply(root, *args):
+    return regen.main(["--apply-candidates", *args], root=root, env={}, llm=NoLlm(), today="2026-11-01")
+
+
+def _regen(root, only="K-MOCK-0001"):
+    assert regen.main(["--only", only], root=root, env={}, llm=_llm()) == 0
+    return root / "review" / "analysis-regen"
+
+
+def test_old_apply_flag_is_refused(tmp_path):
     root = _copy_root(tmp_path)
-    assert regen.main(["--only", "K-MOCK-0001", "--apply"], root=root, env={}, llm=_llm()) == 0
-    assert "meta" in json.loads((root / "data/analysis/K-MOCK-0001.json").read_text(encoding="utf-8"))
-    assert "K-MOCK-0002" in json.loads((root / "data/signals.json").read_text(encoding="utf-8"))
+    before = _digest(root)
+    assert regen.main(["--only", "K-MOCK-0001", "--apply"], root=root, env={}, llm=NoLlm()) == 2
+    assert _digest(root) == before
+
+
+def test_regen_records_base_fingerprints(tmp_path):
+    root = _copy_root(tmp_path)
+    base = _jread(_regen(root) / "base.json")
+    assert set(base) == {"analysis", "signals"}
+    assert base["analysis"]["K-MOCK-0001"] == regen.fingerprint(_jread(root / "data/analysis/K-MOCK-0001.json"))
+    assert base["signals"]["K-MOCK-0001"] == regen.fingerprint(_jread(root / "data/signals.json")["K-MOCK-0001"])
+    # --only 로 다른 공고를 다시 만들어도 앞 공고의 기준은 남는다.
+    out = _regen(root, "K-MOCK-0002")
+    assert {"K-MOCK-0001", "K-MOCK-0002"} <= set(_jread(out / "base.json")["analysis"])
+    assert {"K-MOCK-0001", "K-MOCK-0002"} <= set(_jread(out / "signals.json"))
+
+
+def test_apply_candidates_writes_reviewed_file_without_llm(tmp_path):
+    root = _copy_root(tmp_path)
+    out = _regen(root)
+    f = out / "analysis" / "K-MOCK-0001.json"
+    cand = _jread(f)
+    cand["cards"][0]["reason"] = "사람이 검수하며 고친 이유예요"  # 검토하며 손본 글이 그대로 들어가야 한다
+    _jwrite(f, cand)
+    signals_before = _jread(root / "data/signals.json")
+    assert _apply(root, "analysis") == 0
+    got = _jread(root / "data/analysis/K-MOCK-0001.json")
+    assert got["cards"] == cand["cards"] and got["blanks"] == cand["blanks"]
+    assert got["meta"] == {**cand["meta"], "applied_on": "2026-11-01"}
+    assert _jread(root / "data/signals.json") == signals_before  # analysis 만 골랐으면 신호는 그대로
+
+
+def test_apply_candidates_signals_only(tmp_path):
+    root = _copy_root(tmp_path)
+    out = _regen(root)
+    analysis_before = _jread(root / "data/analysis/K-MOCK-0001.json")
+    assert _apply(root, "signals") == 0
+    assert _jread(root / "data/signals.json")["K-MOCK-0001"] == _jread(out / "signals.json")["K-MOCK-0001"]
+    assert _jread(root / "data/analysis/K-MOCK-0001.json") == analysis_before
+
+
+def test_apply_candidates_refuses_bad_candidate_and_writes_nothing(tmp_path, capsys):
+    root = _copy_root(tmp_path)
+    out = _regen(root)
+    f = out / "analysis" / "K-MOCK-0001.json"
+    cand = _jread(f)
+    cand["cards"].append({"card_id": "BE02", "state": "explicit", "evidence": {"field": "jobCont", "quote": "공고에 없는 말"}, "reason": "이유"})
+    cand["cards"].append({"card_id": "BE03", "state": "absent", "reason": "없음"})
+    cand["cards"].append({"card_id": "ZZ99", "state": "inferred", "reason": "이유"})
+    _jwrite(f, cand)
+    before = _digest(root)
+    assert _apply(root, "all") == 1
+    assert _digest(root) == before
+    msg = capsys.readouterr().out
+    assert "BE02: evidence_not_in_posting" in msg and "BE03: absent" in msg and "ZZ99: unknown_card" in msg
+
+
+def test_apply_candidates_refuses_duplicate_card(tmp_path, capsys):
+    root = _copy_root(tmp_path)
+    out = _regen(root)
+    f = out / "analysis" / "K-MOCK-0001.json"
+    cand = _jread(f)
+    cand["cards"].append(dict(cand["cards"][0]))
+    _jwrite(f, cand)
+    assert _apply(root, "analysis") == 1
+    assert "두 번" in capsys.readouterr().out
+
+
+def test_apply_candidates_refuses_when_data_changed_after_regen(tmp_path, capsys):
+    root = _copy_root(tmp_path)
+    _regen(root)
+    sig_path = root / "data/signals.json"
+    sigs = _jread(sig_path)
+    sigs["K-MOCK-0001"][0]["text"] = sigs["K-MOCK-0001"][0]["text"] + " (후보를 만든 뒤 사람이 고침)"
+    _jwrite(sig_path, sigs)
+    before = _digest(root)
+    assert _apply(root, "signals") == 1
+    assert _digest(root) == before
+    assert "바뀌었어요" in capsys.readouterr().out
+    # 바뀐 것을 알고 덮어쓰려면 --ignore-base 를 따로 줘야 한다.
+    assert _apply(root, "signals", "--ignore-base") == 0
+
+
+def test_apply_candidates_without_base_needs_ignore_base(tmp_path, capsys):
+    root = _copy_root(tmp_path)
+    out = _regen(root)
+    (out / "base.json").unlink()  # 이 옵션이 생기기 전에 만든 후보
+    before = _digest(root)
+    assert _apply(root, "analysis") == 1
+    assert _digest(root) == before
+    assert "--ignore-base" in capsys.readouterr().out
+    assert _apply(root, "analysis", "--ignore-base") == 0
+
+
+def test_apply_candidates_only_one_posting(tmp_path):
+    root = _copy_root(tmp_path)
+    _regen(root)
+    _regen(root, "K-MOCK-0002")
+    before2 = _jread(root / "data/analysis/K-MOCK-0002.json")
+    assert _apply(root, "analysis", "--only", "K-MOCK-0001") == 0
+    assert "applied_on" in _jread(root / "data/analysis/K-MOCK-0001.json")["meta"]
+    assert _jread(root / "data/analysis/K-MOCK-0002.json") == before2
+
+
+def test_apply_candidates_without_candidates_fails(tmp_path):
+    root = _copy_root(tmp_path)
+    before = _digest(root)
+    assert _apply(root, "all") == 1
+    assert _digest(root) == before
 
 
 def test_outputs_have_no_real_identity(tmp_path):
