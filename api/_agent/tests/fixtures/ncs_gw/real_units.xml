@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root><data>
+<row><dutyCd>20010202</dutyCd><dutySvcNo>SVC202300067</dutySvcNo><ncsClCd>2001020211_23v6</ncsClCd><compUnitCd>11</compUnitCd><compUnitName>11.서버프로그램 구현</compUnitName><compUnitDef>가짜 정의</compUnitDef><compUnitLevel>5</compUnitLevel></row>
+<row><dutyCd>20010202</dutyCd><dutySvcNo>SVC202300067</dutySvcNo><ncsClCd>2001020221_23v6</ncsClCd><compUnitCd>21</compUnitCd><compUnitName>21.애플리케이션 설계</compUnitName><compUnitDef>가짜 정의</compUnitDef><compUnitLevel>6</compUnitLevel></row>
+</data>
+<dataInfo><code>000</code><message>정상</message><totalPage>1</totalPage><pageNo>1</pageNo><totCnt>27</totCnt></dataInfo></root>

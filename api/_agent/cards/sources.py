@@ -64,11 +64,19 @@ def _text(el: ET.Element | None) -> str:
     return (el.text or "").strip() if el is not None else ""
 
 
-def _ncs_gw_items(root: ET.Element) -> list[ET.Element]:
-    # nps.py와 같은 규칙: resultCode가 00이 아니면 실패, 항목은 여럿·하나·빈칸 모두 받는다.
-    if _text(root.find(".//resultCode")) != "00":
+def _ncs_gw_rows(root: ET.Element, conf: dict) -> list[ET.Element]:
+    # code가 ok면 행들, empty(없는 세분류 등)면 빈 목록, 그 밖은 실패.
+    code = _text(root.find(conf["result_code_path"]))
+    if code in conf.get("empty_codes", []):
+        return []
+    if code not in conf["ok_codes"]:
         raise ValueError("result")
-    return list(root.findall(".//items/item"))
+    return list(root.findall(conf["item_path"]))
+
+
+def spaceless(s: str) -> str:
+    # scripts/fetch-work24.ts의 spaceless와 같다. 괄호 안(영문 보충 등)은 215L01 질의에서 빈 응답이 된다.
+    return re.sub(r"\s+", "", re.sub(r"\([^)]*\)", "", s))
 
 
 def _walk_items(v: object, out: list[dict]) -> None:
@@ -83,20 +91,8 @@ def _walk_items(v: object, out: list[dict]) -> None:
                 _walk_items(x, out)
 
 
-def _code_rows(root: ET.Element) -> list[tuple[str, str]]:
-    # fetch-work24.ts codeRows와 같다: 잎 자식 중 …Cd·…Nm 짝이 있는 노드마다 한 줄.
-    rows: list[tuple[str, str]] = []
-    for node in root.iter():
-        leaves = {c.tag: _text(c) for c in node if len(c) == 0}
-        cd = next((k for k in leaves if k.lower().endswith("cd")), None)
-        nm = next((k for k in leaves if k.lower().endswith("nm")), None)
-        if cd and nm and leaves[cd]:
-            rows.append((leaves[cd], leaves[nm]))
-    return rows
-
-
 class CardSources:
-    def __init__(self, env: Mapping[str, str], root: Path, client: httpx.AsyncClient | None = None):
+    def __init__(self, env: Mapping[str, str], root: Path, client: httpx.AsyncClient):
         self._env = env
         self._root = root
         self._client = client
@@ -116,10 +112,7 @@ class CardSources:
             return r
 
         try:
-            if self._client is not None:
-                return await go(self._client)
-            async with httpx.AsyncClient() as c:
-                return await go(c)
+            return await go(self._client)
         except Exception:
             # 예외 글에 키(URL)가 섞일 수 있어 버린다.
             raise SourceError("자료 출처 호출 실패") from None
@@ -146,26 +139,42 @@ class CardSources:
             for u in d.get("units", [])
         ]
 
-    async def _units_real(self, conf: dict, key: str, subcategory_code: str) -> list[Unit]:
-        url = f"{conf['base_url'].rstrip('/')}/{conf['operation'] or ''}".rstrip("/")
-        params = {"serviceKey": key, conf["params"]["subcategory"]: subcategory_code}
+    async def _ncs_gw_call(self, conf: dict, key: str, operation: str, code: str, **override: str) -> list[ET.Element]:
+        url = f"{conf['base_url'].rstrip('/')}/{operation}"
+        params = {"serviceKey": key, conf["params"]["subcategory"]: code, **conf["params"].get("fixed", {}), **override}
         r = await self._get(url, params)
-        f = conf["fields"]
         try:
-            items = _ncs_gw_items(ET.fromstring(r.text))
-            out = [
-                Unit(
-                    _text(i.find(f["code"])),
-                    _text(i.find(f["name"])),
-                    _int_or_none(_text(i.find(f["level"]))) if f.get("level") else None,
-                    (_text(i.find(f["subcategory_code"])) if f.get("subcategory_code") else "") or subcategory_code,
-                    _text(i.find(f["subcategory"])) if f.get("subcategory") else "",
-                )
-                for i in items
-            ]
-            return [u for u in out if u.code and u.name]
+            return _ncs_gw_rows(ET.fromstring(r.content), conf)
         except Exception:
             raise SourceError("자료 출처 응답을 읽지 못함") from None
+
+    async def _duty_name(self, conf: dict, key: str, code: str) -> str:
+        # 이름은 표시용이라 실패해도 능력단위는 돌려준다.
+        try:
+            rows = await self._ncs_gw_call(conf, key, conf["name_operation"], code, numOfRows="10")
+            return _text(rows[0].find(conf["fields"]["subcategory"])) if rows else ""
+        except Exception:
+            return ""
+
+    async def _units_real(self, conf: dict, key: str, subcategory_code: str) -> list[Unit]:
+        f = conf["fields"]
+        has_name = bool(conf.get("name_operation") and f.get("subcategory"))
+        rows, name = await asyncio.gather(
+            self._ncs_gw_call(conf, key, conf["operation"], subcategory_code),
+            self._duty_name(conf, key, subcategory_code) if has_name else asyncio.sleep(0, ""),
+        )
+        out = [
+            Unit(
+                # ablt_unit은 10자리라 `_23v6` 같은 버전 꼬리와 이름 앞 `11.` 번호를 뗀다.
+                _text(i.find(f["code"])).split("_")[0],
+                re.sub(r"^\d+\.\s*", "", _text(i.find(f["name"]))),
+                _int_or_none(_text(i.find(f["level"]))) if f.get("level") else None,
+                (_text(i.find(f["subcategory_code"])) if f.get("subcategory_code") else "") or subcategory_code,
+                name if has_name else (_text(i.find(f["subcategory"])) if f.get("subcategory") else ""),
+            )
+            for i in rows
+        ]
+        return [u for u in out if u.code and u.name]
 
     # ── 215L01 직무정보 ──
     async def recommend(self, duty_phrase: str) -> list[Unit]:
@@ -234,18 +243,3 @@ class CardSources:
         if d.get("jobCd") == job_dictionary_code and d.get("summary"):
             return [d["summary"]]
         return []
-
-    # ── 21L01 공통코드 ──
-    async def job_code(self, job_label: str) -> str | None:
-        key = self._key("WORK24_KEY_COMMONCODE")
-        if key:
-            text = await self._work24("21L01", key, {"returnType": "XML", "target": "CMCD", "dtlGb": "2"})
-            try:
-                rows = _code_rows(ET.fromstring(text))
-            except Exception:
-                raise SourceError("자료 출처 응답을 읽지 못함") from None
-            self.used["codes"] = "real"
-            return next((c for c, n in rows if n == job_label), None)
-        self.used["codes"] = "snapshot"
-        d = _read_json(self._root / "data" / "real" / "common-codes.json")
-        return next((c["code"] for c in d.get("jobs", {}).get("codes", []) if c.get("name") == job_label), None)

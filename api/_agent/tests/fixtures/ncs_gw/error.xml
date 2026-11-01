@@ -1,2 +1,2 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<response><header><resultCode>30</resultCode><resultMsg>SERVICE KEY IS NOT REGISTERED</resultMsg></header></response>
+<root><data/><dataInfo><code>099</code><message>SERVICE KEY IS NOT REGISTERED</message></dataInfo></root>

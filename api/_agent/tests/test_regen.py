@@ -205,3 +205,37 @@ def test_main_exit_1_and_report_has_only_exception_type(tmp_path, monkeypatch):
     assert regen.main(["--only", "K-MOCK-0001"], root=root, env={}, llm=_llm()) == 1
     t = (root / "review/analysis-regen/report.md").read_text(encoding="utf-8")
     assert "ValueError" in t and "테스트실제" not in t and "비밀" not in t
+
+
+def test_legacy_lines_section():
+    cur_sig = [
+        {"text": "최근 12개월 동안 가입자 수가 꾸준히 늘었어요", "source": "실제", "source_name": NPS_NAME},
+        {"text": "손으로 쓴 모의 줄이에요", "source": "모의", "source_name": "고용24 공고 이력"},
+    ]
+    text = report_of(cur_sig, [])
+    section = text.split("### 그대로 남는 옛 줄")[1].split("###")[0]
+    assert "최근 12개월 동안 가입자 수가 꾸준히 늘었어요" in section and "손으로 쓴 모의 줄이에요" in section
+    assert "- ⚠ 실제 배지인데 파이프라인이 만들지 않은 줄: 최근 12개월 동안 가입자 수가 꾸준히 늘었어요" in section
+    warn = text.split("### 경고")[1]
+    assert warn.count("실제 배지 옛 줄") == 1
+    assert text.index("### 출처(실제·모의)") < text.index("### 그대로 남는 옛 줄")
+
+
+def test_legacy_section_empty_says_none():
+    assert "### 그대로 남는 옛 줄\n- 없음" in report_of([], [])
+
+
+def test_extra_fresh_lines_are_reported():
+    cur_sig = [{"kind": "reposting", "text": REPOST_TEXT, "source": "모의", "source_name": "고용24 공고 이력"}]
+    other = "같은 직무 공고가 12개월 안에 5번 등록됐어요"
+    text = report_of(cur_sig, [sig("reposting", REPOST_TEXT), sig("reposting", other)])
+    assert f"- 더해짐: reposting / [모의] {other}" in text
+    assert text.count("- 더해짐:") == 1
+
+
+def test_pairs_same_text_first():
+    def line(t):
+        return {"kind": "reposting", "text": t, "source": "모의", "source_name": "고용24 공고 이력"}
+    text = report_of([line("A"), line("B")], [sig("reposting", "B"), sig("reposting", "C")])
+    assert "- 바뀜: reposting / [모의] A / ask: 없음 → [모의] C" in text
+    assert text.count("- 바뀜:") == 1 and "빠짐:" not in text.split("### 신호 줄")[1].split("###")[0] and "더해짐:" not in text

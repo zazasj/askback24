@@ -88,7 +88,7 @@ npm run check          # 위 네 가지(build · test:unit · test:py · test:e2
 
 ## 실제 AI 연결
 
-질문 문장 쓰기와 1차 면접 답 판정, 최종 면접의 판정·질문 문장도 AI 서버가 맡는다. AI 서버는 같은 배포의 Python 함수 `/api/ai`(`api/ai/index.py`, FastAPI + LangGraph, LLM은 엔노이아)다. 우리 서버 함수(`api/questions.ts`)가 그 서버의 주소 `POST {AI_ENDPOINT}/v1/first-questions` · `/v1/final-judgements` · `/v1/final-questions`를 부른다. 요청·응답 형식, 응답 규칙, 실패 처리는 명세 [`docs/API-SPEC.md`](docs/API-SPEC.md)에 있다. 연결 코드는 `shared/providers/remote.ts`이고, 지금 배포는 가짜 응답 모드(`mock`) 그대로다. 형원에게 넘길 요약 명세(필드 표 양식)는 `docs/AI-API-명세서.md`·`.pdf`(다시 뽑기 `npm run docs:api-pdf`), 배경·규칙의 자세한 설명은 `docs/API-SPEC.md`. 시연 공고 분석 7건은 `npm run analysis:regen`(엔노이아 키 필요, 결과는 `review/analysis-regen/` 후보와 비교 보고서이고 `--apply`로만 `data/`에 적용)으로 다시 만들고, 직무 하나의 업무 카드 초안은 `npm run cards:draft -- --job backend --job-label "백엔드 개발자" --ncs 20010202 --compare data/cards.backend.json`(엔노이아 키 필요, 결과와 기존 사전 비교 보고서는 `review/card-drafts/`, `data/`는 안 바꿈)으로 만들고, 회사 신호 자료는 `npm run company:eis` · `company:giants`로 받는다.
+질문 문장 쓰기와 1차 면접 답 판정, 최종 면접의 판정·질문 문장도 AI 서버가 맡는다. AI 서버는 같은 배포의 Python 함수 `/api/ai`(`api/ai/index.py`, FastAPI + LangGraph, LLM은 엔노이아)다. 우리 서버 함수(`api/questions.ts`)가 그 서버의 주소 `POST {AI_ENDPOINT}/v1/first-questions` · `/v1/final-judgements` · `/v1/final-questions`를 부른다. 요청·응답 형식, 응답 규칙, 실패 처리는 명세 [`docs/API-SPEC.md`](docs/API-SPEC.md)에 있다. 연결 코드는 `shared/providers/remote.ts`이고, 배포는 실제 모드(`vercel.json` `npm run build`, 2026-11-01 D-371)다. Vercel 환경변수(아래 표)가 없으면 질문은 검수 문장으로 나온다. 형원에게 넘길 요약 명세(필드 표 양식)는 `docs/AI-API-명세서.md`·`.pdf`(다시 뽑기 `npm run docs:api-pdf`), 배경·규칙의 자세한 설명은 `docs/API-SPEC.md`. 시연 공고 분석 7건은 `npm run analysis:regen`(엔노이아 키 필요, 결과는 `review/analysis-regen/` 후보와 비교 보고서이고 `--apply`로만 `data/`에 적용)으로 다시 만들고, 직무 하나의 업무 카드 초안은 `npm run cards:draft -- --job backend --job-label "백엔드 개발자" --ncs 20010202 --compare data/cards.backend.json`(엔노이아 키 필요, 결과와 기존 사전 비교 보고서는 `review/card-drafts/`, `data/`는 안 바꿈)으로 만들고, 회사 신호 자료는 `npm run company:eis` · `company:giants`로 받는다.
 
 | 환경변수 | 값 | 넣는 곳 |
 |---|---|---|
@@ -109,7 +109,7 @@ npm run check          # 위 네 가지(build · test:unit · test:py · test:e2
 
 1. AI 서버(`/api/ai`)가 `docs/AI-API-명세서.md`의 주소로 답하는지, `docs/api-examples/*-request.json`을 보내 `*-response.json`과 같은 모양이 오는지 확인한다.
 2. Vercel Preview 환경변수에 `LLM_PROVIDER=remote`, `AI_API_KEY`, `ENNOIA_*`를 넣고 Protection Bypass를 켠다(`AI_ENDPOINT`는 비워 둔다).
-3. `vercel.json`의 `buildCommand`를 `npm run build:mock`에서 `npm run build`로 바꿔 staging에 push한다. 이제 화면이 `POST /api/questions`를 부른다.
+3. `vercel.json`의 `buildCommand`를 `npm run build:mock`에서 `npm run build`로 바꿔 staging에 push한다(2026-11-01에 바꿈, D-371). 이제 화면이 `POST /api/questions`를 부른다.
 4. staging 미리보기에서 질문을 만들어 본다. 먼저 Vercel 함수 로그에서 `[questions] … provider=remote … template=0`을 확인한다. `provider=unconfigured`면 `LLM_PROVIDER`가 `remote`로 들어가지 않은 것이다(오타·빠짐). `template=`이 0이 아니면 `issues=`(걸린 검사)와 `failure=`(오류·시간 초과)를 본다. 그다음 화면에서 ③ 제목 옆 "가짜 응답 모드" 태그가 없고 질문에 "검수 문장" 라벨이 붙지 않는지 본다.
 5. 문제가 없으면 Production 환경변수에도 같은 값을 넣고 main에 합친다. `LLM_PROVIDER=mock`으로 되돌리면 실제 빌드에서는 모두 검수 문장으로 나간다(가짜 문장을 AI 결과로 보이지 않게). 가짜 응답 모드로 돌리려면 `buildCommand`를 `npm run build:mock`으로 돌린다.
 
@@ -151,7 +151,8 @@ npm run test:unit      # AS-03(예시 = 코드) · AS-07(remote 연결 계약)
 | 지역·직종 코드 | 실제 | 고용24 오픈API 공통코드(21L01) → `data/real/common-codes.json` | 모의 공고 7건의 지역·직종 코드(단위 시험으로 확인) |
 | 강소기업 통계 | 실제 | 고용24 오픈API 강소기업(216L01) → `data/real/small-giants-summary.json`. 전국 15,282건(응답 15,291건 중 겹친 9건 뺌, 회사 15,281곳, 2024년 선정) 중 정보통신업 1,677건, 강소기업 구분(인증·선정 등) 38가지 — `/about-ai`와 같은 기준 | `/about-ai` |
 | 채용 공고 7건 | 모의 | 채용정보 오픈API(210L01)는 개인회원이 쓸 수 없어 항목 이름만 따름 | S3, S4 ① |
-| 회사 참고 정보: 국민연금 사업장 가입자 현황 | 실제 | 출처 종류만 실제. 시연 회사가 가상이라 값은 예시 | S4 ① |
+| 회사 참고 정보: 국민연금 사업장 가입자 현황 | 모의 | 시연 회사가 가상이라 예시 값(D-370). 클라이언트는 실제 V2 API를 부르고, 회사 매핑(`REAL_COMPANY_MAP`, 팀 확인 전까지 비어 있음)을 채우고 다시 만들면 그 회사 줄만 실제가 된다 | S4 ① |
+| 회사 참고 정보: 같은 업종·규모 평균 | 실제 | 고용행정통계 월별 피보험자현황 파일(2025년 10월~2026년 9월) → `data/company/eis.json`. 화면은 `--apply` 전까지 정적 `data/signals.json`을 읽는다 | S4 ① 회사 신호 |
 | 회사 참고 정보: 공고 이력 · 강소기업 정보 · 업종 유추 · 임금체불 명단 | 모의 | 시연용으로 만든 값 | S4 ① |
 | 김00 이력서 · 지원 내역 | 모의 | 가상 인물, 연락처·주소는 예시 | S1, S2 |
 
@@ -166,7 +167,7 @@ staging(개발) ──push──▶ Vercel 미리보기 ──세진 확인─�
 - 개발은 **staging** 브랜치에서만 하고, 커밋·push도 staging에만 한다.
 - **main에는 직접 커밋·push 하지 않는다.** main은 심사위원이 보는 배포 주소라, 세진이 staging 미리보기를 확인한 뒤 GitHub에서 staging → main PR로만 합친다.
 - 심사 기간(11-10~19)에는 main merge를 하루 한 번 이하로, 확인한 것만 한다.
-- Vercel은 `vercel.json`의 `buildCommand`대로 가짜 응답 모드(`npm run build:mock`)로 빌드한다. staging 미리보기에서 ③ 제목 옆과 `/about-ai`에 회색 태그 "가짜 응답 모드 · AI 대신 규칙과 예시 문장"이 보이는지 확인한 뒤 main에 합친다.
+- Vercel은 `vercel.json`의 `buildCommand`대로 실제 모드(`npm run build`)로 빌드한다(D-371). staging 미리보기에서 함수 로그 `[questions] … provider=remote … template=0`과, ③ 제목 옆에 "가짜 응답 모드" 태그·질문에 "검수 문장" 라벨이 없는지 확인한 뒤 main에 합친다.
 - 커밋 작성자는 레포 로컬 설정을 쓴다. 메시지 꼴과 그 밖의 규칙은 [`CLAUDE.md`](CLAUDE.md) 「git」을 본다.
 
 ## 제한 사항

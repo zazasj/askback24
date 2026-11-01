@@ -1,7 +1,7 @@
 {
   "meta": {
     "source": "모의",
-    "note": "NCS 정보_GW 응답 모양을 본뜬 모의 값. 능력단위 이름·코드는 data/real/ncs-cards.json(215L01 실제 응답)과 data/cards.backend.json 팀 값에서 모음. 수준은 모름(null)"
+    "note": "실제 NCS 정보_GW 응답과 모양이 다른 모의 값으로, DATA_GO_KR_KEY가 없을 때만 쓴다(키가 있으면 실제 호출). 능력단위 이름·코드는 data/real/ncs-cards.json(215L01 실제 응답)과 data/cards.backend.json 팀 값에서 모음. 수준은 모름(null)"
   },
   "subcategory": "응용SW엔지니어링",
   "units": [

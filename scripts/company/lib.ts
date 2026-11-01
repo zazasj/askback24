@@ -3,11 +3,12 @@
  * Node 가 타입만 지우고 바로 돌리므로 enum·namespace 는 쓰지 않는다.
  */
 
+import { EIS_SIDO_TO_REGION, KSIC11_MID } from './eis-codes.ts'
 import { findAll, leafRecord, parseXml, type XmlNode } from '../work24/lib.ts'
 
 export interface EisRow {
   ym: string
-  ind: string
+  ind2: string
   size: string
   sido: string
   insured: number
@@ -24,13 +25,19 @@ export interface EisBaselineRow {
   insured: number
 }
 
-/** EIS 규모 구간의 단일 출처. 실제 파일을 받는 4.5단계에서 라벨을 파일 값으로 바꾼다(파이썬은 meta.size_bands 를 읽는다) */
+/** EIS 규모 구간의 단일 출처. 라벨은 EIS 파일의 값 그대로다(파이썬은 meta.size_bands 를 읽는다) */
 export const EIS_SIZE_BANDS: ReadonlyArray<{ min: number; max: number | null; label: string }> = [
-  { min: 1, max: 4, label: '1~4인' },
-  { min: 5, max: 29, label: '5~29인' },
-  { min: 30, max: 99, label: '30~99인' },
-  { min: 100, max: 299, label: '100~299인' },
-  { min: 300, max: null, label: '300인 이상' },
+  { min: 1, max: 4, label: '5인미만' },
+  { min: 5, max: 9, label: '5인 - 9인' },
+  { min: 10, max: 29, label: '10인 - 29인' },
+  { min: 30, max: 49, label: '30인 - 49인' },
+  { min: 50, max: 69, label: '50인 - 69인' },
+  { min: 70, max: 99, label: '70인 - 99인' },
+  { min: 100, max: 149, label: '100인 - 149인' },
+  { min: 150, max: 299, label: '150인 - 299인' },
+  { min: 300, max: 499, label: '300인 - 499인' },
+  { min: 500, max: 999, label: '500인 - 999인' },
+  { min: 1000, max: null, label: '1000이상' },
 ]
 
 export function sizeLabel(n: number): string | null {
@@ -68,19 +75,68 @@ export function parseCsv(text: string): string[][] {
 
 const num = (s: string | undefined): number => Number((s ?? '').replace(/,/g, '')) || 0
 
-/** 열 순서: 기준년월,업종코드,업종명,규모,시도,피보험자수,취득자수,상실자수. 머리 줄은 건너뛴다. sidoOverride 는 시도 칸이 없는 전국 파일용 */
-export function eisRowsFromCsv(text: string, sidoOverride?: string): EisRow[] {
-  return parseCsv(text)
-    .filter((c) => /^\d{4}-?\d{2}$/.test(c[0] ?? ''))
-    .map((c) => ({
-      ym: (c[0] ?? '').replace('-', ''),
-      ind: c[1] ?? '',
-      size: c[3] ?? '',
-      sido: sidoOverride ?? (c[4] || '전국'),
-      insured: num(c[5]),
-      gain: num(c[6]),
-      loss: num(c[7]),
-    }))
+const cellText = (v: unknown): string => (v === null || v === undefined ? '' : String(v).trim())
+const cellNum = (v: unknown): number => (typeof v === 'number' ? v : num(cellText(v)))
+const stripAll = (s: string): string => s.replace(/\s*전체$/, '')
+
+/**
+ * EIS 피벗 표(마감년월·업종·규모·[시도]·피보험자수·취득자수·상실자수) → 평평한 줄.
+ * 같은 값이 이어지는 칸은 비어 있어 위 값을 채워 넣고, 윗 차원이 바뀌면 아래 차원을 비운다.
+ * 소계(`… 전체`)·총계 줄은 숫자만 버리고 이름은 빈칸 채우기에 쓴다. 모르는 이름은 던지지 않고 모아 돌려준다.
+ */
+export function rowsFromPivot(rows: unknown[][], fileSido?: '전국'): { rows: EisRow[]; unknown: string[] } {
+  const hi = rows.findIndex((r) => r.some((c) => cellText(c) === '마감년월'))
+  if (hi < 0) throw new Error('머리줄(마감년월)을 찾지 못했어요')
+  const head = (rows[hi] ?? []).map(cellText)
+  const col = (name: string): number => head.findIndex((h) => h === name || h.startsWith(`${name}(`) || h.startsWith(name))
+  const cYm = col('마감년월')
+  const cInd = col('산업_중분류')
+  const cSize = col('규모')
+  const cSido = head.findIndex((h) => h.includes('시도'))
+  const cIns = col('피보험자수')
+  const cGain = col('취득자수')
+  const cLoss = col('상실자수')
+  if ([cYm, cInd, cSize, cIns, cGain, cLoss].some((i) => i < 0)) throw new Error(`머리줄 열 이름이 달라요: ${head.join(', ')}`)
+  if (cSido < 0 && fileSido !== '전국') throw new Error('시도 열이 없는 파일은 전국 파일로 읽어야 해요')
+
+  const out: EisRow[] = []
+  const unknown: string[] = []
+  const miss = (n: string): void => {
+    if (!unknown.includes(n)) unknown.push(n)
+  }
+  let ym = ''
+  let ind = ''
+  let size = ''
+  let sido = ''
+  for (const r of rows.slice(hi + 1)) {
+    const raw = [cYm, cInd, cSize, cSido].map((i) => (i >= 0 ? cellText(r[i]) : ''))
+    if (raw.some((t) => t === '총계')) continue
+    const [rYm, rInd, rSize, rSido] = raw as [string, string, string, string]
+    if (rYm) {
+      ym = stripAll(rYm)
+      ind = size = sido = ''
+    }
+    if (rInd) {
+      ind = stripAll(rInd)
+      size = sido = ''
+    }
+    if (rSize) {
+      size = stripAll(rSize)
+      sido = ''
+    }
+    if (rSido) sido = stripAll(rSido)
+    // 가장 깊은 차원 칸이 비었거나 `… 전체` 이면 소계 줄이다
+    const deepest = cSido >= 0 ? rSido : rSize
+    if (!deepest || deepest.endsWith('전체')) continue
+    const m = /^(\d{4})년(\d{2})월$/.exec(ym)
+    const ind2 = KSIC11_MID[ind.replace(/^11차_/, '')]
+    const region = cSido >= 0 ? EIS_SIDO_TO_REGION[sido] : '전국'
+    if (!ind2) miss(ind)
+    if (!region) miss(sido)
+    if (!m || !ind2 || !region || !size) continue
+    out.push({ ym: `${m[1]}${m[2]}`, ind2, size, sido: region, insured: cellNum(r[cIns]), gain: cellNum(r[cGain]), loss: cellNum(r[cLoss]) })
+  }
+  return { rows: out, unknown }
 }
 
 const mean = (xs: number[]): number => xs.reduce((a, b) => a + b, 0) / xs.length
@@ -91,7 +147,7 @@ export function eisBaseline(rows: EisRow[], months = 12): EisBaselineRow[] {
   const groups = new Map<string, EisRow[]>()
   for (const r of rows) {
     if (!keep.has(r.ym)) continue
-    const k = JSON.stringify([r.ind.slice(0, 2), r.size, r.sido])
+    const k = JSON.stringify([r.ind2, r.size, r.sido])
     groups.set(k, [...(groups.get(k) ?? []), r])
   }
   const out: EisBaselineRow[] = []

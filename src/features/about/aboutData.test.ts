@@ -61,8 +61,9 @@ describe('DATA-06 출처 표의 고용24 오픈API 줄', () => {
     expect(signal.every((r) => r.source === '모의' && r.fetched === '')).toBe(true)
   })
 
-  it('국민연금은 "실제", 임금체불은 "모의" 그대로', () => {
-    expect(rows.filter((r) => text(r).includes('국민연금')).every((r) => r.source === '실제')).toBe(true)
+  // 시연 회사가 가상이라 국민연금 줄은 모의다(D-344·D-370). 매핑한 회사만 실제가 된다.
+  it('국민연금은 "모의", 임금체불은 "모의"', () => {
+    expect(rows.filter((r) => text(r).includes('국민연금')).every((r) => r.source === '모의')).toBe(true)
     expect(rows.filter((r) => text(r).includes('임금체불')).every((r) => r.source === '모의')).toBe(true)
   })
 

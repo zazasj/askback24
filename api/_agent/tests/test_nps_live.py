@@ -15,4 +15,6 @@ async def test_live_nps_fetch():
     ref = CompanyRef("LIVE", "mapped", os.environ["NPS_LIVE_NAME"], os.environ["NPS_LIVE_BIZ6"] + "0000")
     async with httpx.AsyncClient() as c:
         facts = await fetch_pension(ref, os.environ["DATA_GO_KR_KEY"], c, date.today())
-    assert facts is None or facts.months >= 9
+    if facts is not None:
+        assert facts.months >= 9
+        assert "년" in facts.period and "월" in facts.period

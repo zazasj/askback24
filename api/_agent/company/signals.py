@@ -66,7 +66,10 @@ def _eis_row(posting: dict, data: CompanyData) -> tuple[dict, bool] | None:
         for r in data.eis["rows"]:
             if isinstance(r, dict) and r.get("ind2") == ind2 and r.get("size") == size and r.get("sido") == sido:
                 # 숫자가 아닌 칸이 있으면 그 행만 못 쓴다(문장을 만들다 터지지 않게).
-                return r if all(num(r.get(k)) for k in ("loss_rate", "net", "insured")) else None
+                if not all(num(r.get(k)) for k in ("loss_rate", "net", "insured")):
+                    return None
+                # 전국 줄에 60.088 같은 비율 밖 값이 있어(%로 6008.8%가 된다) 걸러 낸다.
+                return r if 0 <= r["loss_rate"] <= 1 else None
         return None
 
     local = find(data.sido) if data.sido else None

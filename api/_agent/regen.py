@@ -98,6 +98,23 @@ def _desc(line: dict) -> str:
     return f"[{line.get('source')}] {line.get('text')} / ask: {line.get('ask', '없음')}"
 
 
+def _pair(olds: list[dict], news: list[dict]) -> list[tuple[dict | None, dict | None]]:
+    # 글이 같은 줄을 먼저 짝짓고, 남은 줄은 순서대로 짝짓는다. 남는 쪽은 더해짐·빠짐이다.
+    free = list(range(len(news)))
+    match: dict[int, int] = {}
+    for i, o in enumerate(olds):
+        for j in free:
+            if news[j].get("text") == o.get("text"):
+                match[i] = j
+                free.remove(j)
+                break
+    for i in range(len(olds)):
+        if i not in match and free:
+            match[i] = free.pop(0)
+    pairs = [(o, news[match[i]] if i in match else None) for i, o in enumerate(olds)]
+    return pairs + [(None, news[j]) for j in free]
+
+
 def report_section(wanted: str, current: dict, current_signals: list, fresh: AnalysisResponse, signals: list) -> str:
     L = [f"\n## {wanted}\n"]
     old, new = _by_id(current.get("cards", [])), _by_id([c.model_dump() for c in fresh.analysis.cards if c.state != "absent"])
@@ -115,12 +132,10 @@ def report_section(wanted: str, current: dict, current_signals: list, fresh: Ana
     cur, new_sig = _group(current_signals), _group(signals)
     sig_rows, src = [], []
     for k in _KINDS:
-        olds, news = cur.get(k, []), new_sig.get(k, [])
-        if news and not olds:
-            sig_rows.append(f"- 더해짐: {k} / {_desc(news[0])}")
-        for j, o in enumerate(olds):
-            n = news[j] if j < len(news) else None
-            if n is None:
+        for o, n in _pair(cur.get(k, []), new_sig.get(k, [])):
+            if o is None:
+                sig_rows.append(f"- 더해짐: {k} / {_desc(n)}")
+            elif n is None:
                 sig_rows.append(f"- 빠짐: {k} / {_desc(o)}")
                 if o.get("source") == "실제":
                     src.append(f"- {k}: 실제 줄 빠짐")
@@ -131,6 +146,11 @@ def report_section(wanted: str, current: dict, current_signals: list, fresh: Ana
                     src.append(f"- {k}: {tag}")
     sub.append("### 신호 줄 더해짐·빠짐·바뀜\n" + ("\n".join(sig_rows) if sig_rows else "- 없음"))
     sub.append("### 출처(실제·모의)\n" + ("\n".join(src) if src else "- 바뀜 없음"))
+    legacy = [line for line in current_signals if current_kind(line) is None]
+    # merge_signals 가 이 줄들을 그대로 남기니, 실제 배지가 맞는지 검수자가 봐야 한다.
+    sub.append("### 그대로 남는 옛 줄\n" + ("\n".join(
+        (f"- ⚠ 실제 배지인데 파이프라인이 만들지 않은 줄: {line.get('text')}" if line.get("source") == "실제"
+         else f"- {_desc(line)}") for line in legacy) if legacy else "- 없음"))
     ob = {b["topic"]: b["status"] for b in current.get("blanks", [])}
     nb = {b.topic: b.status for b in fresh.analysis.blanks}
     blanks = [f"- {t}: {ob.get(t, '없음')} → {nb.get(t, '없음')}" for t in {**ob, **nb} if ob.get(t) != nb.get(t)]
@@ -145,6 +165,7 @@ def report_section(wanted: str, current: dict, current_signals: list, fresh: Ana
             m = new_sig.get(k, [])
             if o.get("ask") and j < len(m) and not m[j].get("ask"):
                 warn.append(f"- small_giant 줄이 질문을 잃었어요: {m[j].get('text')}")
+    warn += [f"- 실제 배지 옛 줄: {line.get('text')}" for line in legacy if line.get("source") == "실제"]
     warn += [f"- 질문이 ?로 끝나지 않아요: {line.get('ask')}" for line in signals if line.get("ask") and not str(line["ask"]).endswith("?")]
     sub.append("### 경고\n" + ("\n".join(warn) if warn else "- 없음"))
     return "\n".join(L) + "\n" + "\n\n".join(sub) + "\n"

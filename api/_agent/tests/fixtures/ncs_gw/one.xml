@@ -1,2 +1,2 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<response><header><resultCode>00</resultCode></header><body><items><item><cd>X01</cd><nm>가짜 단위 하나</nm><lv>7</lv></item></items></body></response>
+<root><data><row><ncsClCd>X01_23v6</ncsClCd><compUnitName>1.가짜 단위 하나</compUnitName><compUnitLevel>7</compUnitLevel></row></data><dataInfo><code>000</code><message>정상</message></dataInfo></root>
