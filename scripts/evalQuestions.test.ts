@@ -7,7 +7,22 @@ import { ANALYSES, PRESETS, POSTINGS } from '../shared/catalog.ts'
 import { generateFirst } from '../shared/generate.ts'
 import { createMockProvider } from '../shared/providers/mock.ts'
 import type { FinalDraftInput, FirstDraftInput, LlmProvider } from '../shared/providers/types.ts'
-import { buildCases, loadEvalData, loadPersonaResumes, readGoldJudgements, recordingProvider, runCase, runJudgements, syntheticReview, withServer, writeJsonl } from './evalQuestions.ts'
+import {
+  appendJsonl,
+  buildCases,
+  copyAnalysis,
+  loadEvalData,
+  loadPersonaResumes,
+  normalizePosting,
+  readGoldJudgements,
+  readJson,
+  recordingProvider,
+  runCase,
+  runJudgements,
+  syntheticReview,
+  withServer,
+  writeJsonl,
+} from './evalQuestions.ts'
 
 const OO = 'K-MOCK-0001'
 
@@ -109,6 +124,12 @@ describe('runJudgements', () => {
     }
     const out = await runJudgements(gold, { provider, lookup })
     expect(out.map((r) => r.got)).toEqual([null, null])
+  })
+  it('onRow 로 줄마다 바로 넘긴다(중간에 멈춰도 남게)', async () => {
+    const provider: LlmProvider = { name: 't', writeFirst: async () => [], judgeReview: async () => [] }
+    const seen: string[] = []
+    await runJudgements(gold, { provider, lookup, onRow: (r) => seen.push(r.card_id) })
+    expect(seen).toEqual(['BE07', 'BE02'])
   })
 })
 
@@ -212,6 +233,52 @@ describe('파일 읽기·쓰기', () => {
       expect(readGoldJudgements(join(dir, 'none.json'))).toBeNull()
       writeFileSync(join(dir, 'gold.json'), JSON.stringify({ judgements: [{ wantedAuthNo: 'E1' }] }))
       expect(readGoldJudgements(join(dir, 'gold.json'))).toHaveLength(1)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('파일 읽기 안전장치', () => {
+  it('BOM 을 떼고 읽고, 깨진 JSON 은 파일 이름만 알린다(내용 조각 없음)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'evalq-'))
+    try {
+      writeFileSync(join(dir, 'bom.json'), '\uFEFF{"wantedAuthNo":"E1"}')
+      expect(readJson<{ wantedAuthNo: string }>(join(dir, 'bom.json')).wantedAuthNo).toBe('E1')
+      writeFileSync(join(dir, 'bad.json'), '{"corpNm": "(주)비밀회사", 깨짐')
+      expect(() => readJson(join(dir, 'bad.json'))).toThrow('bad.json: JSON을 읽지 못했습니다')
+      try {
+        readJson(join(dir, 'bad.json'))
+      } catch (e) {
+        expect(String((e as Error).message)).not.toContain('비밀회사')
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('빠진 공고 칸은 "" · draft false 로 채우고 null 은 버린다(evals/postings.py 와 같음)', () => {
+    const p = normalizePosting({ wantedAuthNo: 'E1', corpNm: '(주)OO소프트', sal: null })
+    expect(p.jobCont).toBe('')
+    expect(p.sal).toBe('')
+    expect(p.draft).toBe(false)
+    expect(p.corpNm).toBe('(주)OO소프트')
+  })
+
+  it('appendJsonl 은 줄을 덧붙이고, copyAnalysis 는 없는 파일만 복사한다', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'evalq-'))
+    try {
+      appendJsonl(join(dir, 'q.jsonl'), { a: 1 })
+      appendJsonl(join(dir, 'q.jsonl'), { a: 2 })
+      expect(readFileSync(join(dir, 'q.jsonl'), 'utf8')).toBe('{"a":1}\n{"a":2}\n')
+      mkdirSync(join(dir, 'from', 'analysis'), { recursive: true })
+      mkdirSync(join(dir, 'to', 'analysis'), { recursive: true })
+      writeFileSync(join(dir, 'from', 'analysis', 'E1.json'), '{"x":1}')
+      writeFileSync(join(dir, 'from', 'analysis', 'E2.json'), '{"x":2}')
+      writeFileSync(join(dir, 'to', 'analysis', 'E2.json'), '{"x":"keep"}')
+      expect(copyAnalysis(join(dir, 'from'), join(dir, 'to'))).toBe(1)
+      expect(readFileSync(join(dir, 'to', 'analysis', 'E2.json'), 'utf8')).toBe('{"x":"keep"}')
+      expect(() => copyAnalysis(join(dir, 'none'), join(dir, 'to'))).toThrow('analysis 폴더가 없습니다')
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }

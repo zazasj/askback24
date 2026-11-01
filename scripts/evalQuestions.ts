@@ -3,8 +3,8 @@
  * TS 규칙(shared/) → 로컬 Python AI 서버 → TS 최종 검사 길로 돌려 questions.jsonl · judgements.jsonl 로 남긴다.
  * 서버·LLM 없이 시험하려고 공급자·서버 시작은 인자로 받는다. 콘솔에는 건수만 찍고 공고·질문·회사명은 찍지 않는다.
  */
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { basename, join } from 'node:path'
 import type { Preset } from '../shared/catalog.ts'
 import type {
   FinalQuestionsResponse,
@@ -128,7 +128,7 @@ export async function runCase(c: EvalCase, deps: RunDeps): Promise<CaseRow> {
 /** 정답표 줄마다 판정 LLM 을 한 번씩 부른다. 줄 하나가 실패해도 나머지는 계속한다 */
 export async function runJudgements(
   rows: GoldJudgementRow[],
-  deps: { provider: LlmProvider; lookup: { posting(id: string): Posting | undefined } },
+  deps: { provider: LlmProvider; lookup: { posting(id: string): Posting | undefined }; onRow?: (row: JudgementRow) => void },
 ): Promise<JudgementRow[]> {
   const out: JudgementRow[] = []
   for (const r of rows) {
@@ -149,6 +149,7 @@ export async function runJudgements(
       }
     }
     out.push(row)
+    deps.onRow?.(row)
   }
   return out
 }
@@ -217,8 +218,30 @@ export async function withServer<T>(
 }
 
 // ── 파일 ─────────────────────────────────────────────────────
-function readJson<T>(path: string): T {
-  return JSON.parse(readFileSync(path, 'utf8')) as T
+/** BOM 을 떼고 읽는다. 깨진 파일이면 파일 이름만 알린다(공고 글 조각이 콘솔에 나가지 않게) */
+export function readJson<T>(path: string): T {
+  const text = readFileSync(path, 'utf8').replace(/^\uFEFF/, '')
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw new Error(`${basename(path)}: JSON을 읽지 못했습니다`)
+  }
+}
+
+/** shared/contract.ts Posting 의 문자열 칸. evals/postings.py STRING_FIELDS 와 같다(빠지면 "") */
+export const POSTING_STRING_FIELDS = [
+  'wantedAuthNo', 'corpNm', 'indTpNm', 'totPsncnt', 'busiSize', 'busiCont', 'wantedTitle',
+  'jobsNm', 'jobsCd', 'jobCont', 'empTpNm', 'collectPsncnt', 'salTpNm', 'sal', 'enterTpNm',
+  'eduNm', 'pfCond', 'etcPfCond', 'selMthd', 'workRegion', 'regionCd', 'workdayWorkhrCont',
+  'fourIns', 'retirepay', 'etcWelfare', 'receiptCloseDt',
+] as const
+
+/** evals/postings.py load_postings 와 같이 빠진 문자열 칸은 "", draft 는 false 로 채우고 null 값은 버린다 */
+export function normalizePosting(raw: Record<string, unknown>): Posting {
+  const out: Record<string, unknown> = Object.fromEntries(POSTING_STRING_FIELDS.map((k) => [k, '']))
+  out.draft = false
+  for (const [k, v] of Object.entries(raw)) if (v !== null && v !== undefined) out[k] = v
+  return out as unknown as Posting
 }
 
 export interface EvalData {
@@ -236,7 +259,7 @@ export function loadEvalData(postingsDir: string, runDir: string): EvalData {
   const ids: string[] = []
   let skipped = 0
   for (const name of readdirSync(postingsDir).filter((n) => n.endsWith('.json')).sort()) {
-    const posting = readJson<Posting>(join(postingsDir, name))
+    const posting = normalizePosting(readJson<Record<string, unknown>>(join(postingsDir, name)))
     const analysisPath = join(runDir, 'analysis', `${posting.wantedAuthNo}.json`)
     if (!existsSync(analysisPath)) {
       skipped++
@@ -262,6 +285,26 @@ export function loadPersonaResumes(personasDir: string): Partial<Record<Persona,
 
 export function writeJsonl(path: string, rows: readonly unknown[]): void {
   writeFileSync(path, rows.map((r) => `${JSON.stringify(r)}\n`).join(''), 'utf8')
+}
+
+/** 한 줄씩 덧붙인다(중간에 멈춰도 끝난 사례는 남게) */
+export function appendJsonl(path: string, row: unknown): void {
+  appendFileSync(path, `${JSON.stringify(row)}\n`, 'utf8')
+}
+
+/** 다른 실행의 analysis/*.json 을 이 실행으로 복사한다(①을 다시 돌리지 않고 같은 분석으로 ②③을 비교). 이미 있는 파일은 두고, 복사한 수를 돌려준다 */
+export function copyAnalysis(fromRun: string, toRun: string): number {
+  const src = join(fromRun, 'analysis')
+  if (!existsSync(src)) throw new Error(`${basename(fromRun)}: analysis 폴더가 없습니다`)
+  const dst = join(toRun, 'analysis')
+  mkdirSync(dst, { recursive: true })
+  let n = 0
+  for (const name of readdirSync(src).filter((x) => x.endsWith('.json'))) {
+    if (existsSync(join(dst, name))) continue
+    copyFileSync(join(src, name), join(dst, name))
+    n++
+  }
+  return n
 }
 
 export function readGoldJudgements(goldPath: string): GoldJudgementRow[] | null {
