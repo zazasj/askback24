@@ -60,7 +60,8 @@ const noId = `q-no-${useId()}`
           <dt>근거</dt>
           <dd>
             <span v-if="evidenceLabel" class="evidence">{{ evidenceLabel }}</span>
-            <span v-else class="evidence is-none">공고에 근거 없음 · 직접 확인</span>
+            <!-- 바로 뒤 basis 가 "공고에 근거가 없어 직접 확인이 필요해요"(rules.ts ABSENT_REASON)라 꼬리표는 짧게 -->
+            <span v-else class="evidence is-none">공고에 근거 없음</span>
             <span class="basis">{{ basis }}</span>
             <RouterLink v-if="evidenceTo" class="evidence-link tap-target" :to="evidenceTo" :aria-describedby="noId">근거 보기</RouterLink>
           </dd>

@@ -295,7 +295,7 @@ export interface Question {
   card_id: string
   type: QType
   text: string
-  /** 없으면 "공고에 근거 없음 · 직접 확인" */
+  /** 없으면 화면은 "공고에 근거 없음" */
   evidence?: Evidence
   /** 왜 이 질문인지(분석 reason). 최종 질문의 basis 와 같은 자리 */
   basis: string

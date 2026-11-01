@@ -9,11 +9,13 @@ import { useEventListener } from '@vueuse/core'
 import { CARDS } from '@shared/catalog'
 import type { Clarity, Mood, NotAskedReason, Question } from '@shared/contract'
 import { typeLabel } from '@shared/rules'
+import { API_MODE } from '@/api/client'
 import { REVIEW_TOUR } from '@/features/tour/tourSteps'
 import { useScreenTour } from '@/features/tour/useScreenTour'
 import { usePrepStore } from '@/stores/prep'
 import { useQuestionsStore } from '@/stores/questions'
 import { useReviewStore } from '@/stores/review'
+import { modeCopy } from '@/lib/modeCopy'
 import { oneLine } from './picks'
 import { FIRST_TONES, cardMeta } from './questionView'
 import TypeChip from './TypeChip.vue'
@@ -37,6 +39,8 @@ const emit = defineEmits<{ make: []; first: [] }>()
 const prep = usePrepStore()
 const store = useQuestionsStore()
 const review = useReviewStore()
+// 들은 답이 어디로 가는지는 모드마다 사실이 다르다(실제 모드는 지금 시연에서도 판정 API로 감)
+const copy = modeCopy(API_MODE === 'mock')
 
 const questions = computed<Question[]>(() => store.firstOf(props.applyId)?.response.questions ?? [])
 const draft = computed(() => review.draftOf(props.applyId))
@@ -91,10 +95,7 @@ function setMood(m: Mood): void {
         <p class="lead">
           1차 면접에서 물어본 것과 들은 답을 짧게 정리해 주세요. 확인된 것은 빼고, 남은 것과 처우를 최종 면접 질문으로 만들어 드려요.
         </p>
-        <p class="privacy">
-          들은 답과 면접 분위기는 저장하지 않아요. 새로고침하면 지워지고, 만든 최종 질문만 이 브라우저에 남아요. 실제 서비스에서는 들은
-          답을 AI에 보내 내 기대·걱정과 맞는지(확인됨·기대와 다름·아직 모름)를 판정하는 데만 쓰고, 질문 문장을 쓸 때는 보내지 않아요. 면접관 이름이나 회사 내부 이야기는 빼고 적어 주세요.
-        </p>
+        <p class="privacy">{{ copy.reviewPrivacy }}</p>
       </template>
     </div>
 
@@ -225,7 +226,7 @@ function setMood(m: Mood): void {
       <div class="review-bar">
         <p class="counter">
           <strong class="count">정리한 질문 {{ done }}/{{ questions.length }}개</strong>
-          <span class="count-tip">정리하지 않은 질문은 아직 모름으로 두고 다시 올려요.</span>
+          <span class="count-tip">정리하지 않은 질문은 "아직 모름"으로 보고, 최종 질문을 만들 때 다시 물을 후보로 넘겨요.</span>
         </p>
         <button type="button" class="btn btn-accent btn-lg make" :disabled="!touched" data-tour="review-make" @click="emit('make')">최종 질문 만들기</button>
       </div>

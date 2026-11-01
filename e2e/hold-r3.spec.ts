@@ -99,9 +99,9 @@ test('W-03·W-08 점검 숫자: 팀 실측 칸(50건 · 40건(80%) · 근무시�
   expect(w, '팀 실측 칸이 다른 칸보다 넓다(줄 전체)').toBeGreaterThan(one * 1.5)
 })
 
-test('W-04 "기획안 뒤 달라진 점" 2~3줄: 차이 확인 · 실제/모의 · 1차 면접 정리, 강소기업 "15,282건"', async ({ page }) => {
+test('W-04 "제출 기획안(v9)과 달라진 점" 2~3줄: 차이 확인 · 실제/모의 · 1차 면접 정리, 강소기업 "15,282건"', async ({ page }) => {
   await openAbout(page)
-  const block = sectionOf(page, '기획안 뒤 달라진 점')
+  const block = sectionOf(page, '제출 기획안(v9)과 달라진 점')
   await expect(block).toBeVisible()
   const n = await block.getByRole('listitem').count()
   expect(n).toBeGreaterThanOrEqual(2)
@@ -199,7 +199,7 @@ test('W-09 휴대폰 375: 목적 상자·"고용24에 붙이면"·팀 실측 칸
   await expectNoOverflow(sectionOf(page, '서비스 목적'), '목적 상자')
   await expectNoOverflow(sectionOf(page, '고용24에 붙이면'), '고용24에 붙이면')
   await expectNoOverflow(sectionOf(page, '점검 숫자').locator('dl > div').filter({ hasText: '팀 실측' }), '팀 실측 칸')
-  await expectNoOverflow(sectionOf(page, '기획안 뒤 달라진 점'), '기획안 뒤 달라진 점')
+  await expectNoOverflow(sectionOf(page, '제출 기획안(v9)과 달라진 점'), '제출 기획안(v9)과 달라진 점')
   await expectNoOverflow(sectionOf(page, '개인정보'), '개인정보')
   await makeFinalQuestions(page)
   await expectNoOverflow(page.getByRole('region', { name: '최종 면접을 다녀오면', exact: true }), '최종 면접을 다녀오면')

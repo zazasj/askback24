@@ -20,8 +20,9 @@ test('U-03 ③ 예시 A × OO소프트: 질문 5개 아래 "더 알아볼 질문
   const list = page.getByRole('list', { name: '더 알아볼 질문 목록' })
   const items = list.getByRole('listitem')
   await expect(items).toHaveCount(3)
-  // H2-07 ③(세진 승인 2026-10-25): 공고에 적힌 카드(산출물 작성)가 유추한 카드(SQL·요구사항 협의)보다 먼저
-  const expected = ['개발 문서·산출물 작성', 'SQL 작성·쿼리 개선', '요구사항 협의']
+  // H2-07 ③(세진 승인 2026-10-25): 공고에 적힌 카드(산출물 작성)가 유추한 카드보다 먼저, 유추한 카드끼리는 고른 순서대로.
+  // D-374로 담당업무 "단위 테스트 결과서"에서 테스트·품질 검증이 유추돼 요구사항 협의보다 앞선다(SPEC-ISSUES U-03, D-390)
+  const expected = ['개발 문서·산출물 작성', 'SQL 작성·쿼리 개선', '테스트·품질 검증']
   for (const [i, name] of expected.entries()) {
     await expect(items.nth(i)).toContainText(name)
     await expect(items.nth(i)).toContainText('탐색')

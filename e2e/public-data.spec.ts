@@ -473,7 +473,7 @@ test('DATA-05 실제 회사명·사업자번호: .cache/ 는 .gitignore·커밋 
 
 // ── DATA-06 /about-ai 출처 표 ──────────────────────────────────
 
-test('DATA-06 /about-ai 출처 표: 열 "데이터" "출처" "구분" "받은 날짜" · 고용24 오픈API 4종 실제(받은 날짜) · 채용정보 모의(개인회원) · 국민연금 실제 · 임금체불 모의', async ({ page }) => {
+test('DATA-06 /about-ai 출처 표: 열 "데이터" "출처" "구분" "받은 날짜" · 고용24 오픈API 4종 실제(받은 날짜) · 채용정보 모의(개인회원) · 국민연금 모의 · 임금체불 모의', async ({ page }) => {
   await page.goto('/about-ai')
   await expect(heading(page, ABOUT_TITLE)).toBeVisible()
   const table = page.getByRole('table').filter({ has: page.getByRole('columnheader', { name: '받은 날짜' }) }).first()
@@ -519,7 +519,8 @@ test('DATA-06 /about-ai 출처 표: 열 "데이터" "출처" "구분" "받은 �
 
   const pension = rowsWith('국민연금')
   expect(pension.length, '"국민연금" 줄').toBeGreaterThan(0)
-  for (const r of pension) expect(kind(r), `국민연금 = "실제"(지금 구분 유지): ${r.text}`).toBe('실제')
+  // 시연 회사가 가상이라 손으로 쓴 국민연금 값은 "모의"다(D-344·D-370, SPEC-ISSUES DATA-06, D-390)
+  for (const r of pension) expect(kind(r), `국민연금 = "모의"(시연 회사 가상): ${r.text}`).toBe('모의')
   const unpaid = rowsWith('임금체불')
   expect(unpaid.length, '"임금체불" 줄').toBeGreaterThan(0)
   for (const r of unpaid) expect(kind(r), `임금체불 = "모의"(지금 구분 유지): ${r.text}`).toBe('모의')

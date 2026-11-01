@@ -10,9 +10,11 @@ import { useRoute } from 'vue-router'
 import { getAnalysis, getCard } from '@shared/catalog'
 import type { FinalQuestion, Posting, ReviewState } from '@shared/contract'
 import MockModeTag from '@/components/ui/MockModeTag.vue'
+import { API_MODE } from '@/api/client'
 import { useCopy } from '@/composables/useCopy'
 import { FINAL_RESULT_TOUR } from '@/features/tour/tourSteps'
 import { useScreenTour } from '@/features/tour/useScreenTour'
+import { modeCopy } from '@/lib/modeCopy'
 import { usePrepStore } from '@/stores/prep'
 import { finalKey, useQuestionsStore } from '@/stores/questions'
 import { useReviewStore } from '@/stores/review'
@@ -45,6 +47,7 @@ const canRemake = computed(() => isTouched(draft.value))
 
 const templateCount = computed(() => questions.value.filter((q) => q.source === 'template').length)
 const allTemplate = computed(() => questions.value.length > 0 && templateCount.value === questions.value.length)
+const copyByMode = modeCopy(API_MODE === 'mock')
 const ruleJudged = computed(() => {
   const states = result.value?.response.card_states ?? []
   return states.length > 0 && states.every((s) => s.source === 'rule')
@@ -161,7 +164,7 @@ const STANDARD_CONTRACT_URL = 'https://www.moel.go.kr/policy/policydata/view.do?
         <h2 id="final-title" ref="title" class="section-title" tabindex="-1">최종 면접·처우 질문</h2>
         <MockModeTag />
       </div>
-      <p v-if="generating" class="lead">1차 면접에서 정리한 것을 내 기대와 맞대 보고 있어요.</p>
+      <p v-if="generating" class="lead">1차 면접에서 정리한 것을 내 기대와 맞춰 보고 있어요.</p>
       <p v-else-if="questions.length" class="lead">
         확인된 것은 빼고, 남은 것과 처우 질문을 묻기 좋은 순서로 {{ questions.length }}개 골랐어요.
       </p>
@@ -170,7 +173,10 @@ const STANDARD_CONTRACT_URL = 'https://www.moel.go.kr/policy/policydata/view.do?
     <GeneratingView v-if="generating" :count="6" :stages="FINAL_STAGES" />
 
     <template v-else-if="result">
-      <p class="sr-only" aria-live="polite">최종 질문 {{ questions.length }}개를 만들었어요.</p>
+      <!-- 노란 안내는 알림 영역 밖이라, 전부 검수 문장이면 화면낭독기에도 그렇다고 알린다(A4-23) -->
+      <p class="sr-only" aria-live="polite">
+        {{ allTemplate ? `미리 검수한 문장으로 최종 질문 ${questions.length}개를 보여 드려요.` : `최종 질문 ${questions.length}개를 만들었어요.` }}
+      </p>
 
       <!-- ③은 질문이 주인공: 요약은 한 줄 개수 띠, 카드별 내용·뜻은 펼침 안(DR-r1-09) -->
       <section class="summary" aria-labelledby="summary-title" data-print="hide" data-tour="final-summary">
@@ -195,14 +201,16 @@ const STANDARD_CONTRACT_URL = 'https://www.moel.go.kr/policy/policydata/view.do?
         </details>
       </section>
 
+      <!-- 다시 만들기 안내는 버튼이 있을 때만(정리 입력은 메모리에만 있어 새로고침 뒤에는 다시 만들 수 없다) -->
       <p v-if="allTemplate" class="notice is-fallback">
-        AI 응답을 받지 못해 미리 검수한 문장으로 보여 드려요. 질문 순서와 근거는 같아요.
+        AI 응답을 받지 못해 미리 검수한 문장으로 보여 드려요. 질문 순서와 근거는 AI 문장일 때와 같아요.
+        <template v-if="canRemake">{{ copyByMode.remakeHint }}</template>
       </p>
       <p v-else-if="templateCount > 0" class="notice is-fallback">
         질문 {{ templateCount }}개는 AI 문장이 검사를 통과하지 못해 미리 검수한 문장으로 바꿨어요.
       </p>
       <p v-if="ruleJudged" class="notice is-fallback">
-        들은 답 판정도 단순 규칙(구체적 → 확인됨, 걱정한 업무이거나 모호하거나 못 물음 → 아직 모름)으로 했어요. "기대와 다름"은 AI가 답을 읽어야 나와요.
+        들은 답은 AI 대신 단순 규칙으로 판정했어요. 답이 구체적이면 "확인됨", 걱정한 업무이거나 답이 모호하거나 묻지 못했으면 "아직 모름"이에요. "기대와 다름"은 AI가 답을 읽어야 나와요.
       </p>
       <p v-else-if="ruleAskedCount > 0" class="notice is-fallback">
         카드 {{ ruleAskedCount }}개는 단순 규칙으로 판정했어요. "기대와 다름"은 AI가 답을 읽어야 나와요.
@@ -401,8 +409,9 @@ const STANDARD_CONTRACT_URL = 'https://www.moel.go.kr/policy/policydata/view.do?
   --stat-color: var(--krds-light-color-border-success);
 }
 
+/* 단계 디자인 시안 A·C가 최종 화면 강조색을 바꿔도 "기대와 다름"은 보라 그대로(tokens.css) */
 .is-mismatch {
-  --stat-color: var(--rq-accent);
+  --stat-color: var(--rq-state-mismatch);
 }
 
 .is-still_unknown {

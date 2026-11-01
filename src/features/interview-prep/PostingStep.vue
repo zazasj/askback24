@@ -48,7 +48,7 @@ const marks = computed(() => marksOf(props.analysis))
  */
 function emptyText(def: RowDef): string {
   const inJob = !!def.topic && !!props.analysis?.blanks.some((b) => b.topic === def.topic && b.evidence?.field === 'jobCont')
-  return inJob ? '이 칸은 비어 있어요 · 직무내용에 적혀 있어요' : '이 칸은 비어 있어요'
+  return inJob ? '이 칸은 비어 있고, 직무내용에 적혀 있어요' : '이 칸은 비어 있어요'
 }
 
 const rows = computed(() =>
@@ -408,7 +408,8 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
         <span v-if="looks.length">먼저 볼 곳을 누르면 공고의 그 문구로 가요. </span>
         <span class="help-full">노란 형광펜을 누르면 AI가 어떤 업무와 연결했는지 보여요.</span>
         <span class="help-short">형광펜을 누르면 AI가 연결한 업무가 보여요.</span>
-        <span> 공고 분석은 미리 만들어 둔 결과예요.</span>
+        <!-- 누가 만들었는지 밝힌다(D-374 AI 초안 + 팀 검수). 앞 문장은 V-22 시험이 찾는다 -->
+        <span> 공고 분석은 미리 만들어 둔 결과예요. AI가 초안을 만들고 팀이 공고 원문과 맞춰 검수했어요.</span>
       </p>
     </section>
 
@@ -534,7 +535,7 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
             </li>
           </ul>
           <p class="signal-help">
-            "실제"는 공공데이터에서 온 항목이에요. 업종 기준값은 실제 통계이고, 회사에 붙는 값은 시연 회사가 가상이라 예시예요. "모의"는 시연용으로 만든 항목이에요.
+            "실제"는 공공데이터의 실제 통계예요. 같은 업종·규모 사업장 전체의 평균이라 이 회사의 값은 아니에요. "모의"는 시연 회사가 가상이라 시연용으로 만든 값이에요.
           </p>
           <p class="signal-help">참고 정보는 면접에서 그대로 말하지 말고, 항목마다 적은 질문처럼 돌려 물어보세요.</p>
         </section>

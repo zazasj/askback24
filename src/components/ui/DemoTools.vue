@@ -3,12 +3,14 @@
  * 시연 띠 오른쪽 끝의 "시연 도구". 시연용 버튼을 본 화면에서 빼 두어 실제 서비스처럼 보이게 하고,
  * 띠 안에 두어 본문을 가리지 않으면서 "시연용"이라는 뜻을 함께 보인다(DR-r1-01).
  * 화면별 버튼(useDemoToolActions)이 위, 공통 버튼(안내 다시 보기·안내 끄기·시연 초기화)이 아래.
+ * 맨 아래 「단계 디자인 시안: 지금 · A · B · C」(PLAN-4 T6)는 라디오라 골라도 상자가 닫히지 않아 바로 견줘 볼 수 있다.
  */
-import { nextTick, ref, useTemplateRef } from 'vue'
+import { nextTick, ref, useTemplateRef, watch } from 'vue'
 import { onClickOutside, onKeyStroke } from '@vueuse/core'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useDemoStore } from '@/stores/demo'
 import { useDemoToolsStore, type DemoToolAction } from '@/stores/demoTools'
+import { LOOK_LABELS, STAGE_LOOKS, useStageLookStore } from '@/stores/stageLook'
 import { useToastStore } from '@/stores/toast'
 import { TOUR_OFF_TOAST, useTourStore } from '@/stores/tour'
 
@@ -16,7 +18,16 @@ const tools = useDemoToolsStore()
 const demo = useDemoStore()
 const toast = useToastStore()
 const tour = useTourStore()
+const looks = useStageLookStore()
+const route = useRoute()
 const router = useRouter()
+
+// 주소 ?look=a|b|c 로도 시안을 고른다. 시연 띠는 모든 화면에 있어 여기서 본다
+watch(
+  () => route.query.look,
+  (v) => looks.fromQuery(v),
+  { immediate: true },
+)
 
 const root = useTemplateRef<HTMLElement>('root')
 const toggle = useTemplateRef<HTMLButtonElement>('toggle')
@@ -110,6 +121,16 @@ async function resetDemo(): Promise<void> {
         <li><button type="button" class="action" @click="toggleTour">{{ tour.off ? '안내 켜기' : '안내 끄기' }}</button></li>
         <li><button type="button" class="action" :disabled="busy" @click="resetDemo">시연 초기화</button></li>
       </ul>
+      <fieldset class="looks">
+        <legend class="looks-legend">단계 디자인 시안</legend>
+        <div class="look-options">
+          <label v-for="l in STAGE_LOOKS" :key="l" class="look-option">
+            <input v-model="looks.look" type="radio" name="demo-look" class="sr-only" :value="l" aria-describedby="demo-look-desc" />
+            <span class="look-chip">{{ LOOK_LABELS[l] }}</span>
+          </label>
+        </div>
+        <p id="demo-look-desc" class="action-desc looks-desc">A 최종 단계 색 · B 단계 머리띠 · C 둘 다. 면접 역질문 준비 화면에서 바뀌어요.</p>
+      </fieldset>
     </div>
   </div>
 </template>
@@ -215,5 +236,83 @@ async function resetDemo(): Promise<void> {
   padding: 0 0.8rem 0.6rem;
   font-size: var(--krds-pc-font-size-body-xsmall);
   color: var(--krds-light-color-text-subtle);
+}
+
+/* 단계 디자인 시안: 네 칸 붙은 단추(세그먼트) */
+.looks {
+  margin-top: 0.4rem;
+  padding: 0.8rem 0 0;
+  border: 0;
+  border-top: 1px solid var(--krds-light-color-divider-gray-light);
+}
+
+.looks-legend {
+  float: left;
+  width: 100%;
+  padding: 0 0.8rem 0.6rem;
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  font-weight: 700;
+  color: var(--krds-light-color-text-subtle);
+}
+
+.look-options {
+  clear: both;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0 0.8rem 0.6rem;
+}
+
+.look-option {
+  position: relative;
+  display: flex;
+}
+
+.look-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: var(--rq-touch);
+  border: 1px solid var(--krds-light-color-border-gray);
+  background: var(--krds-light-color-surface-white);
+  font-size: var(--krds-pc-font-size-label-small);
+  font-weight: 500;
+  color: var(--krds-light-color-text-basic);
+  cursor: pointer;
+}
+
+.look-option + .look-option .look-chip {
+  margin-left: -1px;
+}
+
+.look-option:first-child .look-chip {
+  border-radius: var(--krds-radius-medium1) 0 0 var(--krds-radius-medium1);
+}
+
+.look-option:last-child .look-chip {
+  border-radius: 0 var(--krds-radius-medium1) var(--krds-radius-medium1) 0;
+}
+
+.look-option input:checked + .look-chip {
+  position: relative;
+  z-index: 1;
+  border-color: var(--krds-light-color-text-basic);
+  background: var(--krds-light-color-text-basic);
+  color: var(--krds-light-color-surface-white);
+  font-weight: 700;
+}
+
+.look-option input:focus-visible + .look-chip {
+  outline: 0.3rem solid var(--krds-light-color-border-primary);
+  outline-offset: 0.2rem;
+  z-index: 2;
+}
+
+@media (forced-colors: active) {
+  .look-option input:checked + .look-chip {
+    border-color: Highlight;
+    background-color: Highlight;
+    color: HighlightText;
+  }
 }
 </style>

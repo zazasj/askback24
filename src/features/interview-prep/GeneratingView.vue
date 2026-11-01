@@ -4,6 +4,8 @@
  * 가짜 응답 모드 태그는 이 화면을 품은 ③ 제목 옆에 이미 있어 여기에는 달지 않는다(DA-05).
  */
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { API_MODE } from '@/api/client'
+import { modeCopy } from '@/lib/modeCopy'
 
 const props = withDefaults(defineProps<{ count?: number; stages?: readonly string[] }>(), {
   count: 5,
@@ -25,6 +27,9 @@ onBeforeUnmount(() => {
 })
 
 const stateOf = (i: number) => (i < active.value ? 'done' : i === active.value ? 'active' : 'wait')
+
+// 세 줄은 1초 안에 다 켜지고 실제 대기는 10~20초라, 얼마나 걸리는지와 늦을 때 일을 말한다(실제 모드만)
+const wait = modeCopy(API_MODE === 'mock').generatingWait
 </script>
 
 <template>
@@ -33,6 +38,7 @@ const stateOf = (i: number) => (i < active.value ? 'done' : i === active.value ?
       <div class="stages-head">
         <p class="stages-title">질문을 만들고 있어요</p>
       </div>
+      <p v-if="wait" class="stages-wait">{{ wait }}</p>
       <ol class="stage-list">
         <li v-for="(s, i) in props.stages" :key="s" class="stage" :data-state="stateOf(i)">
           <span class="dot" aria-hidden="true"></span>
@@ -77,6 +83,12 @@ const stateOf = (i: number) => (i < active.value ? 'done' : i === active.value ?
   font-size: var(--krds-pc-font-size-label-large);
   font-weight: 700;
   color: var(--krds-light-color-text-bolder);
+}
+
+.stages-wait {
+  margin-top: -0.6rem;
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-subtle);
 }
 
 .stage-list {

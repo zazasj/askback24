@@ -15,8 +15,9 @@ import { QUESTION_LIMIT, pickExplore, typeLabel } from '@shared/rules'
 import { API_MODE } from '@/api/client'
 import MockModeTag from '@/components/ui/MockModeTag.vue'
 import { useCopy } from '@/composables/useCopy'
-import { FIRST_RESULT_TOUR } from '@/features/tour/tourSteps'
+import { firstResultTour } from '@/features/tour/tourSteps'
 import { useScreenTour } from '@/features/tour/useScreenTour'
+import { modeCopy } from '@/lib/modeCopy'
 import { usePrepStore } from '@/stores/prep'
 import { useQuestionsStore } from '@/stores/questions'
 import { exploreTag } from './checkpoints'
@@ -46,9 +47,10 @@ const stale = computed(() => !!result.value && !store.isCurrent(props.applyId, p
 const seeded = computed(() => result.value?.seed === true)
 const templateCount = computed(() => questions.value.filter((q) => q.source === 'template').length)
 const allTemplate = computed(() => questions.value.length > 0 && templateCount.value === questions.value.length)
+const copyByMode = modeCopy(API_MODE === 'mock')
 
 // 질문을 다 만든 뒤 이 화면 안내(TR-02). 만드는 중·빈 화면에는 띄우지 않는다
-useScreenTour('prep-first', () => [...FIRST_RESULT_TOUR], { ready: () => !generating.value && questions.value.length > 0, titleId: 'result-title' })
+useScreenTour('prep-first', () => [...firstResultTour(API_MODE === 'mock')], { ready: () => !generating.value && questions.value.length > 0, titleId: 'result-title' })
 
 function make(): void {
   void store.makeFirst(props.applyId, props.posting.wantedAuthNo, { apiFail: props.apiFail === true })
@@ -136,20 +138,23 @@ function printSheet(): void {
       </div>
       <p v-if="generating" class="lead">고른 카드와 공고를 맞춰 보고 있어요.</p>
       <p v-else-if="questions.length" class="lead">
-        고른 카드 {{ selection.picks.length }}개 중 공고와 차이가 큰 순서로 {{ questions.length }}개를 골랐어요.
+        고른 카드 {{ selection.picks.length }}개 중 내 기대·걱정과 공고가 어긋날 수 있는 것부터 {{ questions.length }}개를 골랐어요.
       </p>
     </div>
 
     <GeneratingView v-if="generating" />
 
     <template v-else-if="questions.length">
-      <p class="sr-only" aria-live="polite">질문 {{ questions.length }}개를 만들었어요.</p>
+      <!-- 노란 안내는 알림 영역 밖이라, 전부 검수 문장이면 화면낭독기에도 그렇다고 알린다(A4-23) -->
+      <p class="sr-only" aria-live="polite">
+        {{ allTemplate ? `미리 검수한 문장으로 질문 ${questions.length}개를 보여 드려요.` : `질문 ${questions.length}개를 만들었어요.` }}
+      </p>
       <p v-if="seeded" class="notice">
         시연용 예시 지원 건이라 예시 구직자 A의 1차 질문을 미리 검수한 문장으로 만들어 두었어요. "AI로 다시 만들기"를 누르면
         {{ API_MODE === 'mock' ? '새 문장으로' : 'AI 문장으로' }} 바꿔요.
       </p>
       <p v-else-if="allTemplate" class="notice is-fallback">
-        AI 응답을 받지 못해 미리 검수한 문장으로 보여 드려요. 질문 순서와 근거는 같아요.
+        AI 응답을 받지 못해 미리 검수한 문장으로 보여 드려요. 질문 순서와 근거는 AI 문장일 때와 같아요. {{ copyByMode.remakeHint }}
       </p>
       <p v-else-if="templateCount > 0" class="notice is-fallback">
         질문 {{ templateCount }}개는 AI 문장이 검사를 통과하지 못해 미리 검수한 문장으로 바꿨어요.
@@ -188,9 +193,10 @@ function printSheet(): void {
                F-02 시험이 아래 고정 바로 읽어 질문 목록 바로 아래에 둔다(휴대폰은 오른쪽 상자 바로 위라 같은 자리) -->
           <section v-if="explores.length" class="explore-box" aria-labelledby="explore-title" data-print="hide">
             <h3 id="explore-title" class="explore-title">더 알아볼 질문</h3>
+            <!-- 이 묶음은 검수 문장(D-176)이라 위 질문과 표시 규칙을 맞춰 밝힌다 -->
             <p class="explore-lead">
               "모르겠어요"로 고른 일 중 이 공고와 가까운 것부터 골랐어요. 모르는 일을 물어보는 건 감점이 아니라 배우려는
-              태도로 보여요.
+              태도로 보여요. 아래 질문은 미리 검수한 문장이에요.
             </p>
             <ul class="explore-list" aria-label="더 알아볼 질문 목록">
               <li v-for="e in explores" :key="e.card_id" class="explore-item">

@@ -324,15 +324,17 @@ test('S4-15 1차 결과에는 처우 질문·"처우 확인" 칩이 없고 "1차
 })
 
 // H1-18·H2-07 ③(세진 승인 2026-10-25): 칩 이름 "미리 확인". 예시 A 그대로면 공고에 적힌 "모르겠어요" 업무(배포·테스트, 탐색 3.5)가
-// 공고에 없는 걱정(미리 확인 4)보다 앞서 상주 질문이 5개에 들지 않으므로, 그 두 카드의 선택을 풀고 만든다
-test('S4-16 (주)△△커머스 + "1차·기술 면접" + 예시 A(공고에 적힌 모르겠어요 카드 둘 풀기): "공고에 고객사 상주" 문구 없음, 상주 질문 유형은 "미리 확인"', async ({ page }) => {
+// 공고에 없는 걱정(미리 확인 4)보다 앞서 상주 질문이 5개에 들지 않으므로, 그 두 카드의 선택을 풀고 만든다.
+// D-374로 우대 "주문·정산 데이터"에서 배치·정산이 유추돼 예시 A의 걱정돼요 차이 확인이 1번에 서므로 그 카드도 푼다(SPEC-ISSUES S4-16, D-390)
+test('S4-16 (주)△△커머스 + "1차·기술 면접" + 예시 A(공고에 적힌 모르겠어요 카드 둘과 걱정돼요 "배치·정산 프로그램" 풀기): "공고에 고객사 상주" 문구 없음, 상주 질문 유형은 "미리 확인"', async ({ page }) => {
   const base = await openPrep(page, 'commerce')
   await switchMode(page, MODE_FIRST)
   await goToCardsStep(page, base)
   await fillPresetA(page)
   await showAllCards(page)
-  for (const name of ['배포·서버 운영', '테스트·품질 검증']) {
-    await pickRadio(cardGroup(page, name), '모르겠어요')
+  for (const [name, picked] of [['배포·서버 운영', '모르겠어요'], ['테스트·품질 검증', '모르겠어요'], ['배치·정산 프로그램', '걱정돼요']] as const) {
+    await expect(cardGroup(page, name).getByRole('radio', { name: picked }), `${name} 예시 A 선택 "${picked}"`).toBeChecked()
+    await pickRadio(cardGroup(page, name), picked)
     for (const c of CHOICES) await expect(cardGroup(page, name).getByRole('radio', { name: c }), `${name} 선택 풀림`).not.toBeChecked()
   }
   await makeQuestionsButton(page).click()
@@ -352,7 +354,9 @@ test('S4-16 (주)△△커머스 + "1차·기술 면접" + 예시 A(공고에 �
 
 test('S4-17 ?apiFail=1 → "미리 검수한 문장" 안내, 질문 5개마다 "검수 문장" 라벨, 유형 순서는 S4-13과 같다', async ({ page }) => {
   await makeFirstQuestions(page, 'oo', { apiFail: true })
-  await expect(page.getByText(/미리 검수한 문장/).first()).toBeVisible()
+  // 화면낭독기 알림(1px)도 "미리 검수한 문장으로 질문 n개…"라 그 줄이 아니라 눈에 보이는 안내를 찾는다(A4-23, D-378)
+  await expect(page.getByText(/미리 검수한 문장으로 보여 드려요/).first()).toBeVisible()
+  await expect(page.locator('[aria-live="polite"]').filter({ hasText: '미리 검수한 문장으로 질문 5개를 보여 드려요.' })).toHaveCount(1)
   const items = questionItems(page)
   await expect(items).toHaveCount(5)
   for (let i = 0; i < 5; i++) {
