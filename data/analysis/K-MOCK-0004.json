@@ -1,35 +1,56 @@
 {
   "wantedAuthNo": "K-MOCK-0004",
+  "meta": {
+    "graph_version": "analysis-1",
+    "model": "openai/gpt-6.1-sol",
+    "created_at": "2026-10-30T15:40:17.245188+00:00",
+    "applied_on": "2026-11-01"
+  },
   "cards": [
     {
       "card_id": "BE01",
       "state": "explicit",
-      "evidence": { "field": "jobCont", "quote": "결제 승인 API 개발" },
-      "reason": "결제처럼 중요한 API를 신입이 언제부터, 누구의 검토를 받아 맡는지 확인해 볼 만해요"
-    },
-    {
-      "card_id": "BE06",
-      "state": "explicit",
-      "evidence": { "field": "jobCont", "quote": "가맹점 정산 배치 프로그램 개발" },
-      "reason": "정산 배치는 금액이 걸린 일이라, 실패했을 때 누가 어떻게 대응하는지 확인해 볼 만해요"
+      "evidence": {
+        "field": "jobCont",
+        "quote": "결제 승인 API 개발"
+      },
+      "reason": "신입이 새 API를 처음부터 만드는지, 기존 API의 기능을 추가하는지와 초기 담당 범위를 확인하면 좋아요."
     },
     {
       "card_id": "BE05",
       "state": "explicit",
-      "evidence": { "field": "jobCont", "quote": "카드사·은행 시스템 연동" },
-      "reason": "바깥 기관 시스템과 맞추는 일이 있어, 기관과의 조율은 누가 맡는지 확인해 볼 만해요"
+      "evidence": {
+        "field": "jobCont",
+        "quote": "카드사·은행 시스템 연동"
+      },
+      "reason": "담당할 연동 대상과 개발 범위, 상대 기관과의 일정·규격 조율까지 직접 맡는지 확인하면 좋아요."
+    },
+    {
+      "card_id": "BE06",
+      "state": "explicit",
+      "evidence": {
+        "field": "jobCont",
+        "quote": "가맹점 정산 배치 프로그램 개발"
+      },
+      "reason": "신규 배치 개발과 기존 배치 수정의 비중, 실패 시 재처리와 야간 대응 책임을 확인하면 좋아요."
     },
     {
       "card_id": "BE08",
       "state": "explicit",
-      "evidence": { "field": "jobCont", "quote": "24시간 서비스 모니터링(당직 순번제)" },
-      "reason": "당직을 순번으로 서는 일이라, 신입은 언제부터 당직에 들어가고 한 달에 몇 번쯤 서는지 확인해 볼 만해요"
+      "evidence": {
+        "field": "jobCont",
+        "quote": "24시간 서비스 모니터링(당직 순번제)"
+      },
+      "reason": "당직 주기와 시간대, 신입 투입 전 교육 기간, 장애 발생 시 직접 복구할 범위와 지원 체계를 확인하면 좋아요."
     },
     {
       "card_id": "BE16",
       "state": "inferred",
-      "evidence": { "field": "jobCont", "quote": "전자금융 관련 보안 지식 보유자" },
-      "reason": "우대사항에 전자금융 보안 지식이 있어, 보안 점검이나 취약점 조치를 개발자가 얼마나 맡는지 확인해 볼 만해요"
+      "evidence": {
+        "field": "jobCont",
+        "quote": "전자금융 관련 보안 지식 보유자"
+      },
+      "reason": "보안 지식 활용이 개발 시 보안 기준 준수에 그치는지, 취약점 수정이나 점검 대응까지 포함하는지 확인하면 좋아요."
     }
   ],
   "blanks": [
@@ -38,7 +59,10 @@
       "status": "vague",
       "label": "임금",
       "basis": "급여가 '면접 후 결정'으로만 적혀 있어요",
-      "evidence": { "field": "sal", "quote": "면접 후 결정" },
+      "evidence": {
+        "field": "sal",
+        "quote": "면접 후 결정"
+      },
       "question": "신입 연봉은 어느 범위이고, 기본급과 수당은 어떻게 구성되나요?"
     },
     {
@@ -46,7 +70,10 @@
       "status": "check",
       "label": "근로시간",
       "basis": "근무시간 칸은 비어 있고, 직무내용에 당직과 당직 뒤 대체휴무가 적혀 있어요",
-      "evidence": { "field": "jobCont", "quote": "당직 시 대체휴무" },
+      "evidence": {
+        "field": "jobCont",
+        "quote": "당직 시 대체휴무"
+      },
       "question": "당직은 한 달에 몇 번쯤이고, 당직 다음 날 대체휴무는 어떻게 쓰나요?"
     },
     {
@@ -54,7 +81,10 @@
       "status": "check",
       "label": "수습",
       "basis": "공고에 수습 3개월이 적혀 있어요",
-      "evidence": { "field": "empTpNm", "quote": "수습 3개월" },
+      "evidence": {
+        "field": "empTpNm",
+        "quote": "수습 3개월"
+      },
       "question": "수습 3개월 동안 급여는 연봉 기준과 같게 지급되나요?"
     }
   ]

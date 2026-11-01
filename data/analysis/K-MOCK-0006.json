@@ -1,35 +1,74 @@
 {
   "wantedAuthNo": "K-MOCK-0006",
+  "meta": {
+    "graph_version": "analysis-1",
+    "model": "openai/gpt-6.1-sol",
+    "created_at": "2026-10-30T15:41:14.492840+00:00",
+    "applied_on": "2026-11-01"
+  },
   "cards": [
     {
       "card_id": "BE01",
       "state": "explicit",
-      "evidence": { "field": "jobCont", "quote": "모바일 앱 서버 API 개발" },
-      "reason": "서버 일을 새로 오는 사람이 중심이 되어 맡는 구조라, 새 API를 정할 때 누구와 검토하는지 확인해 볼 만해요"
-    },
-    {
-      "card_id": "BE13",
-      "state": "explicit",
-      "evidence": { "field": "jobCont", "quote": "관리자 웹 화면 개발(Vue)" },
-      "reason": "서버 개발과 함께 화면도 맡아, 두 일의 비중을 확인해 볼 만해요"
-    },
-    {
-      "card_id": "BE09",
-      "state": "explicit",
-      "evidence": { "field": "jobCont", "quote": "AWS 서버 운영" },
-      "reason": "서버 운영까지 맡아, 서비스에 문제가 생기면 누가 대응하는지 확인해 볼 만해요"
-    },
-    {
-      "card_id": "BE17",
-      "state": "inferred",
-      "evidence": { "field": "pfCond", "quote": "백엔드 단독 개발 경험" },
-      "reason": "다른 백엔드 개발자 없이 서버 일을 맡게 돼, 막힐 때 물어볼 사람과 코드 검토를 어떻게 받는지 확인해 볼 만해요"
+      "evidence": {
+        "field": "jobCont",
+        "quote": "모바일 앱 서버 API 개발"
+      },
+      "reason": "신규 API의 개발 범위와 신입이 처음 맡는 기능의 난이도, 도움받을 수 있는 사람을 확인해 보면 좋아요."
     },
     {
       "card_id": "BE02",
       "state": "inferred",
-      "evidence": { "field": "jobCont", "quote": "백엔드 업무 전반" },
-      "reason": "직무내용에 백엔드 업무 전반이 있어, 서비스 구조 설계까지 맡게 되는지 확인해 볼 만해요"
+      "evidence": {
+        "field": "jobCont",
+        "quote": "서버 쪽 일은 새로 오시는 분이 중심이 되어 주셔야 해요."
+      },
+      "reason": "서버 구조 설계까지 직접 결정해야 하는지, 설계 검토를 도와줄 사람이 있는지 확인할 필요가 있어요."
+    },
+    {
+      "card_id": "BE07",
+      "state": "inferred",
+      "evidence": {
+        "field": "jobCont",
+        "quote": "AWS 서버 운영 등 백엔드 업무 전반을 맡게 됩니다."
+      },
+      "reason": "기존 서비스의 오류 수정도 맡는지, 유지보수와 신규 개발의 비중이 어느 정도인지 확인할 필요가 있어요."
+    },
+    {
+      "card_id": "BE08",
+      "state": "inferred",
+      "evidence": {
+        "field": "jobCont",
+        "quote": "AWS 서버 운영"
+      },
+      "reason": "서버 운영에 장애 복구와 근무 외 시간 대응이 포함되는지, 부재 시 대신 대응할 사람이 있는지 확인해야 해요."
+    },
+    {
+      "card_id": "BE09",
+      "state": "explicit",
+      "evidence": {
+        "field": "jobCont",
+        "quote": "AWS 서버 운영"
+      },
+      "reason": "배포와 AWS 관리의 구체적인 범위, 기존 자동화 수준과 운영 인수인계 방법을 확인해 보면 좋아요."
+    },
+    {
+      "card_id": "BE13",
+      "state": "explicit",
+      "evidence": {
+        "field": "jobCont",
+        "quote": "관리자 웹 화면 개발(Vue)"
+      },
+      "reason": "관리자 화면 개발이 전체 업무에서 차지하는 비중과 화면 설계·디자인 지원 범위를 확인할 필요가 있어요."
+    },
+    {
+      "card_id": "BE17",
+      "state": "explicit",
+      "evidence": {
+        "field": "jobCont",
+        "quote": "서버 쪽 일은 새로 오시는 분이 중심이 되어 주셔야 해요"
+      },
+      "reason": "대표나 외부 인력에게 백엔드 기술 지원을 받을 수 있는지, 인수인계와 온보딩은 어떻게 진행되는지 확인해야 해요."
     }
   ],
   "blanks": [
@@ -38,7 +77,10 @@
       "status": "vague",
       "label": "임금",
       "basis": "급여가 '면접 시 협의'로만 적혀 있어요",
-      "evidence": { "field": "sal", "quote": "면접 시 협의" },
+      "evidence": {
+        "field": "sal",
+        "quote": "면접 시 협의"
+      },
       "question": "신입 연봉은 어느 범위에서 어떻게 정해지고, 기본급과 수당은 어떻게 구성되나요?"
     },
     {
@@ -46,7 +88,10 @@
       "status": "check",
       "label": "근로시간",
       "basis": "근무시간 칸은 비어 있고, 직무내용에 자율 출퇴근과 코어타임이 적혀 있어요",
-      "evidence": { "field": "jobCont", "quote": "자율 출퇴근(코어타임 11:00~16:00)" },
+      "evidence": {
+        "field": "jobCont",
+        "quote": "자율 출퇴근(코어타임 11:00~16:00)"
+      },
       "question": "자율 출퇴근에서 하루 근무 시간은 어떻게 정하고, 서비스 장애로 근무 외 시간에 일하면 어떻게 보상되나요?"
     },
     {

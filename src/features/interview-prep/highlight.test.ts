@@ -88,21 +88,27 @@ describe('AI가 찾은 확인할 점', () => {
 
 describe('근거 인용 없는 유추 카드(DR-r2-03)', () => {
   it('"공고에서 유추" 대신 "공고에 없음"을 달고, 설명이 회사 신호 문장을 그대로 옮기지 않는다', () => {
+    // 시연 데이터에는 근거 없는 유추 카드가 없어졌다(D-374). 파이프라인은 여전히 낼 수 있으니 OO소프트에 하나 붙여 함께 본다.
+    const oo = getAnalysis('K-MOCK-0001')!
+    const synthetic = { ...oo, cards: [...oo.cards, { card_id: 'BE17', state: 'inferred' as const, reason: '공고에 팀 구성이 없어 백엔드를 몇 명이 맡는지 확인해 볼 만해요' }] }
+    const cases = [
+      ...POSTINGS.map((p) => ({ id: p.wantedAuthNo, analysis: getAnalysis(p.wantedAuthNo) })),
+      { id: 'K-MOCK-0001', analysis: synthetic },
+    ]
     let seen = 0
-    for (const posting of POSTINGS) {
-      const analysis = getAnalysis(posting.wantedAuthNo)
-      const signals = getSignals(posting.wantedAuthNo).map((s) => s.text.replace(/요$/, ''))
+    for (const { id, analysis } of cases) {
+      const signals = getSignals(id).map((s) => s.text.replace(/요$/, ''))
       const points = checkPoints(analysis)
       for (const c of analysis?.cards ?? []) {
         if (c.state !== 'inferred' || c.evidence) continue
         seen++
-        const where = `${posting.wantedAuthNo} ${c.card_id}`
+        const where = `${id} ${c.card_id}`
         expect(postingTag(c), where).toBe('공고에 없음')
         expect(points.find((p) => p.key === `card:${c.card_id}`)?.tag, where).toBe('공고에 없음')
         for (const s of signals) expect(c.reason, `${where}: 회사 신호 "${s}"`).not.toContain(s)
       }
     }
-    expect(seen, '시험할 카드가 있다(OO소프트 BE17 등)').toBeGreaterThan(0)
+    expect(seen, '시험할 카드가 있다(붙인 OO소프트 BE17 포함)').toBeGreaterThan(0)
   })
 
   it('근로조건(blanks)의 근거·처우 질문도 회사 신호 문장을 옮기지 않고, 공고에 없는 "24시간"을 전제하지 않는다', () => {

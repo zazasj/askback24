@@ -82,31 +82,31 @@
     },
     {
       "rank": 4,
-      "key": "offer:workHours",
-      "label": "근로시간",
-      "type": "offer",
-      "origin": "offer",
-      "tone": "cushion",
-      "cushion": "조심스럽지만 이어서 여쭤도 될까요? ",
-      "template": "근무 시간이 공고에 적혀 있지 않은데, 출퇴근 시간과 주 근로시간은 어떻게 되고 연장근로가 있다면 월 평균 어느 정도인가요?",
-      "template_text": "조심스럽지만 이어서 여쭤도 될까요? 근무 시간이 공고에 적혀 있지 않은데, 출퇴근 시간과 주 근로시간은 어떻게 되고 연장근로가 있다면 월 평균 어느 정도인가요?",
-      "topic": "workHours"
-    },
-    {
-      "rank": 5,
       "key": "offer:sal",
       "label": "임금 구성",
       "type": "offer",
       "origin": "offer",
-      "tone": "basic",
-      "cushion": "",
+      "tone": "cushion",
+      "cushion": "조심스럽지만 이어서 여쭤도 될까요? ",
       "template": "제시된 연봉은 기본급 기준인가요, 연장근로 수당 등이 포함된 금액인가요?",
-      "template_text": "제시된 연봉은 기본급 기준인가요, 연장근로 수당 등이 포함된 금액인가요?",
+      "template_text": "조심스럽지만 이어서 여쭤도 될까요? 제시된 연봉은 기본급 기준인가요, 연장근로 수당 등이 포함된 금액인가요?",
       "topic": "sal",
       "evidence": {
         "field": "sal",
         "quote": "3,200만 원 ~ 3,800만 원"
       }
+    },
+    {
+      "rank": 5,
+      "key": "offer:workHours",
+      "label": "근로시간",
+      "type": "offer",
+      "origin": "offer",
+      "tone": "basic",
+      "cushion": "",
+      "template": "근무 시간이 공고에 적혀 있지 않은데, 출퇴근 시간과 주 근로시간은 어떻게 되고 연장근로가 있다면 월 평균 어느 정도인가요?",
+      "template_text": "근무 시간이 공고에 적혀 있지 않은데, 출퇴근 시간과 주 근로시간은 어떻게 되고 연장근로가 있다면 월 평균 어느 정도인가요?",
+      "topic": "workHours"
     },
     {
       "rank": 6,
