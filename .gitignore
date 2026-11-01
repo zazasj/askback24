@@ -16,3 +16,4 @@ __pycache__/
 .pytest_cache/
 review/analysis-regen/
 review/card-drafts/
+review/copy4/
