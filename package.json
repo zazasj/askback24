@@ -24,6 +24,7 @@
     "eval:compare":"uv run --frozen python -m evals.compare",
     "eval:analysis": "uv run --frozen python -m evals.run_analysis",
     "eval:cards": "uv run --frozen python -m evals.metrics_cards",
+    "eval:questions": "node --experimental-strip-types --no-warnings=ExperimentalWarning --env-file-if-exists=.env scripts/eval-questions.ts",
     "py:lock": "uv lock && uv export --no-dev --no-hashes -o requirements.txt",
     "check": "npm run build && npm run test:unit && npm run test:py && npm run test:e2e",
     "fetch:work24": "node --experimental-strip-types --no-warnings=ExperimentalWarning --env-file-if-exists=.env scripts/fetch-work24.ts",

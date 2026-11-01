@@ -6,6 +6,8 @@
 import type {
   CardPick,
   CardState,
+  Clarity,
+  FinalPref,
   FinalQuestion,
   FinalQuestionsRequest,
   FinalQuestionsResponse,
@@ -14,6 +16,8 @@ import type {
   InterviewReview,
   Mood,
   NotAskedReason,
+  Posting,
+  PostingAnalysis,
   Pref,
   Question,
 } from './contract.js'
@@ -21,7 +25,7 @@ import { getAnalysis, getCard, getPosting } from './catalog.js'
 import { finalPrefOf, rankFinal, ruleJudgements, summarize, type FinalRanked, type Judged } from './finalRules.js'
 import { pickTop5, type RankedPick } from './rules.js'
 import { checkFinalQuestion, checkFirstQuestion, hasForbiddenWord, quotesHeard, type Issue } from './validate.js'
-import type { Draft, DraftItem, FinalDraft, FinalDraftItem, FirstDraftInput, JudgeItem, Judgement, LlmProvider } from './providers/types.js'
+import type { Draft, DraftItem, FinalDraft, FinalDraftItem, FirstDraftInput, JudgeInput, JudgeItem, Judgement, LlmProvider } from './providers/types.js'
 
 export const EXPERIENCE_MAX = 100
 /** 들은 답 한 줄 */
@@ -63,7 +67,16 @@ export interface GenerateOptions {
   timeoutMs?: number
   now?: () => number
   onReport?: (report: GenerateReport) => void
+  /** 없으면 시연 사전(getPosting·getAnalysis). 평가 하네스가 사전 밖 공고를 넣을 때 쓴다 */
+  lookup?: PostingLookup
 }
+
+export interface PostingLookup {
+  posting(id: string): Posting | undefined
+  analysis(id: string): PostingAnalysis | undefined
+}
+
+const CATALOG_LOOKUP: PostingLookup = { posting: getPosting, analysis: getAnalysis }
 
 class TimeoutError extends Error {
   constructor() {
@@ -148,8 +161,9 @@ function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>, ms: number): P
 export async function generateFirst(req: FirstQuestionsRequest, options: GenerateOptions = {}): Promise<FirstQuestionsResponse> {
   const now = options.now ?? (() => Date.now())
   const started = now()
-  const posting = getPosting(req.wantedAuthNo)
-  const analysis = getAnalysis(req.wantedAuthNo)
+  const lookup = options.lookup ?? CATALOG_LOOKUP
+  const posting = lookup.posting(req.wantedAuthNo)
+  const analysis = lookup.analysis(req.wantedAuthNo)
   if (!posting || !analysis) throw new GenerateError('unknown_posting')
 
   const picks = cleanPicks(req.picks)
@@ -323,6 +337,31 @@ function toFinalQuestion(r: FinalRanked, text: string, source: FinalQuestion['so
   return q
 }
 
+/** 판정 공급자에게 보내는 입력. 화면 요청(generateFinal)과 평가 하네스(정답표 줄)가 같은 꼴로 만든다 */
+export function judgeInputFor(
+  posting: Posting,
+  items: Array<{ card_id: string; pref: FinalPref; heard: string; clarity?: Clarity }>,
+): JudgeInput {
+  return {
+    mode: 'final',
+    posting,
+    items: items.flatMap((i) => {
+      const card = getCard(i.card_id)
+      if (!card) return []
+      const item: JudgeItem = {
+        card_id: card.id,
+        card_label: card.label,
+        pref: i.pref,
+        heard: i.heard,
+        watch_out: i.pref === 'want' ? card.interpretation.mismatch_if_want : card.interpretation.mismatch_if_avoid,
+        good_sign: card.interpretation.good_if,
+      }
+      if (i.clarity) item.clarity = i.clarity
+      return [item]
+    }),
+  }
+}
+
 /**
  * 최종 면접·처우 질문. 단순 규칙 판정 → 공급자 판정(물어본 카드만) → 순서 규칙(finalRules) → 공급자 문장 → 검사.
  * 판정·문장 두 호출은 시간 한도 하나를 나눠 쓴다. 공급자가 없거나 실패하면 단순 규칙 판정과 검수 문장.
@@ -331,8 +370,9 @@ function toFinalQuestion(r: FinalRanked, text: string, source: FinalQuestion['so
 export async function generateFinal(req: FinalQuestionsRequest, options: GenerateOptions = {}): Promise<FinalQuestionsResponse> {
   const now = options.now ?? (() => Date.now())
   const started = now()
-  const posting = getPosting(req.wantedAuthNo)
-  const analysis = getAnalysis(req.wantedAuthNo)
+  const lookup = options.lookup ?? CATALOG_LOOKUP
+  const posting = lookup.posting(req.wantedAuthNo)
+  const analysis = lookup.analysis(req.wantedAuthNo)
   if (!posting || !analysis) throw new GenerateError('unknown_posting')
 
   const picks = cleanPicks(req.picks ?? [])
@@ -347,26 +387,19 @@ export async function generateFinal(req: FinalQuestionsRequest, options: Generat
   // 1) 판정
   let judged = ruleJudgements(review, picks)
   let accepted = 0
-  const judgeItems: JudgeItem[] = review.asked.flatMap((a) => {
-    const card = getCard(a.card_id)
-    const j = judged.find((x) => x.card_id === a.card_id && x.origin === 'asked')
-    if (!card || !j || a.heard === '') return []
-    const pref = finalPrefOf(picks, a.card_id)
-    const item: JudgeItem = {
-      card_id: card.id,
-      card_label: card.label,
-      pref,
-      heard: a.heard,
-      watch_out: pref === 'want' ? card.interpretation.mismatch_if_want : card.interpretation.mismatch_if_avoid,
-      good_sign: card.interpretation.good_if,
-    }
-    if (a.clarity) item.clarity = a.clarity
-    return [item]
-  })
+  const judgeInput = judgeInputFor(
+    posting,
+    review.asked.flatMap((a) => {
+      const j = judged.find((x) => x.card_id === a.card_id && x.origin === 'asked')
+      if (!j || a.heard === '') return []
+      return [{ card_id: a.card_id, pref: finalPrefOf(picks, a.card_id), heard: a.heard, ...(a.clarity ? { clarity: a.clarity } : {}) }]
+    }),
+  )
+  const judgeItems = judgeInput.items
   if (provider?.judgeReview && judgeItems.length) {
     const judge = provider.judgeReview.bind(provider)
     try {
-      const got = await withTimeout((signal) => judge({ mode: 'final', posting, items: judgeItems }, signal), left())
+      const got = await withTimeout((signal) => judge(judgeInput, signal), left())
       ;({ judged, accepted } = mergeJudgements(judged, got, new Set(judgeItems.map((i) => i.card_id)), heard, issues))
     } catch (e) {
       failure = e instanceof TimeoutError ? 'timeout' : (failure ?? 'error')

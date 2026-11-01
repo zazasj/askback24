@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { PRESETS } from './catalog'
 import type { FirstQuestionsRequest, Question } from './contract'
-import { GenerateError, generateFirst, type GenerateReport } from './generate'
+import { GenerateError, generateFinal, generateFirst, judgeInputFor, type GenerateReport } from './generate'
 import { createMockProvider, experienceSentence } from './providers/mock'
-import type { Draft, FirstDraftInput, LlmProvider } from './providers/types'
+import type { Draft, FirstDraftInput, JudgeInput, LlmProvider } from './providers/types'
 import { pickTop5 } from './rules'
-import { ANALYSES, getAnalysis, getCard } from './catalog'
+import { ANALYSES, getAnalysis, getCard, getPosting, REVIEW_EXAMPLE } from './catalog'
 
 const OO = 'K-MOCK-0001'
 const COMMERCE = 'K-MOCK-0002'
@@ -353,5 +353,45 @@ describe('H3-r2-01 한 결과에 같은 대상의 "비중" 질문이 두 번 나
         expect(same.length, `${a.wantedAuthNo} v${variant}: ${same.map((q) => q.text).join(' / ')}`).toBeLessThanOrEqual(1)
       }
     }
+  })
+})
+
+describe('평가 하네스: lookup · judgeInputFor', () => {
+  it('lookup으로 사전 밖 공고도 만든다', async () => {
+    const lookup = {
+      posting: (id: string) => (id === 'EVAL-1' ? { ...getPosting(OO)!, wantedAuthNo: 'EVAL-1' } : undefined),
+      analysis: (id: string) => (id === 'EVAL-1' ? { ...getAnalysis(OO)!, wantedAuthNo: 'EVAL-1' } : undefined),
+    }
+    const res = await generateFirst({ ...reqA('EVAL-1') }, { provider: createMockProvider(), lookup })
+    expect(res.questions).toHaveLength(5)
+    await expect(generateFirst(reqA('EVAL-1'))).rejects.toBeInstanceOf(GenerateError)
+  })
+
+  it('judgeInputFor는 generateFinal이 보내던 것과 같다', async () => {
+    const asked = REVIEW_EXAMPLE.asked.slice(0, 2)
+    const review = {
+      asked: asked.map((a, i) => ({ question_id: `q${i + 1}`, card_id: a.card_id, heard: a.heard, clarity: a.clarity })),
+      not_asked: [],
+      received: [],
+      impression: { mood: 'normal' as const },
+    }
+    let sent: JudgeInput | undefined
+    const spy: LlmProvider = {
+      name: 'spy',
+      writeFirst: async () => [],
+      judgeReview: async (input) => {
+        sent = input
+        return []
+      },
+    }
+    await generateFinal({ mode: 'final', wantedAuthNo: OO, picks: PRESETS.A.picks, review }, { provider: spy })
+    const items = review.asked.map((a) => ({
+      card_id: a.card_id,
+      pref: PRESETS.A.picks.find((p) => p.card_id === a.card_id)?.pref ?? ('none' as const),
+      heard: a.heard,
+      clarity: a.clarity,
+    }))
+    expect(sent?.items.length).toBe(2)
+    expect(judgeInputFor(getPosting(OO)!, items)).toEqual(sent)
   })
 })
