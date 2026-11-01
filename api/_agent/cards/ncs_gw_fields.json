@@ -1,0 +1,7 @@
+{
+  "base_url": null,
+  "operation": null,
+  "params": {"subcategory": null},
+  "fields": {"code": null, "name": null, "level": null, "subcategory_code": null, "subcategory": null},
+  "note": "data.go.kr 15157547 활용신청 뒤 swagger로 채움(4.5단계)"
+}

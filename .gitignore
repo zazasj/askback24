@@ -15,3 +15,4 @@ review/e2e-results.json
 __pycache__/
 .pytest_cache/
 review/analysis-regen/
+review/card-drafts/

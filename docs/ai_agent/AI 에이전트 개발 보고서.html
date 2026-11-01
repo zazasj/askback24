@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 에이전트 개발 보고서</title>
+<style>
+:root {
+  --bg: #f7f7f5; --surface: #ffffff; --text: #1d1d1f; --muted: #5f6368; --line: #e2e2de;
+  --accent: #2f5bd3; --accent-soft: #e8eefc; --ok: #1f7a4d; --ok-soft: #e4f3ea;
+  --warn: #9a5b00; --warn-soft: #fbf0dc; --mock: #6b4fbb; --mock-soft: #efeafb;
+  --code-bg: #f1f1ee;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141416; --surface: #1d1e21; --text: #ececec; --muted: #a3a7ad; --line: #34363b;
+    --accent: #8aa8ff; --accent-soft: #232b44; --ok: #6fd3a0; --ok-soft: #1c3329;
+    --warn: #f0b860; --warn-soft: #3a2e19; --mock: #b9a3ff; --mock-soft: #2c2641;
+    --code-bg: #26272b;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141416; --surface: #1d1e21; --text: #ececec; --muted: #a3a7ad; --line: #34363b;
+  --accent: #8aa8ff; --accent-soft: #232b44; --ok: #6fd3a0; --ok-soft: #1c3329;
+  --warn: #f0b860; --warn-soft: #3a2e19; --mock: #b9a3ff; --mock-soft: #2c2641;
+  --code-bg: #26272b;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.65 "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif; }
+main { max-width: 1040px; margin: 0 auto; padding: 40px 16px 80px; }
+h1 { font-size: 30px; line-height: 1.3; margin: 0 0 8px; }
+h2 { font-size: 22px; margin: 48px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+h3 { font-size: 18px; margin: 24px 0 8px; }
+p { margin: 8px 0; }
+.lead { color: var(--muted); margin: 0 0 24px; }
+code { font: 13.5px/1.4 ui-monospace, "SF Mono", Menlo, monospace; background: var(--code-bg);
+  padding: 1px 5px; border-radius: 4px; word-break: break-word; }
+pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto;
+  font: 13px/1.55 ui-monospace, "SF Mono", Menlo, monospace; margin: 12px 0; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 20px 0; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.kpi b { display: block; font-size: 26px; line-height: 1.2; }
+.kpi span { color: var(--muted); font-size: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin: 14px 0; }
+.stage-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 14px; }
+.stage-head h3 { margin: 0; }
+.tag { display: inline-block; font-size: 12.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+.tag.ok { background: var(--ok-soft); color: var(--ok); }
+.tag.warn { background: var(--warn-soft); color: var(--warn); }
+.tag.mock { background: var(--mock-soft); color: var(--mock); }
+.tag.real { background: var(--accent-soft); color: var(--accent); }
+.table-wrap { overflow-x: auto; margin: 12px 0; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 14.5px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--code-bg); font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+ul { padding-left: 22px; margin: 8px 0; }
+li { margin: 4px 0; }
+.flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; margin: 16px 0; }
+.node { flex: 1 1 160px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.node b { display: block; margin-bottom: 4px; }
+.node small { color: var(--muted); font-size: 13px; line-height: 1.45; display: block; }
+.arrow { align-self: center; color: var(--muted); font-size: 20px; }
+.muted { color: var(--muted); }
+.check li { list-style: none; margin-left: -22px; }
+.check li::before { content: "☐ "; color: var(--muted); }
+footer { margin-top: 56px; color: var(--muted); font-size: 13.5px; }
+@media (max-width: 640px) { .arrow { display: none; } h1 { font-size: 25px; } }
+</style>
+</head>
+<body>
+<main>
+
+<h1>AI 에이전트 개발 보고서 (1~4단계)</h1>
+<p class="lead">면접 역질문 준비 시연 사이트(askback24, 팀 레인보우 가이즈) · AI 파이프라인 · 기준 2026-10-29 · 브랜치 <code>hwstar-1204/AI-Agent-stage4</code></p>
+
+<div class="kpis">
+  <div class="kpi"><b>4 / 5</b><span>개발 단계 완료(④ 평가 남음)</span></div>
+  <div class="kpi"><b>5개</b><span>AI 주소(⓪①②③-1③-2)</span></div>
+  <div class="kpi"><b>275</b><span>pytest 통과(5개 건너뜀: 실제 호출 시험)</span></div>
+  <div class="kpi"><b>471</b><span>화면 시험 통과 · 실패 0</span></div>
+  <div class="kpi"><b>D-302~D-363</b><span>결정 기록</span></div>
+</div>
+
+<h2>1. 무엇을 만들었나</h2>
+<p>같은 Vercel 프로젝트 안에 <b>Python AI 서버</b>(FastAPI + LangGraph, 함수 하나 <code>api/ai/index.py</code>)를 세웠습니다. LLM은 <b>엔노이아</b>입니다. 어떤 질문을 어떤 순서로 물을지는 지금처럼 TS 규칙(<code>shared/</code>)이 정하고, Python은 문장을 쓰고 판정하고 공고를 분석합니다. 마지막 검사와 검수 문장 대체도 TS가 합니다.</p>
+
+<div class="flow" role="img" aria-label="화면에서 TS 서버 함수, Python AI 서버, 엔노이아와 공공데이터로 이어지는 구조">
+  <div class="node"><b>화면 (Vue)</b><small>TS <code>/api/*</code>만 부름<br>열 때 한 번 AI 깨우기</small></div>
+  <div class="arrow">→</div>
+  <div class="node"><b>TS 서버 함수</b><small>규칙 · 순서 · 최종 검사 · 검수 문장<br>Bearer + 미리보기 보호 우회</small></div>
+  <div class="arrow">→</div>
+  <div class="node"><b>Python AI 서버</b><small><code>/api/ai/v1/*</code> · LangGraph 그래프 5개<br>앞단 검사 · 시간 예산</small></div>
+  <div class="arrow">→</div>
+  <div class="node"><b>엔노이아 · 공공데이터</b><small>LLM(빠른·정확 에이전트)<br>국민연금 · NCS · 고용24 · EIS</small></div>
+</div>
+
+<div class="table-wrap"><table>
+<thead><tr><th>에이전트</th><th>주소</th><th>하는 일</th><th>시간</th><th>단계 · PR</th></tr></thead>
+<tbody>
+<tr><td>② 1차 질문</td><td><code>POST /v1/first-questions</code></td><td>TS가 고른 5개 문항 문장(경험 한 줄과 이어지는 질문 포함)</td><td>18초</td><td>1단계 · #1</td></tr>
+<tr><td>③-1 판정</td><td><code>POST /v1/final-judgements</code></td><td>1차 면접 들은 답으로 확인됨 · 기대와 다름 · 아직 모름</td><td>8초</td><td>2단계 · #2</td></tr>
+<tr><td>③-2 최종 질문</td><td><code>POST /v1/final-questions</code></td><td>최종 면접 · 처우 질문 문장(완충 문장 맨 앞)</td><td>10초</td><td>2단계 · #2</td></tr>
+<tr><td>① 공고 분석</td><td><code>POST /v1/posting-analysis</code></td><td>카드 상태 · 근거 · 이유, 처우 빈칸, 회사 신호와 신호 질문</td><td>50초</td><td>3단계 · #3</td></tr>
+<tr><td>⓪ 업무 카드 초안</td><td><code>POST /v1/card-drafts</code> · <code>npm run cards:draft</code></td><td>NCS 능력단위로 새 직무 업무 카드 사전 초안(사람 검수)</td><td>55초 · CLI 180초</td><td>4단계 · #4</td></tr>
+<tr><td>내부</td><td><code>/v1/health</code> · <code>/v1/warmup</code></td><td>배포 확인 · 첫 호출(약 17초) 미리 치르기</td><td>15초</td><td>1단계</td></tr>
+</tbody></table></div>
+
+<h2>2. 단계별 결과</h2>
+
+<div class="card">
+  <div class="stage-head"><h3>1단계 · Python 뼈대와 ② 1차 질문</h3><span class="tag ok">PR #1 → staging</span></div>
+  <ul>
+    <li>FastAPI 앱 하나 + <code>vercel.json</code> rewrite(<code>/api/ai/(.*)</code>), <code>uv</code> · Python 3.12, <code>npm run check</code>에 pytest 포함</li>
+    <li>엔노이아 클라이언트(<code>llm.py</code>): 역할별 에이전트(빠른 ②③ · 정확 ⓪①), JSON만 받음, 호출마다 남은 예산으로 마감</li>
+    <li><b>TS·Python 검사 공유</b>: <code>shared/fixtures/validate-cases.json</code> 하나를 Vitest와 pytest가 같이 돌려 규칙이 어긋나지 않음</li>
+    <li>쓰기 → 검사 → 걸린 문항만 다시 쓰기(남은 시간 8초 이상일 때 1회) → 빠진 문항은 TS가 검수 문장</li>
+    <li>시간 예산: 화면 12→25초, TS 9→20초, ② 18초. 화면을 열 때 깨우기로 콜드 17초를 미리 치름</li>
+    <li>새 검사: 경험이 없는 문항의 1인칭 경험(<code>experience_claim</code>) · 회사 평가 말</li>
+  </ul>
+</div>
+
+<div class="card">
+  <div class="stage-head"><h3>2단계 · ③ 최종 면접 판정 · 질문</h3><span class="tag ok">PR #2 → AI-Agent</span></div>
+  <ul>
+    <li>쓰기 · 검사 · 다시 쓰기 공통 틀(<code>LoopAgent</code>)을 뽑아 ②와 ③-2가 같이 쓰고, 앱이 뜰 때 한 번만 compile</li>
+    <li>③-1 판정: 판정 → 검사 → 마무리(다시 판정 없음, 8초). 들은 답은 데이터로 감싸고 로그 · 오류 · 응답 어디에도 남기지 않음</li>
+    <li>③-2 최종 질문: 처우 질문도 <code>key</code>로 짝지음. 완충 문장이 빠지면 탈락(<code>cushion_missing</code>, Python만)</li>
+    <li>TS가 만든 실제 요청 예시를 Python에 그대로 보내는 <b>계약 시험</b></li>
+    <li>알려진 한계(D-343): 지금 지연(5.9~6.9초)에서는 ③-2 다시 쓰기가 거의 돌지 않음 → 걸린 문항은 TS 검수 문장(완충 포함)</li>
+  </ul>
+</div>
+
+<div class="card">
+  <div class="stage-head"><h3>3단계 · ① 공고 분석 · 회사 확인 · 회사 신호</h3><span class="tag ok">PR #3 → stage2</span></div>
+  <ul>
+    <li>그래프 네 갈래가 나란히 돎: 카드 판정 독립 2회(걸린 카드만 1회 다시) → 비교(엇갈리면 <code>needs_review</code>) · 처우 빈칸(코드) · 회사 자료 · 신호 질문 → <code>merge</code></li>
+    <li>회사 확인: <code>REAL_COMPANY_MAP</code> → 공고 <code>bizNo</code> → 시연 모의. <b>실제 회사 이름 · 사업자번호는 응답 · 로그 · <code>data/</code>에 남지 않음</b>(가짜 실제 회사로 시험)</li>
+    <li>국민연금 실시간 클라이언트(조회 → 상세 → 12개월, 정확히 1건일 때만), 실패하면 그 신호만 뺌</li>
+    <li>회사 자료 스크립트: EIS 업종 기준값 · 강소기업 매핑 공고만 뽑기(API 안 부름)</li>
+    <li>신호 질문: LLM에는 숫자 없는 힌트만, 숫자 · 회사 평가 말이 있으면 신호 종류별 검수 질문</li>
+    <li>시연 7건 다시 만들기(<code>npm run analysis:regen</code>): 후보와 비교 보고서만 쓰고, 사람이 본 뒤 <code>--apply</code>로만 <code>data/</code>를 바꿈. 사람이 검수한 글은 지킴</li>
+  </ul>
+</div>
+
+<div class="card">
+  <div class="stage-head"><h3>4단계 · ⓪ 업무 카드 초안</h3><span class="tag ok">PR #4 → stage3</span></div>
+  <ul>
+    <li>자료 출처 넷(NCS 정보_GW · 직무정보 215L01 · 직업정보 212D01 · 공통코드 21L01)의 실제 클라이언트 + 가짜 응답 시험. 키가 없으면 <code>data/real/</code> 실제 스냅숏과 NCS 모의 응답, <b>키가 있는데 실패하면 503</b>(조용히 모의로 바꾸지 않음)</li>
+    <li>규칙: 능력단위 1개 = 후보 1개, 높은 수준은 표시만. LLM이 묶고 글을 쓰면 검사(후보에 없는 능력단위 · 두 카드에 같은 능력단위 · 4유형 · 질문 틀의 "공고" · 금지어)</li>
+    <li>응답 <code>meta.sources</code>가 출처마다 실제 · 실제 스냅숏 · 모의를 그대로 말함</li>
+    <li>CLI <code>npm run cards:draft</code>: 함수 한도에 묶이지 않고 결과를 <code>review/card-drafts/</code>(git 밖)에 쓰고 기존 백엔드 사전과 비교</li>
+    <li>실제 엔노이아 1회: 66.6초에 카드 9개 · 문제 0건. 기존 백엔드 카드 17개 중 9개가 같은 능력단위로 묶임(나머지는 모의 NCS에 없는 능력단위 · 근무 방식 카드)</li>
+    <li>엔드포인트(LLM 한 번 45초 상한)는 지금 모델로는 시간 초과될 수 있어, 당분간 CLI가 공식 경로(4.5단계에서 결정)</li>
+  </ul>
+</div>
+
+<h2>3. 실제 자료와 모의 자료</h2>
+<p>3·4단계는 실제 API 호출 코드를 만들어 가짜 응답으로 시험하고, 실행은 모의 자료로 합니다(D-344). <b>모의 값에는 늘 "모의"를 붙입니다.</b> 5단계 평가 전에 4.5단계에서 실제로 바꿉니다.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>자료</th><th>데이터활용명세서</th><th>지금 실행</th><th>4.5단계에서</th></tr></thead>
+<tbody>
+<tr><td>엔노이아 LLM</td><td>—</td><td><span class="tag real">실제</span></td><td>지연 측정</td></tr>
+<tr><td>국민연금 가입 사업장</td><td>실제(5번)</td><td><span class="tag mock">모의</span> 클라이언트 완성 · 매핑 비어 있음</td><td>키 · 실제 호출 시험 · 필드 확인</td></tr>
+<tr><td>NCS 정보_GW</td><td>실제(2번)</td><td><span class="tag mock">모의</span> 설정 파일 비어 있음</td><td>활용신청 → swagger로 주소 · 필드 채우기</td></tr>
+<tr><td>청년친화강소기업 · 강소기업</td><td>실제(6번)</td><td><span class="tag mock">모의</span> 매핑된 공고만 뽑는 스크립트 완성</td><td>명단 파일 · 매핑(팀 확인 뒤)</td></tr>
+<tr><td>직무정보 · 직업정보 · 공통코드</td><td>모의(3·4번)지만 실제 키 있음</td><td><span class="tag real">실제 스냅숏</span></td><td>실시간 키 · 실제 호출 시험</td></tr>
+<tr><td>고용보험 EIS</td><td>(추가)</td><td>파일 받기 전(신호 빠짐)</td><td>파일 받기 · OPIB 형식 확인</td></tr>
+<tr><td>임금체불 · 채용정보 · 구직자 입력</td><td>모의(7 · 1 · 8번)</td><td><span class="tag mock">모의</span></td><td>그대로</td></tr>
+</tbody></table></div>
+<p class="muted">지금 <code>data/signals.json</code>의 국민연금 줄 5개는 손으로 쓴 시연 값인데 "실제" 배지가 붙어 있습니다(D-024에서 옴). 4.5단계에서 7건을 다시 만들어 적용하면 바로잡힙니다.</p>
+
+<h2>4. 시험</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>항목</th><th>1단계 끝</th><th>2단계 끝</th><th>3단계 끝</th><th>4단계 끝</th></tr></thead>
+<tbody>
+<tr><td>단위(Vitest)</td><td>405</td><td>423</td><td>433</td><td>433</td></tr>
+<tr><td>pytest</td><td>62 (+1)</td><td>108 (+1)</td><td>206 (+2)</td><td>275 (+5)</td></tr>
+<tr><td>화면(e2e)</td><td>471 통과</td><td>471 통과</td><td>471 통과</td><td>471 통과</td></tr>
+</tbody></table></div>
+<p class="muted">괄호는 건너뛴 실제 호출 시험(엔노이아 · 국민연금 · 고용24, 키가 있을 때만 돎). e2e 71개 건너뜀은 이 작업 트리에 <code>.cache/</code> 원본이 없어서입니다. 단계마다 Sonnet 5.5가 구현 · 과제 검토를 하고, 단계 끝에 Opus 5.5(xhigh)가 브랜치 전체를 검토한 뒤 지적을 고쳤습니다.</p>
+
+<h2>5. 남은 일</h2>
+<h3>4.5단계 · 실제 API 전환 (사람 + 에이전트)</h3>
+<ul class="check">
+  <li><code>.env</code>와 Vercel에 <code>DATA_GO_KR_KEY</code> · <code>WORK24_KEY_DUTY</code> · <code>WORK24_KEY_JOB</code> · <code>WORK24_KEY_COMMONCODE</code> 등록, 실제 호출 시험(<code>test_*_live</code>) 돌리기, 필드 이름이 다르면 표 한 곳만 고치기</li>
+  <li>NCS 정보_GW 활용신청 → <code>api/_agent/cards/ncs_gw_fields.json</code> 채우기</li>
+  <li>EIS 파일 받아 <code>npm run company:eis</code>, OPIB 키 필요 여부 · 응답 형식 기록</li>
+  <li>다시 만들기 보고서 보강(그대로 남긴 옛 "실제" 줄 보이기) 뒤 <code>npm run analysis:regen</code> → 보고서 검토 → <code>--apply</code> → <code>npm run check</code></li>
+  <li>미리보기에서 ①②③⓪ 처리 시간 측정(판정 · 최종 문장 · 콜드 스타트 따로), ⓪ 엔드포인트를 쓸지 CLI만 쓸지 결정</li>
+  <li>4단계에서 넘어온 것: 공통코드 호출을 쓰거나 빼기 · 직무정보 질의의 괄호 빼기와 추천 개수 상한 · NCS 정보_GW 실제 호출 시험 · 요청마다 HTTP 클라이언트 하나 · ① 정확 모델 지연 측정</li>
+</ul>
+<h3>팀 · 사람 확인</h3>
+<ul class="check">
+  <li>1단계 Task 7 · 2단계 Task 6 미리보기 확인(<code>/api/ai/v1/health</code> → <code>ok</code>, <code>labels &gt; 0</code>)</li>
+  <li>LATER 4: 회사 신호 시연 매핑(<code>REAL_COMPANY_MAP</code>) 세진 확인 → CLAUDE.md 예외 한 줄 · DATA-04 판정</li>
+  <li>SPEC-ISSUES: AS-05(API-SPEC 9초 · 8초 문구), DATA-04, 국민연금 "실제" 배지(DATA-06)</li>
+  <li>CLAUDE.md 명령 목록에 <code>npm run test:py</code> 더할지</li>
+  <li>PR 병합 순서: #2 → #3(기준을 AI-Agent로) → #4 → 에이전트 개발이 끝나면 #1로 staging에 한 번에</li>
+</ul>
+<h3>5단계 · ④ 평가</h3>
+<p>점검용 공고 30건으로 카드 상태 정확도, 근거 실재율, 걸러내기 전 위반율, 검수 문장 대체율, 경험 부풀리기, 응답 시간 p95, 사람 품질 점수(표본 20개)를 잽니다(<code>evals/</code>, 로컬만).</p>
+
+<h2>6. 구현 중 내린 판단</h2>
+<p class="muted">계획에 없던 것을 정한 것입니다. 틀렸다면 무엇을 되돌리면 되는지 함께 적었습니다.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>단계</th><th>판단</th><th>틀렸을 때</th></tr></thead>
+<tbody>
+<tr><td>1단계</td><td>Python 로거를 앱에서 직접 설정하고, 다시 쓰기에 고칠 점 힌트를 붙임(최종 검토 반영)</td><td>설정 한 곳만 되돌림</td></tr>
+<tr><td>2단계</td><td>TS 판정 수용 조건을 동작 그대로 <code>judgementIssues</code> 함수로 뽑음</td><td>함수 하나 되돌림</td></tr>
+<tr><td>2단계</td><td>③-2 예산은 바꾸지 않고 다시 쓰기가 거의 안 도는 사실을 기록(D-343)</td><td>걸린 문항이 검수 문장으로 나감(완충 포함)</td></tr>
+<tr><td>3단계</td><td>시연 모의 연금 값은 12개월 요약으로 보고 같은 모양(PensionFacts)으로 씀</td><td>어댑터 한 곳 수정</td></tr>
+<tr><td>3단계</td><td>EIS 규모 구간은 스크립트 한 곳에 두고 파일 meta로 Python에 넘김, 실제 파일 전까지 임시 이름</td><td>파일 받을 때 이름만 고침</td></tr>
+<tr><td>3단계</td><td>임금체불 신호는 명단에 있을 때만, "명단에 없음" 줄은 사람 글로 남김</td><td>필요하면 종류 하나 더함</td></tr>
+<tr><td>3단계</td><td>국민연금 신호는 퇴사 &gt; 입사 한 문장만, 출처별 배지 · 주의 문구 구분</td><td>없음</td></tr>
+<tr><td>3단계</td><td>신호 질문 전용 금지 표현 목록은 Python에만 둠(TS 공유 목록은 그대로)</td><td>없음</td></tr>
+<tr><td>3단계</td><td>실제 회사인데 국민연금이 실패하면 모의 숫자로 채우지 않고 그 신호를 뺌</td><td>매핑 공고에 연금 줄이 안 보임</td></tr>
+<tr><td>3단계</td><td>§9-4 합류를 다시 판정이 끝난 뒤(<code>settled_a/b</code>)로 옮김</td><td>합류 노드 두 개 되돌림</td></tr>
+<tr><td>3단계</td><td>서브에이전트가 적은 커밋 끝 줄을 CLAUDE.md 형식으로 고침(push 전, 코드 같음)</td><td>없음</td></tr>
+<tr><td>3단계</td><td>다시 만들기 보고서가 남긴 옛 "실제" 줄을 따로 보이는 일은 4.5단계 첫 적용 전으로 미룸</td><td>보강 없이 적용하면 잘못된 배지가 남을 수 있음(4.5 체크 목록에 있음)</td></tr>
+<tr><td>4.5단계</td><td>3·4단계는 실제 API 코드 + 가짜 응답 시험, 실행은 모의 · 스냅숏, 전환은 평가 전(D-344, 사용자 결정)</td><td>—</td></tr>
+<tr><td>4단계</td><td><code>meta.sources</code>에는 실제로 부른 출처만 적음</td><td>없음</td></tr>
+<tr><td>4단계</td><td>직무정보 추천은 후보 능력단위 이름(띄어쓰기 뺌)으로 20번까지만 부름</td><td>교차 세분류 추천이 적을 수 있음</td></tr>
+<tr><td>4단계</td><td>CLI는 LLM 한 번 상한도 마감에 맞춰 늘리고, 자료 받기도 마감 안에서</td><td>없음</td></tr>
+<tr><td>4단계</td><td>엔드포인트는 지금 모델로 시간 초과될 수 있어 CLI를 공식 경로로 문서화(4.5에서 결정)</td><td>엔드포인트를 쓰려면 상한 · 모델 조정</td></tr>
+</tbody></table></div>
+
+<footer>원본 문서: <code>docs/ai_agent/에이전트 설계 확정.md</code> · <code>개발 1~4단계 계획.md</code> · <code>docs/AI-API-명세서.md</code> · <code>docs/DECISIONS.md</code>(D-302~D-363) · <code>docs/LATER.md</code>. 회사 · 공고 · 인물은 모두 시연용 가명입니다.</footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<response><header><resultCode>00</resultCode><resultMsg>OK</resultMsg></header><body><items>
+<item><cd>X01</cd><nm>가짜 단위 하나</nm><lv>3</lv><sc>S1</sc><sn>가짜세분류</sn></item>
+<item><cd>X02</cd><nm>가짜 단위 둘</nm><lv></lv><sc>S1</sc><sn>가짜세분류</sn></item>
+</items></body></response>

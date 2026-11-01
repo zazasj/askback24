@@ -19,6 +19,7 @@
     "screens": "playwright test e2e/screens.spec.ts",
     "test:py": "uv run --frozen pytest",
     "analysis:regen": "uv run --frozen python -m api._agent.regen",
+    "cards:draft": "uv run --frozen python -m api._agent.cards_draft",
     "py:lock": "uv lock && uv export --no-dev --no-hashes -o requirements.txt",
     "check": "npm run build && npm run test:unit && npm run test:py && npm run test:e2e",
     "fetch:work24": "node --experimental-strip-types --no-warnings=ExperimentalWarning --env-file-if-exists=.env scripts/fetch-work24.ts",

@@ -1,7 +1,8 @@
 """shared/providers/types.ts 의 DraftItem·FirstDraftInput·Draft 와 같은 이름·필수 여부."""
+import re
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_serializer
 
 
 class Evidence(BaseModel):
@@ -165,3 +166,93 @@ class AnalysisResponse(BaseModel):
     signals: list[Signal]
     out_of_dictionary: list[OutOfDictionary]
     meta: AnalysisMeta
+
+
+# ── ⓪ 업무 카드 초안(명세 4번) ──
+CARDS_GRAPH_VERSION = "cards-1"
+
+
+class CardDraftRequest(BaseModel):
+    job: str = Field(pattern=r"^[a-z]+$")
+    job_label: str = Field(min_length=1, max_length=40)
+    ncs_subcategories: list[str] = Field(min_length=1, max_length=5)
+    job_dictionary_code: str | None = None
+    max_cards: int = Field(default=15, ge=1, le=30)
+
+    @field_validator("ncs_subcategories")
+    @classmethod
+    def _codes(cls, v: list[str]) -> list[str]:
+        if any(not re.fullmatch(r"\d{8}", c) for c in v):
+            raise ValueError("ncs_subcategories")
+        return v
+
+
+class CandidateOut(BaseModel):
+    ablt_unit: str
+    unit: str
+    subcategory: str
+    level: int | None
+    high_level: bool
+    used_in: str | None
+
+
+class CardNcs(BaseModel):
+    subcategory: str
+    unit: str
+    ablt_unit: str
+
+
+class CardSignals(BaseModel):
+    explicit: list[str]
+    implicit: list[str]
+
+
+class CardInterpretation(BaseModel):
+    mismatch_if_want: str
+    mismatch_if_avoid: str
+    good_if: str
+
+
+class CardDraft(BaseModel):
+    id: str
+    kind: Literal["task"]
+    core: bool
+    label: str
+    plain: str
+    examples: list[str]
+    ncs: list[CardNcs]
+    mapping_confidence: Literal["draft"]
+    posting_signals: CardSignals
+    questions: dict[str, str]
+    example_question: str | None = None
+    interpretation: CardInterpretation
+    job_dictionary: str | None = None
+
+    @model_serializer(mode="wrap")
+    def _omit_optional(self, handler):
+        # 명세의 선택 필드는 없으면 null 대신 빼고 낸다
+        d = handler(self)
+        for k in ("job_dictionary", "example_question"):
+            if d.get(k) is None:
+                d.pop(k, None)
+        return d
+
+
+class CardIssue(BaseModel):
+    card_id: str | None
+    rule: str
+
+
+class CardDraftMeta(BaseModel):
+    graph_version: Literal["cards-1"]
+    model: str
+    created_at: str
+    sources: dict[str, Literal["실제", "실제 스냅숏", "모의"]]
+    job_dictionary: str | None = None  # 212D01의 직업 한 줄 요약(카드별 수행직무가 아니다)
+
+
+class CardDraftResponse(BaseModel):
+    candidates: list[CandidateOut]
+    cards: list[CardDraft]
+    issues: list[CardIssue]
+    meta: CardDraftMeta
