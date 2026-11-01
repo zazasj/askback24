@@ -1,38 +1,68 @@
 {
   "wantedAuthNo": "K-MOCK-0007",
+  "meta": {
+    "graph_version": "analysis-1",
+    "model": "openai/gpt-6.1-sol",
+    "created_at": "2026-10-30T15:41:46.324746+00:00",
+    "applied_on": "2026-11-01"
+  },
   "cards": [
     {
-      "card_id": "BE07",
-      "state": "explicit",
-      "evidence": { "field": "jobCont", "quote": "창고관리시스템(WMS) 유지보수 및 고도화" },
-      "reason": "유지보수와 고도화를 함께 맡아, 둘의 비중과 신입이 고도화에 언제 참여하는지 확인해 볼 만해요"
-    },
-    {
-      "card_id": "BE05",
-      "state": "explicit",
-      "evidence": { "field": "jobCont", "quote": "화주사·택배사 시스템 연동" },
-      "reason": "화주사 200여 곳과 택배사 시스템을 잇는 일이라, 연동 대상과 조율 담당을 확인해 볼 만해요"
-    },
-    {
-      "card_id": "BE15",
-      "state": "vague",
-      "evidence": { "field": "jobCont", "quote": "물류센터 현장 지원 등 기타 업무" },
-      "reason": "'물류센터 현장 지원 등 기타 업무'는 범위가 모호해 현장 근무가 포함될 수 있어요",
-      "questions": {
-        "conflict": "물류센터 현장 지원에 개발자가 나가는 일이 있다면, 얼마나 자주 나가고 가서는 어떤 일을 맡게 되나요?"
-      }
+      "card_id": "BE01",
+      "state": "inferred",
+      "evidence": {
+        "field": "jobCont",
+        "quote": "창고관리시스템(WMS) 유지보수 및 고도화"
+      },
+      "reason": "고도화에 신규 API 개발도 포함되는지, 신입이 맡는 기능의 범위와 시점을 확인해 보면 좋아요."
     },
     {
       "card_id": "BE04",
       "state": "inferred",
-      "evidence": { "field": "pfCond", "quote": "Oracle·SQL 활용 가능자" },
-      "reason": "우대조건에 Oracle·SQL 활용이 있어, 쿼리 작성과 데이터 조회 요청을 신입이 얼마나 맡는지 확인해 볼 만해요"
+      "evidence": {
+        "field": "jobCont",
+        "quote": "Oracle 등 데이터베이스와 SQL 사용 경험자"
+      },
+      "reason": "SQL 활용이 단순 조회 중심인지, 쿼리 작성과 성능 개선까지 포함하는지 확인해 보면 좋아요."
+    },
+    {
+      "card_id": "BE05",
+      "state": "explicit",
+      "evidence": {
+        "field": "jobCont",
+        "quote": "화주사·택배사 시스템 연동"
+      },
+      "reason": "연동 대상과 방식, 신입의 구현 범위 및 상대 회사와의 조율 담당을 확인해 보면 좋아요."
+    },
+    {
+      "card_id": "BE07",
+      "state": "explicit",
+      "evidence": {
+        "field": "jobCont",
+        "quote": "창고관리시스템(WMS) 유지보수 및 고도화"
+      },
+      "reason": "단순 오류 수정과 기능 고도화의 비중, 신입에게 배정되는 실제 업무 사례를 확인해 보면 좋아요."
     },
     {
       "card_id": "BE08",
       "state": "inferred",
-      "evidence": { "field": "workdayWorkhrCont", "quote": "물류센터 성수기(11~12월) 주말 근무 있음" },
+      "evidence": {
+        "field": "workdayWorkhrCont",
+        "quote": "물류센터 성수기(11~12월) 주말 근무 있음"
+      },
       "reason": "근무시간에 성수기 주말 근무가 적혀 있어, 주말 근무에 시스템 대응도 들어가는지 확인해 볼 만해요"
+    },
+    {
+      "card_id": "BE15",
+      "state": "vague",
+      "evidence": {
+        "field": "jobCont",
+        "quote": "물류센터 현장 지원 등 기타 업무"
+      },
+      "reason": "'물류센터 현장 지원 등 기타 업무'는 범위가 모호해 현장 근무가 포함될 수 있어요",
+      "questions": {
+        "conflict": "물류센터 현장 지원에 개발자가 나가는 일이 있다면, 얼마나 자주 나가고 가서는 어떤 일을 맡게 되나요?"
+      }
     }
   ],
   "blanks": [
@@ -41,7 +71,10 @@
       "status": "check",
       "label": "임금 구성",
       "basis": "연봉 범위만 있고 구성이 없어요",
-      "evidence": { "field": "sal", "quote": "3,000만 원 ~ 3,400만 원" },
+      "evidence": {
+        "field": "sal",
+        "quote": "3,000만 원 ~ 3,400만 원"
+      },
       "question": "제시된 연봉은 기본급 기준인가요, 연장근로 수당 등이 포함된 금액인가요?"
     },
     {
@@ -49,7 +82,10 @@
       "status": "check",
       "label": "근로시간",
       "basis": "성수기에 주말 근무가 있다고 적혀 있어요",
-      "evidence": { "field": "workdayWorkhrCont", "quote": "물류센터 성수기(11~12월) 주말 근무 있음" },
+      "evidence": {
+        "field": "workdayWorkhrCont",
+        "quote": "물류센터 성수기(11~12월) 주말 근무 있음"
+      },
       "question": "성수기 주말 근무는 몇 번쯤이고, 휴일근로 수당이나 대체휴무는 어떻게 되나요?"
     },
     {
@@ -57,7 +93,10 @@
       "status": "check",
       "label": "수습",
       "basis": "공고에 수습 3개월이 적혀 있어요",
-      "evidence": { "field": "empTpNm", "quote": "수습 3개월" },
+      "evidence": {
+        "field": "empTpNm",
+        "quote": "수습 3개월"
+      },
       "question": "수습 3개월 동안 급여는 연봉 기준과 같게 지급되나요?"
     }
   ]

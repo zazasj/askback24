@@ -1,41 +1,74 @@
 {
   "wantedAuthNo": "K-MOCK-0003",
+  "meta": {
+    "graph_version": "analysis-1",
+    "model": "openai/gpt-6.1-sol",
+    "created_at": "2026-10-30T15:39:49.117339+00:00",
+    "applied_on": "2026-11-01"
+  },
   "cards": [
     {
-      "card_id": "BE06",
+      "card_id": "BE01",
       "state": "explicit",
-      "evidence": { "field": "jobCont", "quote": "데이터 수집 배치 프로그램 개발" },
-      "reason": "배치가 실패했을 때 누가 어떻게 대응하는지, 신입은 어디까지 맡는지 확인해 볼 만해요"
-    },
-    {
-      "card_id": "BE05",
-      "state": "explicit",
-      "evidence": { "field": "jobCont", "quote": "고객사 시스템 연동 API 개발" },
-      "reason": "고객사 40여 곳과 연동하고 운영까지 맡아, 연동 대상과 고객사 조율을 누가 하는지 확인해 볼 만해요"
-    },
-    {
-      "card_id": "BE07",
-      "state": "vague",
-      "evidence": { "field": "jobCont", "quote": "기타 업무" },
-      "reason": "'기타 업무'는 범위가 모호해 기존 시스템 유지보수가 포함될 수 있어요"
+      "evidence": {
+        "field": "jobCont",
+        "quote": "고객사 시스템 연동 API 개발"
+      },
+      "reason": "신규 API를 처음부터 만드는 비중과 기존 API 수정 비중, 신입에게 맡기는 기능 범위를 확인하면 좋아요."
     },
     {
       "card_id": "BE04",
       "state": "inferred",
-      "evidence": { "field": "pfCond", "quote": "SQL 활용 능력 우수자" },
-      "reason": "우대조건에 SQL 활용 능력이 있어, 쿼리 작성과 성능 개선을 개발자가 얼마나 맡는지 확인해 볼 만해요"
+      "evidence": {
+        "field": "pfCond",
+        "quote": "SQL 활용 능력 우수자"
+      },
+      "reason": "SQL이 우대 역량으로만 나와 있어요. 실제 쿼리 작성 비중과 성능 개선까지 맡는지 확인하면 좋아요."
     },
     {
-      "card_id": "BE09",
-      "state": "inferred",
-      "evidence": { "field": "pfCond", "quote": "리눅스 사용 경험" },
-      "reason": "우대조건에 리눅스 사용 경험이 있어, 서버 운영이나 배포도 개발자가 맡는지 확인해 볼 만해요"
+      "card_id": "BE05",
+      "state": "explicit",
+      "evidence": {
+        "field": "jobCont",
+        "quote": "고객사 시스템 연동 API 개발 및 운영"
+      },
+      "reason": "연동 대상 시스템과 개발 범위, 고객사 담당자와의 기술 조율을 누가 맡는지 확인하면 좋아요."
+    },
+    {
+      "card_id": "BE06",
+      "state": "explicit",
+      "evidence": {
+        "field": "jobCont",
+        "quote": "데이터 수집 배치 프로그램 개발"
+      },
+      "reason": "배치 실행 주기와 데이터 규모, 실패 시 재처리와 야간 대응을 누가 맡는지 확인하면 좋아요."
+    },
+    {
+      "card_id": "BE07",
+      "state": "explicit",
+      "evidence": {
+        "field": "jobCont",
+        "quote": "고객사 시스템 연동 API 개발 및 운영, 기타 업무"
+      },
+      "reason": "운영 업무에 오류 수정과 기능 개선이 얼마나 포함되는지, 신규 개발과의 비중은 어떤지 확인하면 좋아요."
     },
     {
       "card_id": "BE08",
       "state": "inferred",
-      "evidence": { "field": "workdayWorkhrCont", "quote": "정기 점검 시 야간 근무" },
-      "reason": "근무시간에 '정기 점검 시 야간 근무'가 적혀 있어 장애 대응이 있을 수 있어요"
+      "evidence": {
+        "field": "workdayWorkhrCont",
+        "quote": "정기 점검 시 야간 근무"
+      },
+      "reason": "API 운영에 장애 복구도 포함되는지 확인하면 좋아요. 정기 야간 점검과 별개로 근무 외 대기나 긴급 호출이 있는지도 물어보면 좋아요."
+    },
+    {
+      "card_id": "BE09",
+      "state": "inferred",
+      "evidence": {
+        "field": "pfCond",
+        "quote": "리눅스 사용 경험"
+      },
+      "reason": "리눅스 경험이 개발 환경 사용을 뜻하는지, 배포와 서버 관리까지 맡긴다는 뜻인지 확인하면 좋아요."
     }
   ],
   "blanks": [
@@ -44,7 +77,10 @@
       "status": "vague",
       "label": "임금",
       "basis": "급여가 '회사내규에 따름'으로만 적혀 있어요",
-      "evidence": { "field": "sal", "quote": "회사내규에 따름" },
+      "evidence": {
+        "field": "sal",
+        "quote": "회사내규에 따름"
+      },
       "question": "신입 연봉은 어느 범위이고, 기본급과 수당은 어떻게 구성되나요?"
     },
     {
@@ -52,7 +88,10 @@
       "status": "check",
       "label": "근로시간",
       "basis": "정기 점검 때 야간 근무가 있다고 적혀 있어요",
-      "evidence": { "field": "workdayWorkhrCont", "quote": "정기 점검 시 야간 근무" },
+      "evidence": {
+        "field": "workdayWorkhrCont",
+        "quote": "정기 점검 시 야간 근무"
+      },
       "question": "정기 점검 야간 근무는 한 달에 몇 번쯤이고, 다음 날 근무나 수당은 어떻게 조정되나요?"
     },
     {
