@@ -32,7 +32,7 @@ async def raw_violations(llm: Llm, inputs: list[dict], card_labels: set[str]) ->
             if item is None or not isinstance(q.get("text"), str):
                 continue
             total += 1
-            issues = check_first(q["text"], item.state, item.has_exp, req.posting, card_labels)
+            issues = check_first(q["text"], item.state, item.has_exp, req.posting, card_labels, resume_text=req.experience if item.has_exp else "")
             if issues:
                 flagged += 1
                 by_rule.update(set(issues))

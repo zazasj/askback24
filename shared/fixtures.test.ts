@@ -13,6 +13,7 @@ interface FirstCase {
   text: string
   state: PostingState
   has_exp: boolean
+  resume_text?: string
   expect: string[]
 }
 interface FinalCase {
@@ -49,7 +50,8 @@ describe('검사 예시 파일', () => {
       if (c.state) q.state = c.state
       expect(checkFinalQuestion(q, getPosting(c.posting)!, [])).toEqual(c.expect)
     } else {
-      expect(checkFirstQuestion({ text: squash(c.text), state: c.state, has_exp: c.has_exp }, getPosting(c.posting)!)).toEqual(c.expect)
+      const q = { text: squash(c.text), state: c.state, has_exp: c.has_exp }
+      expect(checkFirstQuestion(q, getPosting(c.posting)!, { resumeText: c.resume_text })).toEqual(c.expect)
     }
   })
 })

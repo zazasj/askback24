@@ -4,6 +4,7 @@
  */
 import type { Evidence, Posting, PostingState } from './contract.js'
 import { CARDS } from './catalog.js'
+import { termsIn } from './terms.js'
 
 export type Issue =
   | 'empty'
@@ -21,6 +22,8 @@ export type Issue =
   | 'interviewer_quote'
   /** 경험을 적지 않은 문항인데 "제 경험·해 봤는데"처럼 지원자 경험을 지어냄 */
   | 'experience_claim'
+  /** 질문의 기술·분야 낱말이 공고 어느 칸에도(이력서에도) 없음 */
+  | 'unknown_term'
 
 /** 검수 틀(최대 75자) + 경험 한 줄(100자) + 앞말을 넉넉히 넣고도 한 번에 읽히는 길이 */
 export const TEXT_MIN = 10
@@ -93,6 +96,13 @@ function commonIssues(text: string, evidence: Evidence | undefined, posting: Pos
   return issues
 }
 
+/** 질문의 기술·분야 낱말 중 공고 모든 칸(과 이력서)에 없는 것. Python unknown_terms 와 같은 규칙 */
+export function unknownTerms(text: string, posting: Posting, resumeText = ''): string[] {
+  const source = [...Object.values(posting).filter((v): v is string => typeof v === 'string'), resumeText].join('\n')
+  const known = new Set(termsIn(source))
+  return termsIn(text).filter((t) => !known.has(t))
+}
+
 export interface FirstQuestionCheck {
   text: string
   /** 그 카드가 공고에 어떻게 적혔는지(분석 JSON) */
@@ -103,10 +113,12 @@ export interface FirstQuestionCheck {
 }
 
 /** 1차·기술 면접 질문 검사. 빈 배열이면 통과 */
-export function checkFirstQuestion(q: FirstQuestionCheck, posting: Posting): Issue[] {
+export function checkFirstQuestion(q: FirstQuestionCheck, posting: Posting, extra?: { resumeText?: string | undefined }): Issue[] {
   const issues = commonIssues(q.text, q.evidence, posting)
   if (q.state === 'absent' && PRESUPPOSE.test(q.text)) issues.push('absent_presupposition')
   if (q.has_exp === false && EXPERIENCE_CLAIM.test(q.text)) issues.push('experience_claim')
+  // 지어낸 기술·분야 낱말은 마지막에 붙인다(Python 과 같은 순서)
+  if (unknownTerms(q.text, posting, extra?.resumeText).length) issues.push('unknown_term')
   return issues
 }
 

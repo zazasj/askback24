@@ -186,7 +186,7 @@ describe('검수 틀은 검사를 모두 통과한다(대체 문장이 다시 �
           if (!hit) continue
           const type: QType = hit.type
           const text = questionTemplate(card, type, { state }).replace('{anchor}', pref === 'want' ? anchor : '')
-          expect(checkFirstQuestion({ text, state }, OO), `${card.id} ${pref} × ${state} = ${type}`).toEqual([])
+          expect(checkFirstQuestion({ text, state }, OO, { resumeText: anchor }), `${card.id} ${pref} × ${state} = ${type}`).toEqual([])
         }
       }
     }
@@ -269,5 +269,14 @@ describe('경험 한 줄이 없는 문항의 경험 표현(experience_claim)', (
 
   it('회사를 단정하는 말은 forbidden_word', () => {
     expect(hasForbiddenWord('퇴사자가 많던데 이유가 무엇인가요?')).toBe(true)
+  })
+})
+
+describe('unknown_term', () => {
+  it('다른 issue 뒤에 붙고, 이력서·경험 글에 있으면 빠진다', () => {
+    const posting = getPosting('K-MOCK-0001')!
+    const text = '제가 Kafka를 해 봤는데, 이 팀에서는 신입도 맡나요?'
+    expect(checkFirstQuestion({ text, state: 'explicit', has_exp: false }, posting)).toEqual(['experience_claim', 'unknown_term'])
+    expect(checkFirstQuestion({ text, state: 'explicit', has_exp: true }, posting, { resumeText: 'Kafka 프로젝트' })).toEqual([])
   })
 })

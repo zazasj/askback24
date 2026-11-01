@@ -32,5 +32,8 @@
   {"kind": "judgement", "name": "판정: 짧은 들은 답은 보지 않음", "basis": "네 그렇다고 답했습니다.", "state": "confirmed", "heard": ["네 그렇"], "expect": []},
   {"kind": "judgement", "name": "판정: 금지어", "basis": "팀 평균 나이가 낮다고 들었습니다.", "state": "still_unknown", "heard": [], "expect": ["forbidden_word"]},
   {"kind": "judgement", "name": "판정: 공백은 한 칸으로 줄여 센다", "basis": "가\n\n가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가", "state": "confirmed", "heard": [], "expect": []},
-  {"kind": "judgement", "name": "판정: 상태와 근거 둘 다 틀림", "basis": "", "state": "yes", "heard": [], "expect": ["bad_state", "basis_empty"]}
+  {"kind": "judgement", "name": "판정: 상태와 근거 둘 다 틀림", "basis": "", "state": "yes", "heard": [], "expect": ["bad_state", "basis_empty"]},
+  { "name": "공고 밖 기술", "posting": "K-MOCK-0001", "text": "Kafka로 주문 이벤트를 처리하는 일을 신입도 맡나요?", "state": "explicit", "has_exp": false, "expect": ["unknown_term"] },
+  { "name": "공고 안 기술은 통과", "posting": "K-MOCK-0001", "text": "Java·Spring 기반 서버 개발에서 신입은 어느 모듈부터 맡나요?", "state": "explicit", "has_exp": false, "expect": [] },
+  { "name": "이력서에 있으면 통과", "posting": "K-MOCK-0001", "text": "Kafka로 주문 이벤트를 처리하는 일을 신입도 맡나요?", "state": "explicit", "has_exp": false, "resume_text": "Kafka 메시지 처리 프로젝트", "expect": [] }
 ] }

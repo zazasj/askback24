@@ -4,6 +4,8 @@ import json
 import re
 from pathlib import Path
 
+from .terms import terms_in
+
 TEXT_MIN = 10
 TEXT_MAX = 260
 
@@ -67,7 +69,14 @@ def _common_issues(t: str, posting: dict, card_labels: set[str]) -> list[str]:
     return issues
 
 
-def check_first(text: str, state: str, has_exp: bool, posting: dict, card_labels: set[str]) -> list[str]:
+def unknown_terms(text: str, posting: dict, resume_text: str = "") -> list[str]:
+    """질문의 기술·분야 낱말 중 공고 모든 칸(과 이력서)에 없는 것. TS unknownTerms 와 같은 규칙."""
+    source = "\n".join([*(v for v in posting.values() if isinstance(v, str)), resume_text])
+    known = set(terms_in(source))
+    return [t for t in terms_in(text) if t not in known]
+
+
+def check_first(text: str, state: str, has_exp: bool, posting: dict, card_labels: set[str], *, resume_text: str = "") -> list[str]:
     t = text.strip()
     issues = _common_issues(t, posting, card_labels)
     if issues == ["empty"]:
@@ -76,6 +85,9 @@ def check_first(text: str, state: str, has_exp: bool, posting: dict, card_labels
         issues.append("absent_presupposition")
     if not has_exp and EXPERIENCE_CLAIM.search(t):
         issues.append("experience_claim")
+    # 지어낸 기술·분야 낱말은 마지막에 붙인다(TS 와 같은 순서)
+    if unknown_terms(t, posting, resume_text):
+        issues.append("unknown_term")
     return issues
 
 

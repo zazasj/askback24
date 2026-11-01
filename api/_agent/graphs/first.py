@@ -19,7 +19,11 @@ class FirstAgent:
             system=SYSTEM,
             key_field="card_id",
             key_of=lambda i: i.card_id,
-            check=lambda req, i, text: check_first(text, i.state, i.has_exp, req.posting, labels),
+            check=lambda req, i, text: check_first(
+                text, i.state, i.has_exp, req.posting, labels,
+                # 경험 한 줄을 살려 쓴 문항은 지원자 자신의 낱말이라 지어낸 낱말이 아니다
+                resume_text=req.experience if i.has_exp else "",
+            ),
             user_message=user_message,
         )
         self.loop = LoopAgent(spec, llm, clock)

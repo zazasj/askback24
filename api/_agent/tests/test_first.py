@@ -193,6 +193,12 @@ def test_escape_keeps_plain_angle_brackets_but_not_tags():
     assert "c < d" in u
 
 
+def test_system_prompt_uses_posting_content():
+    assert "- 공고에 적힌 기술, 서비스 분야, 회사 소개를 질문에 녹여 이 회사에만 맞는 질문으로 씁니다. 공고에 없는 기술이나 분야는 쓰지 않습니다." in SYSTEM
+    assert "- 그래도 template_text가 묻는 것은 바꾸지 않습니다. 신입이 묻기에 자연스러운 수준으로 씁니다." in SYSTEM
+    assert "그 밖의 인용은 하지 않습니다" in SYSTEM
+
+
 def test_system_prompt_states_limits_and_codes():
     for w in ("10", "260", "pref", "want", "기대돼요", "avoid", "걱정돼요", "unsure", "모르겠어요",
               "conflict", "차이 확인", "opportunity", "기회 확인", "depth", "깊이 확인", "prevent", "미리 확인", "explore", "탐색"):
