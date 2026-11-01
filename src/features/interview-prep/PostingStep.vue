@@ -522,7 +522,8 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
               <span class="source" :class="s.source === '실제' ? 'is-real' : 'is-mock'">{{ s.source }}</span>
               <span class="signal-body">
                 <span class="signal-text">{{ s.text }}</span>
-                <span class="signal-from">{{ s.source_name }} · 값은 예시</span>
+                <!-- 업종 기준값은 회사와 상관없는 실제 통계라 "값은 예시"를 붙이지 않는다 -->
+                <span class="signal-from">{{ s.source_name }} · {{ s.kind === 'industry_baseline' ? '실제 통계' : '값은 예시' }}</span>
                 <span v-if="s.caveat" class="signal-from">{{ s.caveat }}</span>
                 <!-- 신호를 그대로 말하지 않고 돌려 묻는 한 줄(H1-04 나) -->
                 <span v-if="s.ask" class="signal-ask">
@@ -533,7 +534,7 @@ const bubbleAfterLine = (field: string, line: PostingLine): boolean => bubbleLin
             </li>
           </ul>
           <p class="signal-help">
-            "실제"는 실제 서비스에서 공공데이터로 채울 항목이에요. 시연 회사는 가상이라 값은 예시예요. "모의"는 시연용으로 만든 항목이에요.
+            "실제"는 공공데이터에서 온 항목이에요. 업종 기준값은 실제 통계이고, 회사에 붙는 값은 시연 회사가 가상이라 예시예요. "모의"는 시연용으로 만든 항목이에요.
           </p>
           <p class="signal-help">참고 정보는 면접에서 그대로 말하지 말고, 항목마다 적은 질문처럼 돌려 물어보세요.</p>
         </section>

@@ -100,8 +100,11 @@ def build_signal_facts(posting: dict, data: CompanyData) -> list[SignalFact]:
     if found:
         row, nation = found
         t = tpl["industry_baseline"]
+        net = int(row["net"])
+        # 회사 숫자로 읽히지 않게 사업장 전체의 들고 남으로 말한다(부호를 말로 바꿈).
+        flow = _fill(t["flow_more_out"], n=-net) if net < 0 else _fill(t["flow_more_in"], n=net) if net > 0 else t["flow_even"]
         text = _fill(t["text_nation"] if nation else t["text"],
-                     rate=f"{float(row['loss_rate']) * 100:.1f}", net=int(row["net"]))
+                     rate=f"{float(row['loss_rate']) * 100:.1f}", flow=flow)
         out.append(_fact("industry_baseline", text, "실제", t["caveat"]))
 
     t = tpl["small_giant"]
