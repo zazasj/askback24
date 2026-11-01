@@ -67,7 +67,19 @@ def test_eis_row_found():
     d = CompanyData(pension=pf(members=5), pension_source="실제", eis=eis([row()]), sido="11")
     f = build_signal_facts(POSTING, d)[0]
     assert f.kind == "industry_baseline" and f.source == "실제"
-    assert "2.1%" in f.text and "-3" in f.text and "전국 평균" not in f.text
+    assert f.text == "같은 업종·규모 사업장 전체에서 한 달에 평균 2.1%가 나가고, 들어온 사람보다 나간 사람이 3명 많아요"
+
+
+def test_eis_flow_wording_follows_net_sign():
+    # 순증 숫자를 "-68명"처럼 그대로 쓰면 회사 숫자로 읽혀 들고 남으로 말한다.
+    def text(net):
+        d = CompanyData(ind2="58", eis=eis([row(net=net)]), sido="11")
+        return build_signal_facts(POSTING, d)[0].text
+
+    assert text(-68).endswith("들어온 사람보다 나간 사람이 68명 많아요")
+    assert text(46).endswith("나간 사람보다 들어온 사람이 46명 많아요")
+    assert text(0).endswith("들어온 사람과 나간 사람이 비슷해요")
+    assert "-" not in text(-68)
 
 
 def test_eis_uses_nation_when_small_cell():

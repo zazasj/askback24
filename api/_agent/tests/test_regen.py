@@ -239,3 +239,11 @@ def test_pairs_same_text_first():
     text = report_of([line("A"), line("B")], [sig("reposting", "B"), sig("reposting", "C")])
     assert "- 바뀜: reposting / [모의] A / ask: 없음 → [모의] C" in text
     assert text.count("- 바뀜:") == 1 and "빠짐:" not in text.split("### 신호 줄")[1].split("###")[0] and "더해짐:" not in text
+
+
+def test_industry_baseline_shape_old_and_new():
+    src = "고용보험 통계(EIS)"
+    new = "같은 업종·규모 사업장 전체에서 한 달에 평균 3.1%가 나가고, 들어온 사람보다 나간 사람이 68명 많아요"
+    old = "같은 업종·규모 사업장의 월 평균 상실률은 3.1%, 순증은 -68명이에요"
+    assert regen.current_kind({"text": new, "source_name": src}) == "industry_baseline"
+    assert regen.current_kind({"text": old, "source_name": src}) == "industry_baseline"

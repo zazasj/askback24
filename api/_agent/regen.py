@@ -23,7 +23,7 @@ _SHAPES = {
     "reposting": ("고용24 공고 이력", re.compile(r"^같은 직무 공고가 \d+개월 안에 \d+번 등록됐어요$")),
     "pension_flow": ("국민연금 사업장 가입자 현황", re.compile(r"^최근 12개월 퇴사 인원이 입사 인원보다 많아요$")),
     "small_giant": ("고용24 강소기업 정보", re.compile(r"^강소기업 명단에 '.+'")),
-    "industry_baseline": ("고용보험 통계(EIS)", re.compile(r"월 평균 상실률은 .+%, 순증은 .+명이에요$")),
+    "industry_baseline": ("고용보험 통계(EIS)", re.compile(r"(월 평균 상실률은 .+%, 순증은 .+명이에요|한 달에 평균 .+%가 나가고, .+요)$")),
 }
 _WAGE_SOURCE = "임금체불 사업주 명단"
 _KINDS = ("reposting", "pension_flow", "industry_baseline", "small_giant", "wage_arrears")
