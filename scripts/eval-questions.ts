@@ -47,6 +47,7 @@ const { module: remote } = await runnerImport<typeof Remote>(at('shared/provider
 
 const data = q.loadEvalData(at('evals/data/postings'), runDir)
 const ids = data.ids.slice(0, limit)
+const resumes = q.loadPersonaResumes(at('evals/personas'))
 const gold = q.readGoldJudgements(at('evals/data/gold.json'))
 if (gold === null) console.log('정답표(evals/data/gold.json)가 없어 판정은 건너뜁니다')
 if (data.skipped) console.log(`분석 파일이 없는 공고 ${data.skipped}건은 건너뜁니다`)
@@ -93,7 +94,7 @@ const rows = await q.withServer(startServer, ready, async () => {
   const provider = remote.createRemoteProvider({ endpoint: `${BASE}/api/ai`, key })
   const out: Questions.CaseRow[] = []
   // 시간 지표가 실제와 같게 사례를 하나씩 돈다
-  for (const c of q.buildCases(ids)) out.push(await q.runCase(c, { provider, lookup: data.lookup, presets: catalog.PRESETS }))
+  for (const c of q.buildCases(ids)) out.push(await q.runCase(c, { provider, lookup: data.lookup, presets: catalog.PRESETS, resumes }))
   const judgements = gold ? await q.runJudgements(gold, { provider, lookup: data.lookup }) : null
   return { cases: out, judgements }
 })

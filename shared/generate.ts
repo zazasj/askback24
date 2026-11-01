@@ -1,7 +1,7 @@
 /**
  * 질문 생성 핵심(서버 함수와 화면의 가짜 응답 모드·대체 결과가 같이 쓴다).
  * 규칙(pickTop5)으로 고른 순서 → 공급자가 문장 → 검사(validate) → 탈락·지연·오류분은 검수 문장으로 대체.
- * 경험 한 줄은 공급자에게 넘길 뿐 여기서 저장·기록하지 않는다(보고에는 개수만).
+ * 경험 한 줄·이력서는 공급자에게 넘길 뿐 여기서 저장·기록하지 않는다(보고에는 개수만).
  */
 import type {
   CardPick,
@@ -23,6 +23,7 @@ import type {
 } from './contract.js'
 import { getAnalysis, getCard, getPosting } from './catalog.js'
 import { finalPrefOf, rankFinal, ruleJudgements, summarize, type FinalRanked, type Judged } from './finalRules.js'
+import { citableRanks, cleanResume, resumeText } from './resume.js'
 import { pickTop5, type RankedPick } from './rules.js'
 import { checkFinalQuestion, checkFirstQuestion, hasForbiddenWord, quotesHeard, type Issue } from './validate.js'
 import type { Draft, DraftItem, FinalDraft, FinalDraftItem, FirstDraftInput, JudgeInput, JudgeItem, Judgement, LlmProvider } from './providers/types.js'
@@ -169,7 +170,13 @@ export async function generateFirst(req: FirstQuestionsRequest, options: Generat
   const picks = cleanPicks(req.picks)
   const experience = cleanExperience(req.experience)
   const ranked = pickTop5({ picks, experience }, analysis)
-  const items = ranked.map((r, i) => toDraftItem(r, i + 1))
+  const resume = cleanResume(req.resume)
+  const citable = citableRanks(ranked, !!resume)
+  const items = ranked.map((r, i) => {
+    const item = toDraftItem(r, i + 1)
+    if (resume) item.can_cite_resume = citable.has(i + 1)
+    return item
+  })
 
   let drafts: Draft[] | null = null
   let failure: GenerateReport['failure']
@@ -179,6 +186,7 @@ export async function generateFirst(req: FirstQuestionsRequest, options: Generat
       mode: 'first',
       posting,
       experience: items.some((i) => i.has_exp) ? experience : '',
+      ...(resume ? { resume } : {}),
       items,
     }
     try {
@@ -196,8 +204,8 @@ export async function generateFirst(req: FirstQuestionsRequest, options: Generat
       const text = draft.text.replace(/\s+/g, ' ').trim()
       // 근거는 늘 우리 규칙의 것(API-SPEC 18행). AI가 준 evidence는 읽지 않는다 — 다르면 "근거 보기"·basis·"공고에 없음"이 어긋남(A3-r1-03)
       const found = checkFirstQuestion({ text, state: r.state, has_exp: r.has_exp, ...(r.evidence ? { evidence: r.evidence } : {}) }, posting, {
-        // 경험 한 줄을 살려 쓴 문항은 지원자 자신의 낱말이라 지어낸 낱말이 아니다
-        resumeText: r.has_exp ? experience : '',
+        // 경험 한 줄·이력서를 붙일 수 있는 문항만 지원자 자신의 낱말이라 지어낸 낱말이 아니다(둘은 더한다)
+        resumeText: [r.has_exp ? experience : '', resume && citable.has(rank) ? resumeText(resume) : ''].filter(Boolean).join('\n'),
       })
       if (!found.length) return toQuestion(r, rank, text, 'ai')
       issues.push(...found)

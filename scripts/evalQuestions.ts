@@ -13,8 +13,10 @@ import type {
   Posting,
   PostingAnalysis,
   Pref,
+  ResumeForAi,
 } from '../shared/contract.ts'
 import { generateFinal, generateFirst, judgeInputFor, PROVIDER_TIMEOUT_MS, type GenerateOptions, type PostingLookup } from '../shared/generate.ts'
+import { cleanResume } from '../shared/resume.ts'
 import type { FinalDraftInput, FirstDraftInput, LlmProvider } from '../shared/providers/types.ts'
 
 export type Persona = 'A' | 'B'
@@ -91,6 +93,8 @@ export interface RunDeps {
   provider: LlmProvider
   lookup: GenerateOptions['lookup']
   presets: Record<Persona, Preset>
+  /** 구직자별 이력서(허용 칸). 없으면 이력서 없이 돌린다 */
+  resumes?: Partial<Record<Persona, ResumeForAi>>
 }
 
 export async function runCase(c: EvalCase, deps: RunDeps): Promise<CaseRow> {
@@ -99,7 +103,11 @@ export async function runCase(c: EvalCase, deps: RunDeps): Promise<CaseRow> {
   const provider = recordingProvider(deps.provider, sink)
   const options = { provider, ...(deps.lookup ? { lookup: deps.lookup } : {}) }
 
-  const first = await generateFirst({ mode: 'first', wantedAuthNo: c.wantedAuthNo, picks: preset.picks, experience: preset.experience }, options)
+  const resume = deps.resumes?.[c.persona]
+  const first = await generateFirst(
+    { mode: 'first', wantedAuthNo: c.wantedAuthNo, picks: preset.picks, experience: preset.experience, ...(resume ? { resume } : {}) },
+    options,
+  )
   const first_input = sink.first ?? null
   const final = await generateFinal(
     { mode: 'final', wantedAuthNo: c.wantedAuthNo, picks: preset.picks, review: syntheticReview(first) },
@@ -239,6 +247,17 @@ export function loadEvalData(postingsDir: string, runDir: string): EvalData {
     ids.push(posting.wantedAuthNo)
   }
   return { ids, skipped, lookup: { posting: (id) => postings.get(id), analysis: (id) => analyses.get(id) } }
+}
+
+/** evals/personas/{A,B}.json(허용 칸 모양)을 읽는다. 파일이 없거나 비면 그 구직자는 이력서 없이 */
+export function loadPersonaResumes(personasDir: string): Partial<Record<Persona, ResumeForAi>> {
+  const out: Partial<Record<Persona, ResumeForAi>> = {}
+  for (const p of ['A', 'B'] as const) {
+    const path = join(personasDir, `${p}.json`)
+    const resume = existsSync(path) ? cleanResume(readJson<unknown>(path)) : undefined
+    if (resume) out[p] = resume
+  }
+  return out
 }
 
 export function writeJsonl(path: string, rows: readonly unknown[]): void {

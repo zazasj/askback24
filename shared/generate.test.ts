@@ -5,6 +5,8 @@ import { GenerateError, generateFinal, generateFirst, judgeInputFor, type Genera
 import { createMockProvider, experienceSentence } from './providers/mock'
 import type { Draft, FirstDraftInput, JudgeInput, LlmProvider } from './providers/types'
 import { pickTop5 } from './rules'
+import persona from '../data/persona.json'
+import { resumeForAi } from './resume'
 import { ANALYSES, getAnalysis, getCard, getPosting, REVIEW_EXAMPLE } from './catalog'
 
 const OO = 'K-MOCK-0001'
@@ -393,5 +395,71 @@ describe('평가 하네스: lookup · judgeInputFor', () => {
     }))
     expect(sent?.items.length).toBe(2)
     expect(judgeInputFor(getPosting(OO)!, items)).toEqual(sent)
+  })
+})
+
+describe('이력서 허용 목록 → 공급자 입력과 문항별 허용 글', () => {
+  const resume = resumeForAi(persona)!
+  const captured = () => {
+    const seen: FirstDraftInput[] = []
+    return { seen, spy: provider(async (input) => (seen.push(input), [])) }
+  }
+
+  it('resume을 주면 공급자 입력에 싣고 can_cite_resume은 경험·depth·opportunity 위 2개만 true', async () => {
+    const { seen, spy } = captured()
+    await generateFirst({ ...reqA(), resume }, { provider: spy })
+    expect(seen[0]?.resume).toEqual(resume)
+    // ORDER_A_OO 유형: conflict, conflict, opportunity, opportunity, depth(경험 포함)
+    expect(seen[0]?.items.map((i) => i.can_cite_resume)).toEqual([false, false, true, true, true])
+  })
+
+  it('resume이 없으면 입력에 resume 키도 can_cite_resume 키도 없다', async () => {
+    const { seen, spy } = captured()
+    await generateFirst(reqA(), { provider: spy })
+    expect('resume' in seen[0]!).toBe(false)
+    expect(seen[0]?.items.every((i) => !('can_cite_resume' in i))).toBe(true)
+  })
+
+  it('허용 밖 칸은 서버가 다시 걸러 공급자에게 넘기지 않는다', async () => {
+    const { seen, spy } = captured()
+    const dirty = { ...resume, name: '김00', phone: '010-0000-0000', military: '군필', self_intro: [{ title: '지원 동기', body: 'x' }] }
+    await generateFirst({ ...reqA(), resume: dirty as typeof resume }, { provider: spy })
+    const text = JSON.stringify(seen[0])
+    for (const banned of ['김00', '010-0000-0000', '군필', '지원 동기']) expect(text).not.toContain(banned)
+  })
+
+  it('이력서는 보고(GenerateReport)에 싣지 않는다', async () => {
+    const reports: GenerateReport[] = []
+    await generateFirst({ ...reqA(), resume }, { provider: createMockProvider(), onReport: (r) => reports.push(r) })
+    expect(JSON.stringify(reports)).not.toContain('Docker')
+    expect(JSON.stringify(reports)).not.toContain('정보처리기사')
+  })
+
+  // 공고에 없고 이력서·경험에만 있는 낱말: docker(이력서), fastapi(경험·이력서)
+  const say = (byCard: Record<string, string>) =>
+    provider(async (input) => input.items.map((i) => ({ card_id: i.card_id, text: byCard[i.card_id] ?? i.template_text })))
+  const sourceOf = (res: Awaited<ReturnType<typeof generateFirst>>, card: string) => res.questions.find((q) => q.card_id === card)?.source
+
+  it('has_exp: false · can_cite_resume: false 문항은 경험·이력서 낱말이 허용 글이 아니다 → unknown_term → 검수 문장', async () => {
+    const text = 'Docker로 서비스를 올리는 일이나 FastAPI를 쓰는 일이 이 자리에 있는지 알려 주실 수 있나요?'
+    const reports: GenerateReport[] = []
+    const res = await generateFirst({ ...reqA(), resume }, { provider: say({ BE15: text }), onReport: (r) => reports.push(r) })
+    expect(sourceOf(res, 'BE15')).toBe('template')
+    expect(reports[0]?.issues).toContain('unknown_term')
+  })
+
+  it('can_cite_resume: true 문항은 이력서 낱말을 쓸 수 있다', async () => {
+    const text = 'Docker로 서비스를 올리는 일이 이 자리에서도 이어지는지 알려 주실 수 있나요?'
+    const withResume = await generateFirst({ ...reqA(), resume }, { provider: say({ BE02: text }) })
+    expect(sourceOf(withResume, 'BE02')).toBe('ai')
+    // 이력서를 안 주면 같은 문장이 걸린다
+    const without = await generateFirst(reqA(), { provider: say({ BE02: text }) })
+    expect(sourceOf(without, 'BE02')).toBe('template')
+  })
+
+  it('경험 문항은 경험 한 줄 낱말에 이력서 낱말을 더해 허용한다(대체 아님)', async () => {
+    const text = 'FastAPI로 API를 만든 일과 Docker로 올린 일을 이 자리의 업무와 어떻게 이어 갈 수 있을까요?'
+    const res = await generateFirst({ ...reqA(), resume }, { provider: say({ BE01: text }) })
+    expect(sourceOf(res, 'BE01')).toBe('ai')
   })
 })

@@ -7,7 +7,7 @@ import { ANALYSES, PRESETS, POSTINGS } from '../shared/catalog.ts'
 import { generateFirst } from '../shared/generate.ts'
 import { createMockProvider } from '../shared/providers/mock.ts'
 import type { FinalDraftInput, FirstDraftInput, LlmProvider } from '../shared/providers/types.ts'
-import { buildCases, loadEvalData, readGoldJudgements, recordingProvider, runCase, runJudgements, syntheticReview, withServer, writeJsonl } from './evalQuestions.ts'
+import { buildCases, loadEvalData, loadPersonaResumes, readGoldJudgements, recordingProvider, runCase, runJudgements, syntheticReview, withServer, writeJsonl } from './evalQuestions.ts'
 
 const OO = 'K-MOCK-0001'
 
@@ -47,6 +47,28 @@ const lookup = {
   posting: (id: string) => POSTINGS.find((p) => p.wantedAuthNo === id),
   analysis: (id: string) => ANALYSES.find((a) => a.wantedAuthNo === id),
 }
+
+describe('이력서(구직자 A·B)', () => {
+  const resumes = loadPersonaResumes(join(process.cwd(), 'evals/personas'))
+
+  it('evals/personas/{A,B}.json 이 허용 칸 모양 그대로 읽힌다', () => {
+    expect(Object.keys(resumes).sort()).toEqual(['A', 'B'])
+    expect(Object.keys(resumes.A!).sort()).toEqual(['career', 'certificates', 'projects', 'skills', 'trainings'])
+  })
+
+  it('runCase: 1차 요청에 구직자별 이력서를 싣는다(first_input.resume)', async () => {
+    for (const persona of ['A', 'B'] as const) {
+      const row = await runCase({ wantedAuthNo: OO, persona }, { provider: createMockProvider(), lookup, presets: PRESETS, resumes })
+      expect(row.first_input?.resume).toEqual(resumes[persona])
+      expect(row.first_input?.items.some((i) => i.can_cite_resume)).toBe(true)
+    }
+  })
+
+  it('resumes 를 안 주면 이력서 키가 없다', async () => {
+    const row = await runCase({ wantedAuthNo: OO, persona: 'A' }, { provider: createMockProvider(), lookup, presets: PRESETS })
+    expect(row.first_input && 'resume' in row.first_input).toBe(false)
+  })
+})
 
 describe('runCase', () => {
   it('가짜 공급자로 1차·최종을 돌려 CaseRow를 만든다', async () => {
