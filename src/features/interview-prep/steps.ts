@@ -13,6 +13,12 @@ export const MODE_LABELS: Record<Mode, string> = {
   final: '최종 면접·처우 협의',
 }
 
+/** 단계 디자인 시안 B·C의 단계 머리띠(PLAN-4 T6, COPY-4 A4-76). 이름은 "준비할 면접" 이름 + " 준비" */
+export const STAGE_BANDS: Record<Mode, { name: string; purpose: string }> = {
+  first: { name: `${MODE_LABELS.first} 준비`, purpose: '맡게 될 업무를 면접관에게 묻는 질문' },
+  final: { name: `${MODE_LABELS.final} 준비`, purpose: '1차에서 남은 것과 근무 조건을 확인하는 질문' },
+}
+
 /** ① 다음 버튼 */
 export const NEXT_FROM_POSTING: Record<Mode, string> = {
   first: '내 기대·걱정 고르기',

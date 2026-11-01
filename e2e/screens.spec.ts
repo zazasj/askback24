@@ -451,3 +451,49 @@ test.describe('SCREENS 6-s1-tour', () => {
     })
   }
 })
+
+// ── 4차 단계 디자인 시안(PLAN-4 T6, 2026-11-01): 1차 ③ · 최종 ② · 최종 ③ × 지금·A·B·C → 7-look-<화면>-<시안>-<프로젝트>.png 24장 ──
+// 첫 화면(데스크톱은 맨 위, 휴대폰은 단계를 옮긴 직후 그대로)을 찍는다. 시안은 주소 ?look= 로 고르고(같은 탭에 남음),
+// ③에서는 1번 질문 위끝 y를 annotation(look-q1-top)으로 남긴다(COPY-4 A4-76: 지금 최종 ③ 1440×900 y≈790)
+const LOOKS = ['now', 'a', 'b', 'c'] as const
+const LOOK_SCREENS: ReadonlyArray<{ name: string; measure: boolean; setup: (page: Page) => Promise<void> }> = [
+  { name: 'first-3', measure: true, setup: async (page) => void (await makeFirstQuestions(page, 'oo')) },
+  {
+    name: 'final-2',
+    measure: false,
+    setup: async (page) => {
+      await makeFirstQuestions(page, 'oo')
+      await page.getByRole('button', { name: '면접 다녀왔어요' }).click()
+      await expectCurrentStep(page, '1차 면접 정리')
+      await fillReviewR04(page)
+    },
+  },
+  { name: 'final-3', measure: true, setup: async (page) => void (await makeFinalQuestions(page)) },
+]
+
+for (const screen of LOOK_SCREENS) {
+  for (const look of LOOKS) {
+    const name = `7-look-${screen.name}-${look}`
+    test(`SCREENS ${name}`, async ({ page, isMobile }, testInfo) => {
+      try {
+        await page.goto(look === 'now' ? '/mypage/applications' : `/mypage/applications?look=${look}`)
+        await screen.setup(page)
+        await expect(page.locator('.s4'), '고른 시안').toHaveAttribute('data-look', look)
+        await firstView(page, isMobile)
+        if (screen.measure) {
+          const box = await questionItems(page).first().boundingBox()
+          const scrollY = await page.evaluate(() => window.scrollY)
+          const bandEl = page.locator('#prep-stage-band')
+          const bandBox = (await bandEl.count()) ? await bandEl.boundingBox() : null
+          testInfo.annotations.push({
+            type: 'look-q1-top',
+            description: `${name}-${testInfo.project.name}: 1번 질문 위끝 화면 y=${box ? Math.round(box.y) : '?'} · 페이지 y=${box ? Math.round(box.y + scrollY) : '?'} · 머리띠 높이 ${bandBox ? Math.round(bandBox.height) : 0}px`,
+          })
+        }
+      } catch (e) {
+        testInfo.annotations.push({ type: 'screen-setup-failed', description: String(e).slice(0, 800) })
+      }
+      await capture3(page, testInfo, name, 'view')
+    })
+  }
+}

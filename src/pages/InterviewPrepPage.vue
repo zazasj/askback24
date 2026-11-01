@@ -17,6 +17,7 @@ import { usePostingIntroStore } from '@/stores/postingIntro'
 import { usePrepStore } from '@/stores/prep'
 import { useQuestionsStore } from '@/stores/questions'
 import { useReviewStore } from '@/stores/review'
+import { hasStageBand, useStageLookStore } from '@/stores/stageLook'
 import CardPickStep from '@/features/interview-prep/CardPickStep.vue'
 import FinalResultStep from '@/features/interview-prep/FinalResultStep.vue'
 import FirstResultStep from '@/features/interview-prep/FirstResultStep.vue'
@@ -24,6 +25,7 @@ import PostingLoading from '@/features/interview-prep/PostingLoading.vue'
 import PostingStep from '@/features/interview-prep/PostingStep.vue'
 import PrepHeader from '@/features/interview-prep/PrepHeader.vue'
 import ReviewStep from '@/features/interview-prep/ReviewStep.vue'
+import StageBand from '@/features/interview-prep/StageBand.vue'
 import StepNav from '@/features/interview-prep/StepNav.vue'
 import { loadingQuotes } from '@/features/interview-prep/highlight'
 import { POSTING_FIELD_ORDER } from '@/features/interview-prep/postingRows'
@@ -36,6 +38,8 @@ const prep = usePrepStore()
 const questions = useQuestionsStore()
 const review = useReviewStore()
 const intro = usePostingIntroStore()
+/** 단계 디자인 시안(PLAN-4 T6): .s4 의 data-stage·data-look 으로 tokens.css 가 최종 단계 색을 덮어쓴다 */
+const looks = useStageLookStore()
 
 const application = computed(() => demo.findApplication(String(route.params.applyId ?? '')))
 const posting = computed(() => (application.value ? getPosting(application.value.wantedAuthNo) : undefined))
@@ -211,7 +215,7 @@ onMounted(() => {
 
 <template>
   <NotFoundContent v-if="!application || !posting" detail="이 지원 건을 찾을 수 없어요. 지원 내역에서 다시 골라 주세요." />
-  <div v-else class="s4">
+  <div v-else class="s4" :data-stage="mode" :data-look="looks.look">
     <PrepHeader
       :corp-nm="posting.corpNm"
       :wanted-title="posting.wantedTitle"
@@ -220,6 +224,7 @@ onMounted(() => {
       @update:mode="changeMode"
     />
 
+    <StageBand v-if="hasStageBand(looks.look)" class="band" :mode="mode" :slim="looks.look === 'c'" />
     <StepNav class="steps" :labels="labels" :current="step" />
 
     <PostingLoading v-if="step === 1 && showLoading" :quotes="introQuotes" @done="introDone" />
@@ -267,9 +272,26 @@ onMounted(() => {
   margin: 1.6rem 0 1.6rem;
 }
 
+/* 단계 머리띠(시안 B·C)는 단계 표시에 붙여 둔다 */
+.band {
+  margin-top: 1.2rem;
+}
+
+.band + .steps {
+  margin-top: 0.8rem;
+}
+
 @media (max-width: 767px) {
   .steps {
     margin: 1.2rem 0 1.6rem;
+  }
+
+  .band {
+    margin-top: 1rem;
+  }
+
+  .band + .steps {
+    margin-top: 0.6rem;
   }
 }
 </style>

@@ -409,8 +409,9 @@ const STANDARD_CONTRACT_URL = 'https://www.moel.go.kr/policy/policydata/view.do?
   --stat-color: var(--krds-light-color-border-success);
 }
 
+/* 단계 디자인 시안 A·C가 최종 화면 강조색을 바꿔도 "기대와 다름"은 보라 그대로(tokens.css) */
 .is-mismatch {
-  --stat-color: var(--rq-accent);
+  --stat-color: var(--rq-state-mismatch);
 }
 
 .is-still_unknown {
