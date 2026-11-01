@@ -1,19 +1,24 @@
 """시연 공고 분석을 파이프라인으로 다시 만들어 후보와 비교 보고서를 쓴다(설계 §2 ①).
-기본은 review/ 에만 쓰고, --apply 일 때만 data/ 를 덮는다. 사람이 검수한 글은 후보에서도 지킨다."""
+기본은 review/ 에만 쓴다. 사람이 보고서를 보고 후보 파일을 고친 뒤 --apply-candidates 로 그 파일을 그대로 data/ 에 옮긴다
+(LLM 을 다시 부르지 않는다). 사람이 검수한 글은 후보에서도 지킨다."""
 import argparse
 import asyncio
+import hashlib
 import json
 import os
 import re
 from collections.abc import Mapping
+from datetime import date
 from pathlib import Path
 
 import httpx
+from pydantic import ValidationError
 
+from .analysis.cards import check_card
 from .errors import ApiError
 from .graphs.analysis import AnalysisAgent
 from .llm import Llm, LlmError, llm_from_env
-from .schemas import AnalysisRequest, AnalysisResponse, Signal
+from .schemas import AnalysisRequest, AnalysisResponse, OfferBlank, Signal
 
 ROOT = Path(__file__).resolve().parents[2]
 JOB = "backend"
@@ -91,7 +96,9 @@ def _by_id(cards: list[dict]) -> dict[str, dict]:
 
 def report_header() -> str:
     return ("# 공고 분석 다시 만들기 비교 보고서\n\n"
-            "후보는 `data/`를 바꾸지 않았어요. 적용 전 `npm run check`를 돌리고, 깨지는 e2e는 SPEC-ISSUES에 적어요.\n")
+            "후보는 `data/`를 바꾸지 않았어요. 틀린 판정은 후보 파일(`analysis/<공고>.json`·`signals.json`)에서 고치고, "
+            "`npm run analysis:regen -- --apply-candidates analysis|signals|all`로 그 파일을 그대로 적용해요. "
+            "적용 전 `npm run check`를 돌리고, 깨지는 e2e는 SPEC-ISSUES에 적어요.\n")
 
 
 def _desc(line: dict) -> str:
@@ -194,6 +201,129 @@ def load_env(root: Path) -> dict[str, str]:
     return env
 
 
+def fingerprint(value) -> str | None:
+    # 후보를 만든 때의 data/ 값. 적용할 때 달라졌으면 그 사이 사람이 고친 것을 덮게 된다.
+    if value is None:
+        return None
+    return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+
+
+APPLY_PARTS = ("analysis", "signals", "all")
+_MISSING = object()
+
+
+def validate_candidate(wanted: str, cand, posting: dict, book_ids: set[str]) -> list[str]:
+    """사람이 고친 후보도 파이프라인 판정과 같은 검사(check_card)를 지나야 data/ 에 들어간다."""
+    if not isinstance(cand, dict):
+        return ["후보 파일 모양이 틀렸어요"]
+    errs = [] if cand.get("wantedAuthNo") == wanted else ["wantedAuthNo 가 파일 이름과 달라요"]
+    cards = cand.get("cards")
+    if not isinstance(cards, list):
+        return errs + ["cards 가 목록이 아니에요"]
+    seen: set = set()
+    for i, c in enumerate(cards):
+        if not isinstance(c, dict):
+            errs.append(f"cards[{i}]: 모양이 틀렸어요")
+            continue
+        cid = c.get("card_id")
+        if cid in seen:
+            errs.append(f"{cid}: 같은 카드가 두 번 있어요")
+        seen.add(cid)
+        if c.get("state") == "absent":
+            # shared/rules.ts 는 파일에 없는 카드를 absent 로 본다.
+            errs.append(f"{cid}: absent 카드는 파일에서 지워요")
+        errs += [f"{cid}: {x}" for x in check_card(c, book_ids, posting)]
+        q = c.get("questions")
+        if q is not None and not (isinstance(q, dict) and q and all(isinstance(v, str) and v.strip() for v in q.values())):
+            errs.append(f"{cid}: questions 모양이 틀렸어요")
+    blanks = cand.get("blanks")
+    if not isinstance(blanks, list):
+        errs.append("blanks 가 목록이 아니에요")
+    else:
+        for i, b in enumerate(blanks):
+            try:
+                OfferBlank.model_validate(b)
+            except ValidationError:
+                errs.append(f"blanks[{i}]: 모양이 틀렸어요")
+    return errs
+
+
+def validate_signal_lines(lines) -> list[str]:
+    if not isinstance(lines, list):
+        return ["목록이 아니에요"]
+    errs = []
+    for i, line in enumerate(lines):
+        ok = isinstance(line, dict) and line.get("source") in ("실제", "모의") \
+            and all(isinstance(line.get(k), str) and line[k].strip() for k in ("text", "source_name")) \
+            and (line.get("ask") is None or isinstance(line.get("ask"), str))
+        if not ok:
+            errs.append(f"[{i}]: text·source·source_name 모양이 틀렸어요")
+    return errs
+
+
+def apply_candidates(root: Path, out_dir: Path, part: str, only: str | None, ignore_base: bool, today: str) -> int:
+    """검토한 후보 파일을 그대로 data/ 에 쓴다. 하나라도 걸리면 아무것도 쓰지 않는다."""
+    base = _read(out_dir / "base.json", None)
+    errors: list[str] = []
+    if not ignore_base and not isinstance(base, dict):
+        errors.append("후보를 만든 때의 기준(base.json)이 없어요. 다시 만들거나, data/ 가 그 뒤 바뀌지 않은 것을 확인하고 --ignore-base 를 붙여요")
+
+    def stale(kind: str, w: str, current) -> list[str]:
+        if ignore_base or not isinstance(base, dict):
+            return []
+        want = base.get(kind, {}).get(w, _MISSING)
+        if want is _MISSING:
+            return [f"{w}: 이 공고 {kind} 후보의 기준이 base.json 에 없어요"]
+        if want != fingerprint(current):
+            return [f"{w}: 후보를 만든 뒤 data/ 의 {kind} 가 바뀌었어요. 바뀐 것을 후보에 옮긴 뒤 --ignore-base 를 붙이거나 다시 만들어요"]
+        return []
+
+    writes: list[tuple[Path, object]] = []
+    if part in ("analysis", "all"):
+        postings = {p["wantedAuthNo"]: p for p in _read(root / "data/postings.json", [])}
+        book_ids = {c["id"] for c in _read(root / f"data/cards.{JOB}.json", {}).get("cards", [])}
+        files = sorted((out_dir / "analysis").glob("*.json"))
+        files = [f for f in files if not only or f.stem == only]
+        if not files:
+            errors.append("적용할 분석 후보가 없어요")
+        for f in files:
+            w = f.stem
+            if w not in postings:
+                errors.append(f"{w}: data/postings.json 에 없는 공고예요")
+                continue
+            cand = _read(f, None)
+            errors += [f"{w}: {e}" for e in validate_candidate(w, cand, postings[w], book_ids)]
+            target = root / f"data/analysis/{w}.json"
+            errors += stale("analysis", w, _read(target, None))
+            if isinstance(cand, dict):
+                meta = cand.get("meta") if isinstance(cand.get("meta"), dict) else {}
+                writes.append((target, {**cand, "meta": {**meta, "applied_on": today}}))
+    if part in ("signals", "all"):
+        cand_all = _read(out_dir / "signals.json", None)
+        if not isinstance(cand_all, dict) or not cand_all:
+            errors.append("적용할 신호 후보가 없어요")
+        else:
+            current = _read(root / "data/signals.json", {})
+            merged = dict(current)
+            for w in [only] if only else sorted(cand_all):
+                if w not in cand_all:
+                    errors.append(f"{w}: 신호 후보가 없어요")
+                    continue
+                errors += [f"{w} 신호{e}" for e in validate_signal_lines(cand_all[w])]
+                errors += stale("signals", w, current.get(w))
+                merged[w] = cand_all[w]
+            writes.append((root / "data/signals.json", merged))
+    if errors:
+        print("적용하지 않았어요:")
+        for e in errors:
+            print(f"- {e}")
+        return 1
+    for path, data in writes:
+        _write(path, data)
+    print(f"적용했어요({part}): " + ", ".join(str(p.relative_to(root)) for p, _ in writes))
+    return 0
+
+
 async def _run_all(agent: AnalysisAgent, postings: list[dict]) -> dict[str, AnalysisResponse | str]:
     out: dict[str, AnalysisResponse | str] = {}
     for p in postings:
@@ -207,13 +337,22 @@ async def _run_all(agent: AnalysisAgent, postings: list[dict]) -> dict[str, Anal
 
 
 def main(argv: list[str] | None = None, root: Path = ROOT, env: Mapping[str, str] | None = None,
-         llm: Llm | None = None, http: httpx.AsyncClient | None = None) -> int:
+         llm: Llm | None = None, http: httpx.AsyncClient | None = None, today: str | None = None) -> int:
     ap = argparse.ArgumentParser(prog="analysis:regen")
     ap.add_argument("--out", default="review/analysis-regen")
-    ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--apply-candidates", choices=APPLY_PARTS)
+    ap.add_argument("--ignore-base", action="store_true")
+    ap.add_argument("--apply", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--only")
     args = ap.parse_args(argv)
     root = Path(root)
+    if args.apply:
+        # 다시 돌린 결과를 바로 쓰면 사람이 본 보고서와 다른 판정이 들어간다.
+        print("--apply 는 없앴어요. 검토한 후보를 적용하려면 --apply-candidates analysis|signals|all 을 써요")
+        return 2
+    if args.apply_candidates:
+        return apply_candidates(root, root / args.out, args.apply_candidates, args.only, args.ignore_base,
+                                today or date.today().isoformat())
     env = env if env is not None else load_env(root)
     postings = [p for p in _read(root / "data/postings.json", []) if not args.only or p["wantedAuthNo"] == args.only]
     if not postings:
@@ -223,6 +362,9 @@ def main(argv: list[str] | None = None, root: Path = ROOT, env: Mapping[str, str
     results = asyncio.run(_run_all(agent, postings))
     cur_signals = _read(root / "data/signals.json", {})
     out_dir = root / args.out
+    base = _read(out_dir / "base.json", None)
+    base = base if isinstance(base, dict) else {}
+    base = {"analysis": dict(base.get("analysis", {})), "signals": dict(base.get("signals", {}))}
     cand_signals, report, failed = {}, [report_header()], 0
     for p in postings:
         w, res = p["wantedAuthNo"], results[p["wantedAuthNo"]]
@@ -230,17 +372,18 @@ def main(argv: list[str] | None = None, root: Path = ROOT, env: Mapping[str, str
             failed += 1
             report.append(f"\n## {w}\n\n- 실패(code={res}): 후보를 만들지 못했어요\n")
             continue
-        current = _read(root / f"data/analysis/{w}.json", {"cards": [], "blanks": []})
+        raw = _read(root / f"data/analysis/{w}.json", None)
+        current = raw if isinstance(raw, dict) else {"cards": [], "blanks": []}
         cand = merge_candidate(current, res)
         cand_signals[w] = merge_signals(cur_signals.get(w, []), res.signals)
+        base["analysis"][w], base["signals"][w] = fingerprint(raw), fingerprint(cur_signals.get(w))
         _write(out_dir / "analysis" / f"{w}.json", cand)
         report.append(report_section(w, current, cur_signals.get(w, []), res, cand_signals[w]))
-        if args.apply:
-            _write(root / f"data/analysis/{w}.json", cand)
-    _write(out_dir / "signals.json", cand_signals)
+    # 분석 후보 파일처럼, --only 로 일부만 다시 만들어도 앞서 만든 다른 공고의 신호 후보는 남긴다.
+    prev = _read(out_dir / "signals.json", {})
+    _write(out_dir / "signals.json", {**(prev if isinstance(prev, dict) else {}), **cand_signals})
+    _write(out_dir / "base.json", base)
     (out_dir / "report.md").write_text("\n".join(report), encoding="utf-8")
-    if args.apply and cand_signals:
-        _write(root / "data/signals.json", {**cur_signals, **cand_signals})
     print(f"후보 {len(cand_signals)}건, 실패 {failed}건 -> {out_dir}")
     return 1 if failed else 0
 
