@@ -15,6 +15,8 @@ COLUMNS = (
 )
 _SCORES = ("usable", "company_fit", "newbie_natural")
 _FLAGS = (("presupposes", "presupposes"), ("inflated", "inflated"))
+# 이보다 적은 줄로 낸 일치율은 우연에 크게 흔들려 None 으로 둔다(건수는 *_n 에 남김)
+AGREEMENT_MIN_N = 5
 
 
 def _candidates(run: Path) -> dict[str, list[dict]]:
@@ -35,12 +37,29 @@ def _candidates(run: Path) -> dict[str, list[dict]]:
     return by_persona
 
 
+def _judge_applicable(run: Path) -> set[str]:
+    """판정이 매겨진(전제·부풀림 중 하나라도 해당 없음이 아닌) 질문 id. 일치율을 낼 줄이 표본에 들어가게."""
+    out: set[str] = set()
+    for j in read_jsonl(run / "judge.jsonl"):
+        na = j.get("na") or []
+        if any(jk not in na for _, jk in _FLAGS):
+            out.add(j.get("id"))
+    return out
+
+
 def export_sample(run: Path, out: Path, n: int = 20, seed: int = 7) -> int:
     rng = random.Random(seed)
+    applicable = _judge_applicable(run)
     picked: list[dict] = []
     for persona, rows in _candidates(run).items():
         rows = sorted(rows, key=lambda r: r["id"])  # 입력 순서와 무관하게 같은 seed면 같은 표본
-        picked += rng.sample(rows, min(n // 2, len(rows)))
+        quota = min(n // 2, len(rows))
+        # 판정이 있는 줄을 구직자 몫의 절반까지 먼저 뽑고, 나머지를 남은 줄에서 채운다(있는 만큼만)
+        judged = [r for r in rows if r["id"] in applicable]
+        first = rng.sample(judged, min((quota + 1) // 2, len(judged)))
+        taken = {r["id"] for r in first}
+        rest = [r for r in rows if r["id"] not in taken]
+        picked += first + rng.sample(rest, quota - len(first))
     out.parent.mkdir(parents=True, exist_ok=True)
     # utf-8-sig: 엑셀이 한글을 바로 읽도록 BOM을 붙인다
     with out.open("w", encoding="utf-8-sig", newline="") as f:
@@ -94,14 +113,21 @@ def import_scores(csv_path: Path, run: Path) -> dict:
         return sum(xs) / len(xs) if xs else None
 
     def rate(xs: list[bool]) -> float | None:
-        return sum(xs) / len(xs) if xs else None
+        return sum(xs) / len(xs) if len(xs) >= AGREEMENT_MIN_N else None
 
     metrics = {
         "usable_mean": mean(sums["usable"]),
+        "usable_n": len(sums["usable"]),
         "company_fit_mean": mean(sums["company_fit"]),
+        "company_fit_n": len(sums["company_fit"]),
         "newbie_natural_mean": mean(sums["newbie_natural"]),
+        "newbie_natural_n": len(sums["newbie_natural"]),
+        # 사람 Y/N 과 판정 값이 둘 다 있는 줄 수. AGREEMENT_MIN_N 보다 적으면 일치율은 None
         "judge_agreement_presupposition": rate(agree["presupposes"]),
+        "judge_agreement_presupposition_n": len(agree["presupposes"]),
         "judge_agreement_inflation": rate(agree["inflated"]),
+        "judge_agreement_inflation_n": len(agree["inflated"]),
+        "agreement_min_n": AGREEMENT_MIN_N,
         "rows": len(rows),
         "skipped_scores": skipped,
     }
@@ -129,7 +155,8 @@ def main(argv: list[str] | None = None) -> int:
     from evals.score import write_summary  # 무거운 import는 가져오기 때만
 
     write_summary(a.run)
-    print(f"가져옴 {m['rows']}줄 · 건너뛴 점수 {m['skipped_scores']}칸 → {a.run / 'human.metrics.json'}")
+    print(f"가져옴 {m['rows']}줄 · 건너뛴 점수 {m['skipped_scores']}칸 · 일치율 줄 수 전제 {m['judge_agreement_presupposition_n']}"
+          f" · 부풀림 {m['judge_agreement_inflation_n']}(각 {AGREEMENT_MIN_N}줄 미만이면 -) → {a.run / 'human.metrics.json'}")
     return 0
 
 

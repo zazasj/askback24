@@ -37,4 +37,5 @@ async def raw_violations(llm: Llm, inputs: list[dict], card_labels: set[str]) ->
             if issues:
                 flagged += 1
                 by_rule.update(set(issues))
-    return {"rate": flagged / total if total else 0.0, "by_rule": dict(by_rule), "failed": failed}
+    # 문장을 하나도 못 받았으면(호출이 전부 실패 등) 0% 가 아니라 "모름"
+    return {"rate": flagged / total if total else None, "by_rule": dict(by_rule), "failed": failed, "n": total}

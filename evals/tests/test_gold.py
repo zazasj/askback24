@@ -105,15 +105,16 @@ def test_blanks_one_use_row(tmp_path):
 
 def test_judgements(tmp_path):
     cards = ["E1,BE01,absent,,,A,Y", "E1,BE02,absent,,,A,Y"]
-    ok = ["E1,BE01,연봉이 얼마인가요?,연봉은 면접 때 말씀드려요,상관없음,still_unknown,A"]
+    ok = ["E1,BE01,연봉이 얼마인가요?,연봉은 면접 때 말씀드려요,none,still_unknown,A"]
     _sheet(tmp_path, cards=cards, judgements=ok)
     g = read_gold(tmp_path, {"E1"}, CARDS)
     assert g.judgements[0].expected == "still_unknown"
     assert g.judgements[0].heard.startswith("연봉은")
-    bad = ["E1,BE01,질문,,상관없음,confirmed,A", "E1,BE01,질문,들음,상관없음,maybe,A"]
+    bad = ["E1,BE01,질문,,want,confirmed,A", "E1,BE01,질문,들음,avoid,maybe,A", "E1,BE01,질문,들음,상관없음,confirmed,A"]
     msgs = _errors(tmp_path, cards=cards, judgements=bad)
     assert any("judgements.csv 2행" in m and "heard" in m for m in msgs)
     assert any("judgements.csv 3행" in m and "expected" in m for m in msgs)
+    assert any("judgements.csv 4행" in m and "pref" in m for m in msgs)
 
 
 def test_missing_file(tmp_path):

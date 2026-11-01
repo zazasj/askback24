@@ -3,12 +3,17 @@ import json
 import math
 import random
 from collections import Counter
+from collections.abc import Callable
 from difflib import SequenceMatcher
 from pathlib import Path
 
-from api._agent.checks import EXPERIENCE_CLAIM
+from pydantic import ValidationError
+
+from api._agent.checks import EXPERIENCE_CLAIM, allowed_source
+from api._agent.graphs.first import allowed_text
 from api._agent.llm import Llm
-from api._agent.terms import terms_in
+from api._agent.schemas import FirstRequest
+from api._agent.terms import NON_RUNTIME, terms_in, unknown_in
 from evals.judges import guess_persona, guess_posting, inflates, presupposes
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -58,29 +63,43 @@ def similarity_ab(rows: list[dict]) -> float | None:
     return sum(scores) / len(scores) if scores else None
 
 
-def _all_text(v: object) -> str:
-    if isinstance(v, str):
-        return v
-    if isinstance(v, dict):
-        return "\n".join(_all_text(x) for x in v.values())
-    if isinstance(v, list):
-        return "\n".join(_all_text(x) for x in v)
-    return ""
+def _first_request(row: dict) -> FirstRequest | None:
+    try:
+        return FirstRequest(**row["first_input"]) if isinstance(row.get("first_input"), dict) else None
+    except (ValidationError, TypeError):
+        return None
 
 
-def unknown_terms(rows: list[dict], postings: dict[str, dict], personas: dict[str, dict]) -> dict:
-    """질문에 나온 기술·분야 낱말 중 공고 전체 글과 그 구직자 이력서에 없는 것의 비율(낱말 단위)."""
-    total = 0
-    by_term: Counter[str] = Counter()
-    for r in rows:
-        known = set(terms_in(_all_text(postings.get(r["wantedAuthNo"], {})) + "\n" + _all_text(personas.get(r["persona"], {}))))
-        for kind in ("first", "final"):
+def _allowed_by_card(row: dict, kind: str, postings: dict[str, dict]) -> tuple[str, dict[str, str]]:
+    """실행 중 unknown_term 검사와 같은 허용 글. 1차는 보낸 공고 + 문항별 지원자 글(api._agent.graphs.first.allowed_text), 최종은 공고만."""
+    if kind == "first":
+        req = _first_request(row)
+        if req is not None:
+            return allowed_source(req.posting), {i.card_id: allowed_source(req.posting, allowed_text(req, i)) for i in req.items}
+    posting = (row.get(f"{kind}_input") or {}).get("posting")
+    if not isinstance(posting, dict):
+        posting = postings.get(row["wantedAuthNo"], {})
+    return allowed_source(posting), {}
+
+
+def unknown_terms(rows: list[dict], postings: dict[str, dict]) -> dict:
+    """질문 낱말 중 실행 중 검사가 허용하지 않는 것의 비율(낱말 단위, 1차·최종 따로).
+    함의(implied_by)는 같게 보고, 실행 중 검사에서 빼는 낱말(REST)은 by_term 대신 non_runtime 에 센다(분모에는 든다)."""
+    out: dict = {}
+    for kind in ("first", "final"):
+        total = 0
+        by_term: Counter[str] = Counter()
+        non_runtime: Counter[str] = Counter()
+        for r in rows:
+            base, per_card = _allowed_by_card(r, kind, postings)
             for q in _questions(r, kind):
-                for t in terms_in(q.get("text", "")):
-                    total += 1
-                    if t not in known:
-                        by_term[t] += 1
-    return {"rate": sum(by_term.values()) / total if total else None, "by_term": dict(by_term)}
+                text = q.get("text", "")
+                total += len(terms_in(text))
+                for t in unknown_in(text, per_card.get(q.get("card_id"), base)):
+                    (non_runtime if t in NON_RUNTIME else by_term)[t] += 1
+        out[kind] = {"rate": sum(by_term.values()) / total if total else None, "terms": total,
+                     "by_term": dict(by_term), "non_runtime": dict(non_runtime)}
+    return out
 
 
 def judgement_metrics(rows: list[dict]) -> dict:
@@ -107,7 +126,9 @@ def _card_labels(root: Path = ROOT) -> dict[str, str]:
 
 
 async def judge_rows(llm: Llm, rows: list[dict], postings: dict[str, dict], analyses: dict[str, dict],
-                     personas: dict[str, dict], seed: int, card_labels: dict[str, str] | None = None) -> list[dict]:
+                     personas: dict[str, dict], seed: int, card_labels: dict[str, str] | None = None,
+                     on_row: Callable[[dict], None] | None = None) -> list[dict]:
+    """질문마다 판정을 매긴다. on_row 는 줄이 끝날 때마다 부른다(중간에 멈춰도 그때까지의 판정이 남게)."""
     labels = card_labels if card_labels is not None else _card_labels()
     rng = random.Random(seed)
     order = ["A", "B"]
@@ -119,6 +140,7 @@ async def judge_rows(llm: Llm, rows: list[dict], postings: dict[str, dict], anal
         analysis = analyses.get(no)
         present = {c.get("card_id") for c in (analysis or {}).get("cards", [])}
         experience = str((r.get("first_input") or {}).get("experience") or "")
+        items = {i.get("card_id"): i for i in (r.get("first_input") or {}).get("items") or [] if isinstance(i, dict)}
         for kind in ("first", "final"):
             for q in _questions(r, kind):
                 text, card = q.get("text", ""), q.get("card_id")
@@ -140,14 +162,26 @@ async def judge_rows(llm: Llm, rows: list[dict], postings: dict[str, dict], anal
                     j["presupposes"] = await presupposes(llm, text, posting, labels[card])
                 else:
                     na.append("presupposes")
-                if EXPERIENCE_CLAIM.search(text):
+                item = items.get(card) if kind == "first" else None
+                # 경험 한 줄·이력서를 쓸 수 있던 AI 문항은 정규식에 안 걸려도 부풀림을 본다
+                cites = q.get("source") == "ai" and bool(item) and bool(item.get("has_exp") or item.get("can_cite_resume"))
+                if cites or EXPERIENCE_CLAIM.search(text):
                     j["inflated"] = await inflates(llm, text, experience, personas.get(persona))
                 else:
                     na.append("inflated")
                 # 해당 없음과 판정 실패를 가르는 표시. 실패만 failed 로 센다
                 j["na"] = na
                 out.append(j)
+                if on_row is not None:
+                    on_row(j)
     return out
+
+
+def all_judges_failed(rates_: dict) -> bool:
+    """판정을 하나라도 불렀는데 답을 하나도 못 받았는지(키·연결 문제)."""
+    used = sum(v["n"] for v in rates_.values())
+    failed = sum(v["failed"] for v in rates_.values())
+    return failed > 0 and used == 0
 
 
 def rates(judged: list[dict]) -> dict:

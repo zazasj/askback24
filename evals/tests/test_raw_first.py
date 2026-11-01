@@ -28,3 +28,9 @@ async def test_raw_clean_and_failed():
     ])
     r = await raw_violations(llm, [_inp(), _inp(), _inp()], set())
     assert r["rate"] == 0.0 and r["by_rule"] == {} and r["failed"] == 2
+
+
+async def test_raw_all_failed_is_none():
+    llm = FakeLlm([LlmError("timeout"), LlmError("timeout")])
+    r = await raw_violations(llm, [_inp(), _inp()], set())
+    assert r["rate"] is None and r["failed"] == 2 and r["n"] == 0

@@ -11,11 +11,11 @@ from api._agent.checks import load_card_labels
 from api._agent.llm import llm_from_env
 from api._agent.regen import load_env
 from evals.metrics_questions import (
-    judge_rows, judgement_metrics, latency_p95, rates, similarity_ab, template_rate, unknown_terms,
+    all_judges_failed, judge_rows, judgement_metrics, latency_p95, rates, similarity_ab, template_rate, unknown_terms,
 )
 from evals.postings import PostingError, load_postings
 from evals.raw_first import raw_violations
-from evals.runlog import read_jsonl, write_metrics
+from evals.runlog import append_jsonl, git_commit, prompt_hashes, read_jsonl, write_metrics
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -54,6 +54,10 @@ def write_summary(run: Path) -> None:
     (run / "summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def _fmt(v: float | None) -> str:
+    return "-" if v is None else format(v, ".2f")
+
+
 def _personas(root: Path) -> dict[str, dict]:
     return {n: json.loads((root / "evals" / "personas" / f"{n}.json").read_text(encoding="utf-8")) for n in ("A", "B")}
 
@@ -68,6 +72,8 @@ def main(argv: list[str] | None = None, root: Path = ROOT, env: Mapping[str, str
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--limit", type=int)
     ap.add_argument("--skip-raw", action="store_true")
+    # LLM 판정(posting·persona·presupposition·inflation)을 건너뛴다. 검수 문장 비율·시간·유사도·낱말·날것은 그대로
+    ap.add_argument("--skip-judges", action="store_true")
     args = ap.parse_args(argv)
     root, run = Path(root), Path(args.run)
     rows = read_jsonl(run / "questions.jsonl")
@@ -90,13 +96,23 @@ def main(argv: list[str] | None = None, root: Path = ROOT, env: Mapping[str, str
         "first": {"template_rate": template_rate(rows, "first"), "latency_p95_s": latency_p95(rows, "first"),
                   "similarity_ab": similarity_ab(rows)},
         "final": {"template_rate": template_rate(rows, "final"), "latency_p95_s": latency_p95(rows, "final")},
-        "unknown_terms": unknown_terms(rows, postings, personas),
+        "unknown_terms": unknown_terms(rows, postings),
+        # 점수를 매긴 시점의 코드·프롬프트. 질문을 만든 시점(meta.json)과 다를 수 있다
+        "scored_with": {"commit": git_commit(root), "prompt_hashes": prompt_hashes()},
     }
-    llm = llm or llm_from_env(env if env is not None else load_env(root))
-    judged = asyncio.run(judge_rows(llm, rows, postings, _analyses(run), personas, args.seed))
-    jpath = run / "judge.jsonl"
-    jpath.write_text("".join(json.dumps(j, ensure_ascii=False) + "\n" for j in judged), encoding="utf-8")
-    metrics["judge"] = rates(judged)
+    if not (args.skip_judges and args.skip_raw):
+        llm = llm or llm_from_env(env if env is not None else load_env(root))
+    if not args.skip_judges:
+        jpath = run / "judge.jsonl"
+        jpath.write_text("", encoding="utf-8")
+        # 판정은 줄마다 바로 덧붙인다(중간에 멈춰도 그때까지 남음)
+        judged = asyncio.run(judge_rows(llm, rows, postings, _analyses(run), personas, args.seed,
+                                        on_row=lambda j: append_jsonl(jpath, j)))
+        metrics["judge"] = rates(judged)
+        if all_judges_failed(metrics["judge"]):
+            failed = sum(v["failed"] for v in metrics["judge"].values())
+            print(f"판정 LLM 호출이 모두 실패했어요(실패 {failed}건). 키·연결을 확인하세요. 지표는 쓰지 않았어요")
+            return 1
 
     if not args.skip_raw:
         inputs = [r["first_input"] for r in rows if r.get("first_input")]
@@ -110,11 +126,13 @@ def main(argv: list[str] | None = None, root: Path = ROOT, env: Mapping[str, str
 
     write_metrics(run, "questions", metrics)
     write_summary(run)
-    j = metrics["judge"]
-    print(f"질문 {len(judged)}개 판정 · " + " · ".join(
-        f"{k} {'-' if v['rate'] is None else format(v['rate'], '.2f')}(n={v['n']}, 실패 {v['failed']})" for k, v in j.items()))
+    if "judge" in metrics:
+        print(f"질문 {len(judged)}개 판정 · " + " · ".join(
+            f"{k} {_fmt(v['rate'])}(n={v['n']}, 실패 {v['failed']})" for k, v in metrics["judge"].items()))
+    else:
+        print("LLM 판정은 건너뜀(--skip-judges)")
     if "raw" in metrics:
-        print(f"날것 위반율 {metrics['raw']['rate']:.2f} · 실패 {metrics['raw']['failed']}건")
+        print(f"날것 위반율 {_fmt(metrics['raw']['rate'])} · 실패 {metrics['raw']['failed']}건")
     print(run)
     return 0
 

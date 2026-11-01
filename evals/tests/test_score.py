@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 
-from api._agent.llm import LlmResult
+from api._agent.llm import LlmError, LlmResult
 from evals import score
 from evals.judges import SYSTEMS
 from evals.runlog import append_jsonl, write_metrics
@@ -13,6 +13,10 @@ class RouterLlm:
 
     async def complete_json(self, role, system, user, timeout_s):
         self.calls.append((role, system))
+        if getattr(self, "judges_fail", False) and role != "fast":
+            raise LlmError("timeout")
+        if getattr(self, "fast_fail", False) and role == "fast":
+            raise LlmError("timeout")
         if role == "fast":
             return LlmResult(data={"questions": [{"card_id": "BE01", "text": "신규 개발은 어떻게 맡나요? 궁금합니다"}]}, model="f")
         key = next(k for k, v in SYSTEMS.items() if v == system)
@@ -119,3 +123,49 @@ def test_summary_tables_all_metrics_files(tmp_path):
     s = (run / "summary.md").read_text(encoding="utf-8")
     assert "analysis.metrics.json" in s and "fabricated" in s and "nested.a" in s
     assert "판정 실패 4" in s
+
+
+def test_scored_with_and_unknown_terms_split(tmp_path):
+    root, run = _setup(tmp_path)
+    assert score.main(["--run", str(run), "--skip-raw"], root=root, llm=RouterLlm()) == 0
+    m = json.loads((run / "questions.metrics.json").read_text(encoding="utf-8"))
+    assert set(m["scored_with"]) == {"commit", "prompt_hashes"} and "first" in m["scored_with"]["prompt_hashes"]
+    assert set(m["unknown_terms"]) == {"first", "final"}
+
+
+def test_skip_judges_keeps_other_metrics(tmp_path, capsys):
+    root, run = _setup(tmp_path)
+    llm = RouterLlm()
+    assert score.main(["--run", str(run), "--skip-judges"], root=root, llm=llm) == 0
+    m = json.loads((run / "questions.metrics.json").read_text(encoding="utf-8"))
+    assert "judge" not in m and m["raw"]["n"] == 2 and "template_rate" in m["first"] and "unknown_terms" in m
+    assert all(role == "fast" for role, _ in llm.calls)
+    assert not (run / "judge.jsonl").exists()
+    assert "--skip-judges" in capsys.readouterr().out
+
+
+def test_skip_judges_and_raw_needs_no_llm(tmp_path):
+    root, run = _setup(tmp_path)
+    # 키가 없어도(빈 env) LLM 을 만들지 않으므로 끝난다
+    assert score.main(["--run", str(run), "--skip-judges", "--skip-raw"], root=root, env={}) == 0
+
+
+def test_all_judges_failed_exits_1(tmp_path, capsys):
+    root, run = _setup(tmp_path)
+    llm = RouterLlm()
+    llm.judges_fail = True
+    assert score.main(["--run", str(run), "--skip-raw"], root=root, llm=llm) == 1
+    assert "모두 실패" in capsys.readouterr().out
+    assert not (run / "questions.metrics.json").exists()
+    # 판정 줄은 그때까지 덧붙인 대로 남는다
+    assert len((run / "judge.jsonl").read_text(encoding="utf-8").splitlines()) == 4
+
+
+def test_raw_all_failed_prints_dash(tmp_path, capsys):
+    root, run = _setup(tmp_path)
+    llm = RouterLlm()
+    llm.fast_fail = True
+    assert score.main(["--run", str(run), "--skip-judges"], root=root, llm=llm) == 0
+    m = json.loads((run / "questions.metrics.json").read_text(encoding="utf-8"))
+    assert m["raw"]["rate"] is None and m["raw"]["failed"] == 2
+    assert "날것 위반율 -" in capsys.readouterr().out

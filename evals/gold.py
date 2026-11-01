@@ -14,6 +14,8 @@ STATES = ("explicit", "inferred", "vague", "absent")
 BLANK_STATUSES = ("missing", "vague", "check", "present")
 TOPICS = ("sal", "workHours", "probation", "onsite")
 EXPECTED = ("confirmed", "mismatch", "still_unknown")
+# 판정 요청(FinalPref)이 받는 값. 화면 요청은 고르지 않은 카드에 none 을 보낸다
+PREFS = ("want", "avoid", "unsure", "none")
 
 _ROOT = Path(__file__).resolve().parents[1]
 _COLUMNS = {
@@ -169,6 +171,9 @@ def read_gold(dir: Path, posting_ids: set[str], card_ids: set[str]) -> Gold:
         ok = _check_ref("judgements.csv", line, r, posting_ids, card_ids, errors)
         if r["expected"] not in EXPECTED:
             errors.append(f"judgements.csv {line}행: expected는 {'·'.join(EXPECTED)} 중 하나여야 합니다 ({r['expected']!r})")
+            ok = False
+        if r["pref"] not in PREFS:
+            errors.append(f"judgements.csv {line}행: pref는 {'·'.join(PREFS)} 중 하나여야 합니다 ({r['pref']!r})")
             ok = False
         if not r["heard"]:
             errors.append(f"judgements.csv {line}행: heard가 비어 있습니다")

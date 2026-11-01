@@ -69,18 +69,41 @@ def test_similarity_pairs_only_ai_same_card():
     assert similarity_ab([a]) is None
 
 
-def test_unknown_terms():
-    postings = {"P1": {"jobCont": "Java 서버 개발", "wantedTitle": "백엔드"}}
-    rows = [_row("P1", "B", first=[_q(1, "BE01", "Kafka 경험이 있으신가요? 궁금합니다")])]
-    personas = {"A": {"skills": ["Python"]}, "B": {"skills": ["Java"]}}
-    r = unknown_terms(rows, postings, personas)
-    assert r["rate"] == 1.0 and r["by_term"] == {"kafka": 1}
-    personas["B"] = {"skills": ["Java", "Kafka"]}
-    assert unknown_terms(rows, postings, personas)["rate"] == 0
-    # 스프링/Spring 표기 차이는 같은 낱말
-    postings = {"P1": {"jobCont": "스프링 서버"}}
-    rows = [_row("P1", "A", first=[_q(1, "BE01", "Spring 쪽 업무가 많은가요? 궁금합니다")])]
-    assert unknown_terms(rows, postings, personas)["rate"] == 0
+_ITEM = {"rank": 1, "card_id": "BE01", "card_label": "신규 API 개발", "pref": "want", "state": "explicit",
+         "type": "opportunity", "template": "t", "template_text": "tt", "has_exp": False}
+_RESUME = {"career": "", "skills": ["Kafka"], "projects": [], "trainings": [], "certificates": []}
+
+
+def _first_row(text, posting, *, has_exp=False, can_cite=False, experience="", resume=None, final=None):
+    item = {**_ITEM, "has_exp": has_exp, "can_cite_resume": can_cite}
+    row = _row("P1", "A", first=[_q(1, "BE01", text)], final=final)
+    row["first_input"] = {"mode": "first", "posting": posting, "experience": experience, "items": [item],
+                          **({"resume": resume} if resume else {})}
+    return row
+
+
+def test_unknown_terms_uses_runtime_allowed_text():
+    posting = {"jobCont": "Java 서버 개발", "wantedTitle": "백엔드"}
+    q = "Kafka 메시지 처리를 신입도 맡나요?"
+    r = unknown_terms([_first_row(q, posting)], {"P1": posting})
+    assert r["first"]["rate"] == 1.0 and r["first"]["by_term"] == {"kafka": 1} and r["first"]["terms"] == 1
+    # 경험 한 줄은 has_exp 문항에서만, 이력서는 can_cite_resume 문항에서만 허용(실행 중 검사와 같음)
+    assert unknown_terms([_first_row(q, posting, experience="Kafka 써 봄")], {"P1": posting})["first"]["rate"] == 1.0
+    assert unknown_terms([_first_row(q, posting, has_exp=True, experience="Kafka 써 봄")], {"P1": posting})["first"]["rate"] == 0
+    assert unknown_terms([_first_row(q, posting, resume=_RESUME)], {"P1": posting})["first"]["rate"] == 1.0
+    assert unknown_terms([_first_row(q, posting, can_cite=True, resume=_RESUME)], {"P1": posting})["first"]["rate"] == 0
+
+
+def test_unknown_terms_final_uses_posting_only_and_runtime_rules():
+    posting = {"jobCont": "Spring 서버 개발"}
+    final = [{"rank": 1, "card_id": "BE01", "text": "Spring Boot 버전은 무엇인가요? 그리고 REST API는요?", "source": "ai"},
+             {"rank": 2, "card_id": "BE01", "text": "MSA 전환 계획이 있나요? 궁금합니다", "source": "ai"}]
+    row = _first_row("스프링 쪽 업무가 많은가요? 궁금합니다", posting, has_exp=True, experience="MSA 해 봄", final=final)
+    r = unknown_terms([row], {"P1": posting})
+    assert r["first"] == {"rate": 0.0, "terms": 1, "by_term": {}, "non_runtime": {}}
+    # Spring Boot 는 Spring 공고에서 허용, REST 는 non_runtime 으로만, MSA 는 경험 한 줄이 최종에는 안 들어가므로 모름
+    assert r["final"]["by_term"] == {"msa": 1} and r["final"]["non_runtime"] == {"rest": 1}
+    assert r["final"]["terms"] == 4 and r["final"]["rate"] == 0.25
 
 
 def test_judgement_metrics():
@@ -148,6 +171,29 @@ async def test_judge_rows_scope_and_inflation():
     inflate_calls = [c for c in llm.calls if c["system"] == SYSTEMS["inflates"]]
     assert len(inflate_calls) == 1
     assert "FastAPI 경험" in inflate_calls[0]["user"] and "Python" in inflate_calls[0]["user"]
+
+
+async def test_inflation_judges_every_experience_or_resume_item():
+    llm = RouterLlm({
+        "guess_posting": {"choice": 1}, "guess_persona": {"choice": 1},
+        "presupposes": {"presupposes": False}, "inflates": {"inflated": False, "facts": []},
+    })
+    plain = "신규 API 개발은 어떻게 나눠 맡나요? 궁금합니다"
+    row = _row("P1", "A", experience="FastAPI 경험",
+               first=[_q(1, "BE01", plain), _q(2, "BE02", plain), _q(3, "BE03", plain), _q(4, "BE04", plain, "template")])
+    base = {"pref": "want", "state": "explicit", "type": "opportunity", "template": "t", "template_text": "tt"}
+    row["first_input"]["items"] = [
+        {**base, "rank": 1, "card_id": "BE01", "card_label": "a", "has_exp": True},
+        {**base, "rank": 2, "card_id": "BE02", "card_label": "b", "has_exp": False, "can_cite_resume": True},
+        {**base, "rank": 3, "card_id": "BE03", "card_label": "c", "has_exp": False},
+        {**base, "rank": 4, "card_id": "BE04", "card_label": "d", "has_exp": True},
+    ]
+    out = await judge_rows(llm, [row], POSTINGS, ANALYSES, PERSONAS, 7, card_labels=LABELS)
+    by_id = {j["id"]: j for j in out}
+    # 정규식에 안 걸려도 경험·이력서 문항이면 판정한다. 검수 문장(template)·일반 문항은 해당 없음
+    assert by_id["P1:A:first:1"]["inflated"] is False and by_id["P1:A:first:2"]["inflated"] is False
+    assert "inflated" in by_id["P1:A:first:3"]["na"] and "inflated" in by_id["P1:A:first:4"]["na"]
+    assert len([c for c in llm.calls if c["system"] == SYSTEMS["inflates"]]) == 2
 
 
 async def test_failed_judge_answers_become_none():

@@ -78,8 +78,10 @@ def test_import_means_and_agreement(tmp_path):
     assert m["usable_mean"] == 2.0
     assert m["company_fit_mean"] == 2.0
     assert m["newbie_natural_mean"] == 3.0
-    assert m["judge_agreement_presupposition"] == 0.5
-    assert m["judge_agreement_inflation"] == 1.0
+    # 두 줄뿐이라 일치율은 내지 않고 건수만 남긴다
+    assert m["judge_agreement_presupposition"] is None and m["judge_agreement_presupposition_n"] == 2
+    assert m["judge_agreement_inflation"] is None and m["judge_agreement_inflation_n"] == 2
+    assert m["usable_n"] == 2 and m["agreement_min_n"] == 5
     assert json.loads((run / "human.metrics.json").read_text(encoding="utf-8")) == m
 
 
@@ -96,7 +98,33 @@ def test_import_skips_blank_bad_and_missing_judge(tmp_path):
     m = import_scores(tmp_path / "h.csv", run)
     assert m["usable_mean"] is None
     assert m["skipped_scores"] == 2
-    assert m["judge_agreement_presupposition"] == 1.0
-    assert m["judge_agreement_inflation"] == 1.0
+    assert m["judge_agreement_presupposition_n"] == 1 and m["judge_agreement_presupposition"] is None
+    assert m["judge_agreement_inflation_n"] == 1 and m["judge_agreement_inflation"] is None
     _csv(tmp_path / "h2.csv", [{"id": "zzz", "presupposes": "Y"}])
     assert import_scores(tmp_path / "h2.csv", run)["judge_agreement_presupposition"] is None
+
+
+def test_agreement_from_five_rows(tmp_path):
+    run = tmp_path / "run"
+    ids = [f"q{i}" for i in range(5)]
+    _judge(run, [{"id": i, "presupposes": True, "inflated": False, "na": []} for i in ids])
+    _csv(tmp_path / "h.csv", [{"id": i, "presupposes": "Y" if k < 4 else "N", "inflated": "N"} for k, i in enumerate(ids)])
+    m = import_scores(tmp_path / "h.csv", run)
+    assert m["judge_agreement_presupposition"] == 0.8 and m["judge_agreement_presupposition_n"] == 5
+    assert m["judge_agreement_inflation"] == 1.0
+
+
+def test_export_includes_judge_applicable_rows(tmp_path):
+    run = tmp_path / "run"
+    _write_run(run)
+    # 판정이 붙은 질문은 A·B 에 하나씩뿐 — 무작위로는 잘 안 뽑히는 줄
+    _judge(run, [
+        {"id": "W13:A:first:1", "presupposes": None, "inflated": True, "na": ["presupposes"]},
+        {"id": "W14:B:first:1", "presupposes": False, "inflated": None, "na": ["inflated"]},
+        {"id": "W12:A:first:1", "presupposes": None, "inflated": None, "na": ["presupposes", "inflated"]},
+    ])
+    for seed in range(5):
+        out = tmp_path / f"s{seed}.csv"
+        assert export_sample(run, out, n=4, seed=seed) == 4
+        ids = {r["id"] for r in _read(out)}
+        assert {"W13:A:first:1", "W14:B:first:1"} <= ids
