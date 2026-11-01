@@ -76,14 +76,14 @@ def unknown_terms(text: str, posting: dict, resume_text: str = "") -> list[str]:
     return [t for t in terms_in(text) if t not in known]
 
 
-def check_first(text: str, state: str, has_exp: bool, posting: dict, card_labels: set[str], *, resume_text: str = "") -> list[str]:
+def check_first(text: str, state: str, has_exp: bool, posting: dict, card_labels: set[str], *, resume_text: str = "", can_cite_resume: bool = False) -> list[str]:
     t = text.strip()
     issues = _common_issues(t, posting, card_labels)
     if issues == ["empty"]:
         return issues
     if state == "absent" and PRESUPPOSE.search(t):
         issues.append("absent_presupposition")
-    if not has_exp and EXPERIENCE_CLAIM.search(t):
+    if not has_exp and not can_cite_resume and EXPERIENCE_CLAIM.search(t):
         issues.append("experience_claim")
     # 지어낸 기술·분야 낱말은 마지막에 붙인다(TS 와 같은 순서)
     if unknown_terms(t, posting, resume_text):

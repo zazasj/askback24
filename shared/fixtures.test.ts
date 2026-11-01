@@ -13,6 +13,7 @@ interface FirstCase {
   text: string
   state: PostingState
   has_exp: boolean
+  can_cite_resume?: boolean
   resume_text?: string
   expect: string[]
 }
@@ -50,7 +51,7 @@ describe('검사 예시 파일', () => {
       if (c.state) q.state = c.state
       expect(checkFinalQuestion(q, getPosting(c.posting)!, [])).toEqual(c.expect)
     } else {
-      const q = { text: squash(c.text), state: c.state, has_exp: c.has_exp }
+      const q = { text: squash(c.text), state: c.state, has_exp: c.has_exp, ...(c.can_cite_resume === undefined ? {} : { can_cite_resume: c.can_cite_resume }) }
       expect(checkFirstQuestion(q, getPosting(c.posting)!, { resumeText: c.resume_text })).toEqual(c.expect)
     }
   })

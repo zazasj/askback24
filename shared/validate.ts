@@ -110,13 +110,15 @@ export interface FirstQuestionCheck {
   evidence?: Evidence
   /** 지원자가 경험 한 줄을 적은 문항인지. 없으면(최종 등) 경험 표현을 보지 않음 */
   has_exp?: boolean
+  /** 이력서를 살려 쓸 수 있는 문항이면 1인칭 경험 표현도 허용(이력서가 지원자 자신의 경험이라서) */
+  can_cite_resume?: boolean
 }
 
 /** 1차·기술 면접 질문 검사. 빈 배열이면 통과 */
 export function checkFirstQuestion(q: FirstQuestionCheck, posting: Posting, extra?: { resumeText?: string | undefined }): Issue[] {
   const issues = commonIssues(q.text, q.evidence, posting)
   if (q.state === 'absent' && PRESUPPOSE.test(q.text)) issues.push('absent_presupposition')
-  if (q.has_exp === false && EXPERIENCE_CLAIM.test(q.text)) issues.push('experience_claim')
+  if (q.has_exp === false && !q.can_cite_resume && EXPERIENCE_CLAIM.test(q.text)) issues.push('experience_claim')
   // 지어낸 기술·분야 낱말은 마지막에 붙인다(Python 과 같은 순서)
   if (unknownTerms(q.text, posting, extra?.resumeText).length) issues.push('unknown_term')
   return issues

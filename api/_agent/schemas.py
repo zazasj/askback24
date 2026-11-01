@@ -10,6 +10,39 @@ class Evidence(BaseModel):
     quote: str
 
 
+class ProjectForAi(BaseModel):
+    name: str = ""
+    stack: str = ""
+    summary: str = ""
+
+
+class TrainingForAi(BaseModel):
+    name: str = ""
+    summary: str = ""
+
+
+class ResumeForAi(BaseModel):
+    """shared/contract.ts ResumeForAi. 허용 칸만 두고 그 밖의 키(이름 등)는 읽자마자 버린다(pydantic 기본)."""
+
+    career: str = ""
+    skills: list[str] = []
+    projects: list[ProjectForAi] = []
+    trainings: list[TrainingForAi] = []
+    certificates: list[str] = []
+
+
+def resume_text(r: ResumeForAi) -> str:
+    """shared/resume.ts resumeText 와 같은 칸 순서·이어 붙이기. 검사가 같은 낱말을 허용하게."""
+    parts = [
+        r.career,
+        *r.skills,
+        *(s for p in r.projects for s in (p.name, p.stack, p.summary)),
+        *(s for t in r.trainings for s in (t.name, t.summary)),
+        *r.certificates,
+    ]
+    return " ".join(s for s in parts if s != "")
+
+
 class DraftItem(BaseModel):
     rank: int
     card_id: str
@@ -21,12 +54,14 @@ class DraftItem(BaseModel):
     template: str
     template_text: str
     has_exp: bool
+    can_cite_resume: bool = False  # TS 는 이력서가 없으면 키를 빼고 보낸다
 
 
 class FirstRequest(BaseModel):
     mode: Literal["first"]
     posting: dict[str, Any]
     experience: str
+    resume: ResumeForAi | None = None
     items: list[DraftItem] = Field(min_length=1, max_length=5)
 
 

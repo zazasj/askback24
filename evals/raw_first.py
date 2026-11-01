@@ -5,6 +5,7 @@ from collections import Counter
 from pydantic import ValidationError
 
 from api._agent.checks import check_first
+from api._agent.graphs.first import allowed_text
 from api._agent.llm import Llm, LlmError
 from api._agent.prompts.first import SYSTEM, user_message
 from api._agent.schemas import FirstRequest
@@ -32,7 +33,7 @@ async def raw_violations(llm: Llm, inputs: list[dict], card_labels: set[str]) ->
             if item is None or not isinstance(q.get("text"), str):
                 continue
             total += 1
-            issues = check_first(q["text"], item.state, item.has_exp, req.posting, card_labels, resume_text=req.experience if item.has_exp else "")
+            issues = check_first(q["text"], item.state, item.has_exp, req.posting, card_labels, resume_text=allowed_text(req, item), can_cite_resume=item.can_cite_resume)
             if issues:
                 flagged += 1
                 by_rule.update(set(issues))

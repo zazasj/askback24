@@ -203,7 +203,7 @@ export async function generateFirst(req: FirstQuestionsRequest, options: Generat
     if (draft && typeof draft.text === 'string') {
       const text = draft.text.replace(/\s+/g, ' ').trim()
       // 근거는 늘 우리 규칙의 것(API-SPEC 18행). AI가 준 evidence는 읽지 않는다 — 다르면 "근거 보기"·basis·"공고에 없음"이 어긋남(A3-r1-03)
-      const found = checkFirstQuestion({ text, state: r.state, has_exp: r.has_exp, ...(r.evidence ? { evidence: r.evidence } : {}) }, posting, {
+      const found = checkFirstQuestion({ text, state: r.state, has_exp: r.has_exp, can_cite_resume: items[i]?.can_cite_resume === true, ...(r.evidence ? { evidence: r.evidence } : {}) }, posting, {
         // 경험 한 줄·이력서를 붙일 수 있는 문항만 지원자 자신의 낱말이라 지어낸 낱말이 아니다(둘은 더한다)
         resumeText: [r.has_exp ? experience : '', resume && citable.has(rank) ? resumeText(resume) : ''].filter(Boolean).join('\n'),
       })

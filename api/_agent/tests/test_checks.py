@@ -25,7 +25,10 @@ def test_fixture(case):
     if kind == "final":
         assert check_final(text, case["state"], posting, LABELS) == case["expect"]
     else:
-        assert check_first(text, case["state"], case["has_exp"], posting, LABELS, resume_text=case.get("resume_text", "")) == case["expect"]
+        assert check_first(
+            text, case["state"], case["has_exp"], posting, LABELS,
+            resume_text=case.get("resume_text", ""), can_cite_resume=case.get("can_cite_resume", False),
+        ) == case["expect"]
 
 
 def test_card_labels_loaded():
