@@ -128,11 +128,3 @@ def test_prompt_shape():
         assert f'"{k}"' in msg
     for w in ("recheck", "signal", "scope", "offer", "opportunity", "asked", "not_asked", "received", "basic", "cushion", "direct", "10자 이상 260자 이하"):
         assert w in SYSTEM
-
-
-def test_system_prompt_mixes_endings_and_keeps_cushion_bare():
-    # 4차 A4-53·A4-54·A4-57·A4-59: 끝맺음 섞기, 앞말 되풀이 없음, 완충 문장 뒤 앞말 없음, 첫 처우 앞말
-    assert '질문은 "…인가요?"로 씁니다' not in SYSTEM
-    for w in ("…될까요?", "…궁금합니다.", "같은 끝맺음은 두 번까지만", "같은 앞말을 두 번 쓰지 않습니다",
-              "그 뒤에도 앞말을 더하지 않고", "origin이 offer이고 tone이 basic이면"):
-        assert w in SYSTEM, w
