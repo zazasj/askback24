@@ -1,0 +1,10 @@
+{
+  "meta": { "note": "시연용 모의 회사 자료입니다. 숫자는 모두 지어낸 값이고 실제 회사와 관계없습니다. ind2는 공고 indTpNm의 한국표준산업분류 중분류 2자리입니다." },
+  "K-MOCK-0001": { "ind2": "58", "reposting": { "count": 3, "months": 6 }, "pension": { "members": 45, "gain_12m": 6, "loss_12m": 11, "period": "2025년 10월~2026년 9월" }, "small_giant": [], "wage_arrears": null },
+  "K-MOCK-0002": { "ind2": "47", "reposting": null, "pension": null, "small_giant": [{ "name": "기술혁신형 중소기업(이노비즈)", "year": 2025 }], "wage_arrears": null },
+  "K-MOCK-0003": { "ind2": "63", "reposting": null, "pension": { "members": 120, "gain_12m": 30, "loss_12m": 12, "period": "2025년 10월~2026년 9월" }, "small_giant": [], "wage_arrears": { "listed": false } },
+  "K-MOCK-0004": { "ind2": "66", "reposting": { "count": 2, "months": 3 }, "pension": { "members": 80, "gain_12m": 9, "loss_12m": 9, "period": "2025년 10월~2026년 9월" }, "small_giant": [], "wage_arrears": null },
+  "K-MOCK-0005": { "ind2": "62", "reposting": null, "pension": { "members": 60, "gain_12m": 14, "loss_12m": 13, "period": "2025년 10월~2026년 9월" }, "small_giant": [], "wage_arrears": { "listed": false } },
+  "K-MOCK-0006": { "ind2": "58", "reposting": null, "pension": { "members": 7, "gain_12m": 1, "loss_12m": 1, "period": "2025년 10월~2026년 9월" }, "small_giant": [], "wage_arrears": null },
+  "K-MOCK-0007": { "ind2": "52", "reposting": null, "pension": null, "small_giant": [{ "name": "인재육성형중소기업", "year": 2025 }], "wage_arrears": null }
+}

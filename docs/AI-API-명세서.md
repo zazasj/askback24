@@ -472,17 +472,17 @@ curl -X POST "{AI_ENDPOINT}/v1/final-questions" \
 | `posting` | Y | object | 공고 원문 한 건 전체(「공고 posting 필드」). 실서비스의 실제 공고면 `bizNo`(사업자등록번호)를 더함(선택) |
 | `job` | Y | string | 직무 ID(예: `backend`). 이 직무의 업무 카드 사전(`data/cards.<job>.json`)과 비교 |
 
-회사 자료는 요청에 담지 않습니다. AI 서버가 회사를 이 순서로 찾습니다: 서버 환경변수 `REAL_COMPANY_MAP`(시연 공고 번호 → 실제 회사, 팀 확인 전에는 비어 있음) → 공고의 `bizNo` → 시연 모의 값. 국민연금(data.go.kr 오픈API)과 EIS 빈칸(EIS Open API)은 실시간으로 부르고, 강소기업·EIS 업종 기준값·임금체불(모의)·공고 등록 이력은 함께 올린 `data/company/` 파일에서 읽습니다. 외부 API가 실패하면 그 신호만 뺍니다. **실제 이름·사업자번호는 응답에 넣지 않습니다.**
+회사 자료는 요청에 담지 않습니다. AI 서버가 회사를 이 순서로 찾습니다: 서버 환경변수 `REAL_COMPANY_MAP`(시연 공고 번호 → 실제 회사, 팀 확인 전에는 비어 있음) → 공고의 `bizNo` → 시연 모의 값. 국민연금(data.go.kr 오픈API)은 실시간으로 부르고, 강소기업·EIS 업종 기준값·임금체불(모의)·공고 등록 이력은 함께 올린 `data/company/` 파일에서 읽습니다. EIS 칸이 비었을 때 EIS Open API로 실시간 채우는 일은 응답 형식을 확인한 뒤로 미뤘고(D-355), 지금은 파일 값만 씁니다. 공고에 `bizNo`만 있고 사업장명이 없으면 국민연금 검색을 할 수 없어 그 신호는 뺍니다(실서비스 공고는 사업장명 `corpNm`을 검색 이름으로 쓰는 일이 남아 있습니다). 외부 API가 실패하면 그 신호만 뺍니다. **실제 이름·사업자번호는 응답에 넣지 않습니다.**
 
 ### 응답
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | `analysis.wantedAuthNo` | string | 요청 공고 번호 |
-| `analysis.cards` | array | 사전의 카드마다 하나 |
+| `analysis.cards` | array | 사전의 카드 전부, 하나씩(사전 순서). `absent`도 포함. 저장 파일(`data/analysis/`)에는 `absent` 카드를 쓰지 않는다 |
 | `analysis.cards[].card_id` | string | 사전에 있는 카드 ID |
 | `analysis.cards[].state` | string | `explicit` · `inferred` · `vague` · `absent` |
-| `analysis.cards[].evidence` | object | `absent`가 아니면 `{ "field", "quote" }` — `quote`는 `posting[field]` 원문의 글자 그대로 일부(근거 칸 8개 중) |
+| `analysis.cards[].evidence` | object | `explicit`·`vague`는 필수, `inferred`는 선택, `absent`는 없음. 있으면 `{ "field", "quote" }` — `quote`는 `posting[field]` 원문의 글자 그대로 일부(근거 칸 8개 중) |
 | `analysis.cards[].reason` | string | 화면 말풍선. 과정이 아니라 확인해 볼 이유(해요체) |
 | `analysis.cards[].needs_review` | boolean | 독립 2회 판정이 엇갈려 사람이 볼 카드 |
 | `analysis.blanks` | array | 처우 빈칸(코드로 만듦) |

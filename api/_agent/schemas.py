@@ -101,3 +101,67 @@ class FinalDraft(BaseModel):
 class FinalResponse(BaseModel):
     questions: list[FinalDraft]
     model: str
+
+
+SignalKind = Literal["reposting", "pension_flow", "industry_baseline", "small_giant", "wage_arrears"]
+
+
+class OfferBlank(BaseModel):
+    """shared/contract.ts 의 OfferBlank 과 같은 모양."""
+    topic: Literal["sal", "workHours", "probation", "onsite"]
+    status: Literal["missing", "vague", "check"]
+    label: str
+    basis: str
+    question: str
+    evidence: Evidence | None = None
+
+
+GRAPH_VERSION = "analysis-1"
+
+
+class AnalysisRequest(BaseModel):
+    posting: dict[str, Any]
+    job: str = Field(pattern=r"^[a-z]+$")
+
+
+class AnalysisCard(BaseModel):
+    card_id: str
+    state: Literal["explicit", "inferred", "vague", "absent"]
+    evidence: Evidence | None = None
+    reason: str
+    needs_review: bool = False
+
+
+class Signal(BaseModel):
+    kind: SignalKind
+    text: str
+    source: Literal["실제", "모의"]
+    source_name: str
+    ask: str | None = None
+    ask_source: Literal["ai", "template"] | None = None
+    caveat: str | None = None
+
+
+class OutOfDictionary(BaseModel):
+    field: str
+    quote: str
+    note: str
+
+
+class AnalysisBody(BaseModel):
+    wantedAuthNo: str
+    cards: list[AnalysisCard]
+    blanks: list[OfferBlank]
+
+
+class AnalysisMeta(BaseModel):
+    graph_version: str
+    model: str
+    created_at: str
+
+
+class AnalysisResponse(BaseModel):
+    analysis: AnalysisBody
+    signals: list[Signal]
+    out_of_dictionary: list[OutOfDictionary]
+    meta: AnalysisMeta

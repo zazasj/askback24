@@ -4,3 +4,14 @@ RETRY_MIN_LEFT_S = 8.0
 REWRITE_SAFETY_S = 1.5
 JUDGE_BUDGET_S = 8.0
 FINAL_BUDGET_S = 10.0
+
+# 국민연금 실시간 조회: 전체 예산, 호출 하나의 한도, 월별 동시 호출 수.
+NPS_BUDGET_S = 20.0
+NPS_CALL_TIMEOUT_S = 5.0
+NPS_CONCURRENCY = 4
+
+# ① 공고 분석: 엔드포인트 전체 마감(Vercel maxDuration 60 안), LLM 한 번의 상한, 단계별 최소 남은 시간.
+ANALYSIS_DEADLINE_S = 50.0
+ANALYSIS_LLM_MAX_S = 25.0
+RECLASSIFY_MIN_LEFT_S = 15.0
+SIGNAL_ASK_MIN_LEFT_S = 8.0
