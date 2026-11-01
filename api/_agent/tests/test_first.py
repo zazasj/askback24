@@ -199,6 +199,14 @@ def test_system_prompt_states_limits_and_codes():
         assert w in SYSTEM, w
 
 
+def test_system_prompt_mixes_endings_and_skips_repeated_leads():
+    # 4차 A4-53·A4-54·A4-55·A4-60: 질문 끝을 "…인가요?" 한 꼴로 몰던 줄이 돌아오지 않게
+    assert '질문은 "…인가요?"로 씁니다' not in SYSTEM
+    for w in ("…될까요?", "…궁금합니다.", "같은 끝맺음은 두 번까지만", "같은 앞말을 두 번 쓰지 않습니다",
+              "state가 inferred이면", '"…는데"로 끝나면 쉼표로'):
+        assert w in SYSTEM, w
+
+
 async def test_rewrite_message_has_hint_for_failed_rule_only():
     llm = FakeLlm([bad_be07(), good(["BE07"])])
     await run_first(req(), llm, LABELS)
