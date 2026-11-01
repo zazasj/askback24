@@ -4,9 +4,20 @@
  */
 import termsJson from '../data/tech-terms.json' with { type: 'json' }
 
+/** 글자만 쓰면 기본 규칙. 객체는 다음 두 가지를 더할 수 있다 */
+type Form =
+  | string
+  | {
+      text: string
+      /** 이 글이 뒤따르면 맞지 않는다(자바-자바스크립트) */
+      exclude_after?: string[]
+      /** 대소문자를 가린다(Go·REST·SI·SM 이 일반 영어 낱말과 섞이지 않게) */
+      case_sensitive?: boolean
+    }
+
 interface Term {
   id: string
-  forms: string[]
+  forms: Form[]
 }
 
 const LATIN = /[A-Za-z]/
@@ -14,11 +25,19 @@ const LATIN = /[A-Za-z]/
 const SEP = '[.\\-]?'
 const GAP = '\\s*'
 
-function formPattern(form: string): RegExp {
-  const parts = [...form.replace(/\s+/g, '')].map((ch) => (ch === '.' || ch === '-' ? SEP : ch.replace(/[\\^$*+?()|[\]{}/]/g, '\\$&')))
-  const body = parts.join(GAP)
-  // 짧은 영어 낱말이 다른 영어 낱말 안에서 걸리지 않게(SM-SMS, Go-Google). 한글 낱말은 포함만 본다
-  return new RegExp(LATIN.test(form) ? `(?<![A-Za-z0-9])${body}(?![A-Za-z0-9])` : body, 'i')
+function body(text: string): string {
+  const parts = [...text.replace(/\s+/g, '')].map((ch) => (ch === '.' || ch === '-' ? SEP : ch.replace(/[\\^$*+?()|[\]{}/]/g, '\\$&')))
+  return parts.join(GAP)
+}
+
+function formPattern(form: Form): RegExp {
+  const f = typeof form === 'string' ? { text: form } : form
+  let re = body(f.text)
+  // 짧은 영어 낱말이 다른 영어 낱말 안에서 걸리지 않게(SM-SMS, Go-Google). 한글 낱말은 포함만 본다.
+  // 뒤에 오는 숫자는 버전(Java8·Python3.11·Oracle11g)으로 보고 막지 않는다
+  if (LATIN.test(f.text)) re = `(?<![A-Za-z0-9])${re}(?![A-Za-z])`
+  for (const ex of f.exclude_after ?? []) re += `(?!${GAP}${body(ex)})`
+  return new RegExp(re, 'case_sensitive' in f && f.case_sensitive ? '' : 'i')
 }
 
 const COMPILED = (termsJson.terms as Term[]).map((t) => ({ id: t.id, patterns: t.forms.map(formPattern) }))
