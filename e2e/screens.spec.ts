@@ -453,13 +453,13 @@ test.describe('SCREENS 6-s1-tour', () => {
 })
 
 // ── 4차 단계 디자인(PLAN-4 T6, 11-02 시안 C 확정 D-394): 1차 ③ · 최종 ② · 최종 ③ → 7-stage-<화면>-<프로젝트>.png 6장 ──
-// 첫 화면(데스크톱은 맨 위, 휴대폰은 단계를 옮긴 직후 그대로)을 찍는다.
+// 첫 화면(데스크톱은 맨 위, 휴대폰은 단계를 옮긴 직후 그대로)을 찍는다. 머리띠는 ③에만 있고 최종 ②는 띠 없이 청록 단계 표시.
 // ③에서는 1번 질문 위끝 y와 머리띠 높이를 annotation(stage-q1-top)으로 남긴다(D-389: 시안 C 최종 ③ 데스크톱 751 · 휴대폰 744)
-const STAGE_SCREENS: ReadonlyArray<{ name: string; measure: boolean; setup: (page: Page) => Promise<void> }> = [
-  { name: 'first-3', measure: true, setup: async (page) => void (await makeFirstQuestions(page, 'oo')) },
+const STAGE_SCREENS: ReadonlyArray<{ name: string; third: boolean; setup: (page: Page) => Promise<void> }> = [
+  { name: 'first-3', third: true, setup: async (page) => void (await makeFirstQuestions(page, 'oo')) },
   {
     name: 'final-2',
-    measure: false,
+    third: false,
     setup: async (page) => {
       await makeFirstQuestions(page, 'oo')
       await page.getByRole('button', { name: '면접 다녀왔어요' }).click()
@@ -467,7 +467,7 @@ const STAGE_SCREENS: ReadonlyArray<{ name: string; measure: boolean; setup: (pag
       await fillReviewR04(page)
     },
   },
-  { name: 'final-3', measure: true, setup: async (page) => void (await makeFinalQuestions(page)) },
+  { name: 'final-3', third: true, setup: async (page) => void (await makeFinalQuestions(page)) },
 ]
 
 for (const screen of STAGE_SCREENS) {
@@ -476,9 +476,10 @@ for (const screen of STAGE_SCREENS) {
     try {
       await screen.setup(page)
       const bandEl = page.locator('#prep-stage-band')
-      await expect(bandEl, '단계 머리띠').toBeVisible()
+      if (screen.third) await expect(bandEl, '③ 단계 머리띠').toBeVisible()
+      else await expect(bandEl, '①② 머리띠 없음').toHaveCount(0)
       await firstView(page, isMobile)
-      if (screen.measure) {
+      if (screen.third) {
         const box = await questionItems(page).first().boundingBox()
         const scrollY = await page.evaluate(() => window.scrollY)
         const bandBox = await bandEl.boundingBox()
