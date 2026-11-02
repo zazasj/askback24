@@ -35,8 +35,8 @@ class FirstAgent:
         )
         self.loop = LoopAgent(spec, llm, clock)
 
-    async def run(self, req: FirstRequest) -> FirstResponse:
-        passed, _, _, model = await self.loop.run(req)
+    async def run(self, req: FirstRequest, budget_s: float | None = None) -> FirstResponse:
+        passed, _, _, model = await self.loop.run(req, budget_s)
         questions = [Draft(card_id=i.card_id, text=passed[i.card_id].strip()) for i in req.items if i.card_id in passed]
         return FirstResponse(questions=questions, model=model)
 

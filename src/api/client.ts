@@ -1,6 +1,7 @@
 /**
  * 질문 받기. 가짜 응답 모드(VITE_API_MODE=mock)는 서버를 부르지 않고 브라우저에서 shared/generate + 가짜 공급자를 돈다.
- * 실제 모드는 POST /api/questions, 25초 시간 초과·오류·형식 이상이면 같은 규칙의 검수 문장으로 대체한다.
+ * 실제 모드는 POST /api/questions, 40초 시간 초과·오류·형식 이상이면 같은 규칙의 검수 문장으로 대체한다.
+ * 서버 한도(PROVIDER_TIMEOUT_MS 35초)보다 5초 길게 기다려 서버가 끝낸 AI 문장을 놓치지 않는다(D-409).
  */
 import type {
   CardState,
@@ -17,7 +18,7 @@ import { createMockProvider } from '@shared/providers/mock'
 
 export const API_MODE: 'mock' | 'real' = import.meta.env.VITE_API_MODE === 'mock' ? 'mock' : 'real'
 export const MOCK_DELAY_MS = 1_500
-export const CLIENT_TIMEOUT_MS = 25_000
+export const CLIENT_TIMEOUT_MS = 40_000
 
 export interface FetchOptions {
   /** 시험 장치 ?apiFail=1 (가짜 응답 모드에서만) */

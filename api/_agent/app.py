@@ -8,13 +8,14 @@ from datetime import datetime, timezone
 
 import httpx
 
-from fastapi import APIRouter, Depends, FastAPI, Request
+from fastapi import APIRouter, Depends, FastAPI, Header, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from pathlib import Path
 
+from .budget import BUDGET_HEADER, FINAL_BUDGET_S, FIRST_BUDGET_S, JUDGE_BUDGET_S, budget_from_header
 from .checks import load_card_labels
 from .errors import ApiError
 from .cards.sources import SourceError
@@ -106,24 +107,24 @@ def create_app(
         return {"ok": True, "service": "askback24-ai", "labels": len(labels)}
 
     @router.post("/first-questions")
-    async def first_questions(body: FirstRequest) -> FirstResponse:
+    async def first_questions(body: FirstRequest, budget_ms: str | None = Header(default=None, alias=BUDGET_HEADER)) -> FirstResponse:
         try:
-            return await first_agent.run(body)
+            return await first_agent.run(body, budget_from_header(budget_ms, FIRST_BUDGET_S))
         except LlmError:
             # 로그 한 줄은 LoopAgent 가 남겼다.
             raise ApiError(503, "unavailable", "model is not ready") from None
 
     @router.post("/final-judgements")
-    async def final_judgements(body: JudgeRequest) -> JudgeResponse:
+    async def final_judgements(body: JudgeRequest, budget_ms: str | None = Header(default=None, alias=BUDGET_HEADER)) -> JudgeResponse:
         try:
-            return await judge_agent.run(body)
+            return await judge_agent.run(body, budget_from_header(budget_ms, JUDGE_BUDGET_S, JUDGE_BUDGET_S))
         except LlmError:
             raise ApiError(503, "unavailable", "model is not ready") from None
 
     @router.post("/final-questions")
-    async def final_questions(body: FinalRequest) -> FinalResponse:
+    async def final_questions(body: FinalRequest, budget_ms: str | None = Header(default=None, alias=BUDGET_HEADER)) -> FinalResponse:
         try:
-            return await final_agent.run(body)
+            return await final_agent.run(body, budget_from_header(budget_ms, FINAL_BUDGET_S))
         except LlmError:
             raise ApiError(503, "unavailable", "model is not ready") from None
 

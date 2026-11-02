@@ -23,6 +23,7 @@ class State(TypedDict):
     passed: list[Judgement]
     issues: dict[str, list[str]]
     started: float
+    budget: float
     model: str
 
 
@@ -50,7 +51,7 @@ class JudgeAgent:
         clock = self.clock
 
         async def judge(s: State) -> dict:
-            left = JUDGE_BUDGET_S - (clock() - s["started"])
+            left = s["budget"] - (clock() - s["started"])
             if left <= 0:
                 raise LlmError("timeout")
             res = await call_with_deadline(self.llm, "fast", SYSTEM, user_message(s["req"]), left)
@@ -67,7 +68,7 @@ class JudgeAgent:
                     continue
                 state, basis = got
                 basis = re.sub(r"\s+", " ", basis).strip()
-                found = check_judgement(basis, state, all_heard)
+                found = check_judgement(basis, state, all_heard, i.clarity)
                 if found:
                     issues[i.card_id] = found
                 else:
@@ -94,11 +95,13 @@ class JudgeAgent:
         g.add_edge("finish", END)
         return g.compile()
 
-    async def run(self, req: JudgeRequest) -> JudgeResponse:
+    async def run(self, req: JudgeRequest, budget_s: float | None = None) -> JudgeResponse:
         started = self.clock()
+        # 헤더가 커도 JUDGE_BUDGET_S 를 넘지 않는다(문장 몫을 남김). 상한은 app 이 budget_from_header 로 건다.
+        budget = JUDGE_BUDGET_S if budget_s is None else min(budget_s, JUDGE_BUDGET_S)
         try:
             final = await self.graph.ainvoke(
-                {"req": req, "raw": {}, "passed": [], "issues": {}, "started": started, "model": ""}
+                {"req": req, "raw": {}, "passed": [], "issues": {}, "started": started, "budget": budget, "model": ""}
             )
         except LlmError as e:
             log.info("[ai] judge unavailable code=%s ms=%d", e.code, int((self.clock() - started) * 1000))

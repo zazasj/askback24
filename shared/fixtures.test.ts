@@ -33,6 +33,7 @@ interface JudgementCase {
   basis: string
   state: string
   heard: string[]
+  clarity?: string
   expect: string[]
 }
 type Case = FirstCase | FinalCase | JudgementCase
@@ -46,7 +47,7 @@ describe('검사 예시 파일', () => {
   it.each(cases.map((c) => [c.name, c] as const))('%s', (_name, c) => {
     if (c.kind === 'judgement') {
       // 근거의 공백 줄이기는 judgementIssues 안에서 한다
-      expect(judgementIssues(c.basis, c.state, c.heard)).toEqual(c.expect)
+      expect(judgementIssues(c.basis, c.state, c.heard, c.clarity)).toEqual(c.expect)
     } else if (c.kind === 'final') {
       // 들은 답 대조는 Python 이 못 하므로 예시에는 넣지 않는다
       const q: Parameters<typeof checkFinalQuestion>[0] = { text: squash(c.text) }

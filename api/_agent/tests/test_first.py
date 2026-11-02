@@ -1,3 +1,4 @@
+import pytest
 import json
 import logging
 from pathlib import Path
@@ -90,7 +91,7 @@ async def test_no_rewrite_when_little_time_left():
     class Slow(FakeLlm):
         async def complete_json(self, *a, **k):
             r = await super().complete_json(*a, **k)
-            clock.t += 11
+            clock.t += 26  # 33 − 26 = 7초 < 8초 문턱
             return r
 
     llm = Slow([bad_be07(), good(["BE07"])])
@@ -110,8 +111,15 @@ async def test_every_call_gets_remaining_budget():
 
     llm = Slow([bad_be07(), good(["BE07"])])
     await run_first(req(), llm, LABELS, clock)
-    # 다시 쓰기는 남은 시간 − 1.5초(통과한 문항이 TS의 20초 안에 돌아가게)
-    assert llm.calls[0]["timeout_s"] == 18.0 and llm.calls[1]["timeout_s"] == 13.0 - 1.5
+    # 다시 쓰기는 남은 시간 − 1.5초(통과한 문항이 TS 마감 안에 돌아가게)
+    assert llm.calls[0]["timeout_s"] == 33.0 and llm.calls[1]["timeout_s"] == 28.0 - 1.5
+
+
+def test_first_budget_header():
+    # TS 가 넘긴 남은 시간(ms) − 1초를 예산으로 쓴다.
+    llm = FakeLlm([good()])
+    TestClient(create_app({}, llm=llm)).post(URL, json=RAW, headers={"x-rq-budget-ms": "35000"})
+    assert llm.calls[0]["timeout_s"] == pytest.approx(34.0, abs=0.1)
 
 
 async def test_malformed_output_is_not_a_crash():

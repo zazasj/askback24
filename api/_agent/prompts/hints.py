@@ -11,6 +11,8 @@ HINTS = {
     "unknown_term": "공고에 없는 기술·분야 낱말을 빼고 다시 쓰세요",
     "interviewer_quote": "1차 면접관의 말을 옮기거나 '아까'·'말씀하신'으로 되짚지 마세요",
     "cushion_missing": "완충 문장을 문장 맨 앞에 글자 그대로 두세요",
+    "cushion_leak": "완충 문장은 tone이 cushion인 문항의 맨 앞에만 한 번 쓰세요",
+    "permission_twice": "'여쭤도 될까요?'처럼 허락을 구하는 말은 한 문항에 한 번만 쓰세요",
 }
 
 

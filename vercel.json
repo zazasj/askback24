@@ -11,6 +11,9 @@
     }
   ],
   "functions": {
+    "api/questions.ts": {
+      "maxDuration": 60
+    },
     "api/ai/index.py": {
       "includeFiles": "{api/_agent/**,data/**}",
       "maxDuration": 60

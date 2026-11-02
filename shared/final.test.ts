@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { ANALYSES, CARDS, FINAL_BOOK, PRESETS, REVIEW_EXAMPLE, getCard, getPosting } from './catalog'
 import type { CardPick, Evidence, FinalPref, FinalQuestionsRequest, InterviewReview, PostingState, ReviewState } from './contract'
-import { generateFinal } from './generate'
+import { PROVIDER_TIMEOUT_MS, generateFinal } from './generate'
 import { classifyFinal, finalCardTemplate, rankFinal, ruleJudgements, type Origin } from './finalRules'
 import { createMockProvider } from './providers/mock'
 import type { FinalDraft, LlmProvider } from './providers/types'
@@ -358,7 +358,9 @@ describe('API-05·검사: 들은 답은 응답에 남지 않는다', () => {
     expect(states.BE07).toBe('still_unknown/rule')
     expect(states.BE02).toBe('confirmed/rule')
     expect(states.BE01).toBe('mismatch/ai')
-    expect(reports[0]?.judged).toBe(2)
+    // BE15는 "모호했어요"라 기대와 다름으로 단정한 판정을 받지 않는다(D-410)
+    expect(states.BE15).toBe('still_unknown/rule')
+    expect(reports[0]?.judged).toBe(1)
     expect(reports[0]?.issues).toContain('judge_rejected')
     expect(JSON.stringify(res)).not.toContain(HEARD[1])
   })
@@ -379,6 +381,51 @@ describe('API-05·검사: 들은 답은 응답에 남지 않는다', () => {
     expect(wrote).toBe(false)
     expect(reports[0]?.failure).toBe('timeout')
     expect(res.final_questions.every((q) => q.source === 'template')).toBe(true)
+  })
+
+  it('판정이 판정 상한에 걸려도 남은 시간이 있으면 문장은 부르고, 남은 시간을 넘긴다(D-409)', async () => {
+    const budgets: Array<number | undefined> = []
+    const stuck: LlmProvider = {
+      name: 'stuck',
+      writeFirst: async () => [],
+      judgeReview: (_input, signal, budgetMs) => {
+        budgets.push(budgetMs)
+        return new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error('aborted'))))
+      },
+      writeFinal: async (input, _signal, budgetMs) => {
+        budgets.push(budgetMs)
+        return input.items.map((i) => ({ key: i.key, text: i.template_text }))
+      },
+    }
+    const reports: Array<{ failure?: string }> = []
+    const res = await generateFinal(reqR04(), { provider: stuck, timeoutMs: 5_000, judgeTimeoutMs: 20, onReport: (r) => reports.push(r) })
+    expect(reports[0]?.failure).toBe('timeout')
+    expect(res.final_questions.every((q) => q.source === 'ai')).toBe(true)
+    expect(res.card_states.every((s) => s.source === 'rule')).toBe(true)
+    expect(budgets[0]).toBe(20)
+    expect(budgets[1]).toBeGreaterThan(4_000)
+    expect(budgets[1]).toBeLessThanOrEqual(5_000)
+  })
+
+  it('판정할 카드가 없으면(못 물음) 문장이 시간 한도를 다 받는다', async () => {
+    const budgets: Array<number | undefined> = []
+    const p: LlmProvider = {
+      name: 'test',
+      writeFirst: async () => [],
+      judgeReview: async () => {
+        throw new Error('부르면 안 됨')
+      },
+      writeFinal: async (input, _signal, budgetMs) => {
+        budgets.push(budgetMs)
+        return input.items.map((i) => ({ key: i.key, text: i.template_text }))
+      },
+    }
+    const review = r04Review()
+    review.not_asked = [...review.not_asked, ...review.asked.map((a) => ({ card_id: a.card_id, question_id: a.question_id, reason: 'no_time' as const }))]
+    review.asked = []
+    await generateFinal(reqR04(review), { provider: p })
+    expect(budgets).toHaveLength(1)
+    expect(budgets[0]).toBeGreaterThan(PROVIDER_TIMEOUT_MS - 1_000)
   })
 })
 

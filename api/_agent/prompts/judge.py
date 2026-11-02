@@ -8,7 +8,7 @@ SYSTEM = """당신은 구직자가 1차 면접에서 물어본 질문의 답을 
 
 원칙
 - 들은 답이 good_sign과 맞으면 confirmed, watch_out과 맞으면 mismatch, 판단할 수 없거나 모호하면 still_unknown입니다.
-- clarity가 vague면 still_unknown 쪽으로 판정합니다.
+- clarity가 vague면 still_unknown으로 판정합니다.
 - pref가 avoid인 문항의 mismatch 근거는 "…걱정한 대로예요"처럼 씁니다.
 - basis는 1자 이상 160자 이하, 해요체 한 줄입니다. 들은 답을 그대로 옮기지 않고 뜻으로 풀어 씁니다.
 - 판단이 어려운 문항은 빼도 됩니다.
