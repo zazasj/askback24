@@ -3,7 +3,7 @@
  * 최종 면접에서는 들은 답을 읽고 카드 상태를 판정하는 일(judgeReview)도 맡는다.
  * 공급자가 틀리거나 늦어도 shared/generate.ts 가 검수 문장·단순 규칙으로 대신한다.
  */
-import type { BlankTopic, Clarity, Evidence, FinalPref, FinalQType, Posting, PostingState, Pref, QType, ReviewState } from '../contract.js'
+import type { BlankTopic, Clarity, Evidence, FinalPref, FinalQType, Posting, PostingState, Pref, QType, ResumeForAi, ReviewState } from '../contract.js'
 import type { Origin, Tone } from '../finalRules.js'
 
 export interface DraftItem {
@@ -20,6 +20,8 @@ export interface DraftItem {
   template_text: string
   /** 이 질문에만 경험 한 줄을 붙인다 */
   has_exp: boolean
+  /** 이 질문에는 이력서 칸을 살려 써도 된다(이력서가 있을 때만 채운다) */
+  can_cite_resume?: boolean
 }
 
 export interface FirstDraftInput {
@@ -27,6 +29,8 @@ export interface FirstDraftInput {
   posting: Posting
   /** 경험을 붙일 질문이 있을 때만 채운다. 공급자는 저장·기록하지 않는다 */
   experience: string
+  /** 허용 칸만. 없으면 키 자체가 없다. 공급자는 저장·기록하지 않는다 */
+  resume?: ResumeForAi
   items: DraftItem[]
 }
 

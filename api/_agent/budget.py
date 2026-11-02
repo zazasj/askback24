@@ -2,8 +2,9 @@ FIRST_BUDGET_S = 18.0
 RETRY_MIN_LEFT_S = 8.0
 # 다시 쓰기 호출은 남은 시간보다 이만큼 일찍 끊어, 통과한 문항이 TS의 20초 안에 돌아가게 한다.
 REWRITE_SAFETY_S = 1.5
-JUDGE_BUDGET_S = 8.0
-FINAL_BUDGET_S = 10.0
+# ③은 판정 + 문장이 TS 20초를 나눠 쓴다. 2026-11-01 gpt-6-luna 측정(판정 최대 6.5초, 문장 p95 12.1초·최대 12.6초)에 맞춤(D-407).
+JUDGE_BUDGET_S = 7.0
+FINAL_BUDGET_S = 13.0
 
 # 국민연금 실시간 조회: 전체 예산, 호출 하나의 한도, 월별 동시 호출 수.
 NPS_BUDGET_S = 20.0

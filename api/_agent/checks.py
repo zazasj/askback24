@@ -4,6 +4,8 @@ import json
 import re
 from pathlib import Path
 
+from .terms import unknown_in
+
 TEXT_MIN = 10
 TEXT_MAX = 260
 
@@ -67,15 +69,28 @@ def _common_issues(t: str, posting: dict, card_labels: set[str]) -> list[str]:
     return issues
 
 
-def check_first(text: str, state: str, has_exp: bool, posting: dict, card_labels: set[str]) -> list[str]:
+def unknown_terms(text: str, posting: dict, resume_text: str = "") -> list[str]:
+    """질문의 기술·분야 낱말 중 공고 모든 칸(과 이력서)에 없는 것(함의 허용, 실행 중 제외 낱말 뺌). TS unknownTerms 와 같은 규칙."""
+    return unknown_in(text, allowed_source(posting, resume_text), runtime=True)
+
+
+def allowed_source(posting: dict, resume_text: str = "") -> str:
+    """unknown_term 허용 글: 공고 글자 칸 전부 + 지원자 글. 지표(evals)도 같은 조합을 쓴다."""
+    return "\n".join([*(v for v in posting.values() if isinstance(v, str)), resume_text])
+
+
+def check_first(text: str, state: str, has_exp: bool, posting: dict, card_labels: set[str], *, resume_text: str = "", can_cite_resume: bool = False) -> list[str]:
     t = text.strip()
     issues = _common_issues(t, posting, card_labels)
     if issues == ["empty"]:
         return issues
     if state == "absent" and PRESUPPOSE.search(t):
         issues.append("absent_presupposition")
-    if not has_exp and EXPERIENCE_CLAIM.search(t):
+    if not has_exp and not can_cite_resume and EXPERIENCE_CLAIM.search(t):
         issues.append("experience_claim")
+    # 지어낸 기술·분야 낱말은 마지막에 붙인다(TS 와 같은 순서)
+    if unknown_terms(t, posting, resume_text):
+        issues.append("unknown_term")
     return issues
 
 
