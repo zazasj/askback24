@@ -69,6 +69,14 @@ export function ruleJudgedAskedCount(states: readonly CardState[]): number {
   return states.filter((s) => s.source === 'rule' && ASKED_RULE_BASES.has(s.basis)).length
 }
 
+/**
+ * 1차 면접에서 물어본 카드가 하나도 없는지. 들은 답이 없어 AI 판정 없이 모두 규칙 판정이므로,
+ * "AI 대신 단순 규칙으로 판정했어요"(AI 실패처럼 읽힘) 대신 판정할 답이 없었다고 알린다(D-412)
+ */
+export function nothingAsked(states: readonly CardState[]): boolean {
+  return states.length > 0 && states.every((s) => s.source === 'rule') && ruleJudgedAskedCount(states) === 0
+}
+
 export function itemOf(draft: ReviewDraft, cardId: string): ReviewItemDraft {
   return draft.items[cardId] ?? emptyItem()
 }

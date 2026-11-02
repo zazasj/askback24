@@ -28,7 +28,7 @@ onBeforeUnmount(() => {
 
 const stateOf = (i: number) => (i < active.value ? 'done' : i === active.value ? 'active' : 'wait')
 
-// 세 줄은 1초 안에 다 켜지고 실제 대기는 10~20초라, 얼마나 걸리는지와 늦을 때 일을 말한다(실제 모드만)
+// 세 줄은 1초 안에 다 켜지고 실제 대기는 10~25초라(11-02 실측 최종 최대 24초, D-409·D-412), 얼마나 걸리는지와 늦을 때 일을 말한다(실제 모드만)
 const wait = modeCopy(API_MODE === 'mock').generatingWait
 </script>
 

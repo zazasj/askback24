@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { PRESETS, REVIEW_EXAMPLE } from '@shared/catalog'
 import { buildTemplateFirst, generateFinal } from '@shared/generate'
 import { createMockProvider } from '@shared/providers/mock'
-import { emptyReviewDraft, exampleDraft, isItemDone, isTouched, ruleJudgedAskedCount, toFinalRequest, toReview } from './review'
+import { emptyReviewDraft, exampleDraft, isItemDone, isTouched, nothingAsked, ruleJudgedAskedCount, toFinalRequest, toReview } from './review'
 
 const first = buildTemplateFirst({ mode: 'first', wantedAuthNo: 'K-MOCK-0001', picks: PRESETS.A.picks, experience: PRESETS.A.experience })
 const questions = first.questions
@@ -58,5 +58,14 @@ describe('최종 ③ 일부 단순 규칙 판정 안내', () => {
 
     const all = await generateFinal(toFinalRequest('K-MOCK-0001', PRESETS.A.picks, example, questions))
     expect(ruleJudgedAskedCount(all.card_states)).toBe(4)
+    expect(nothingAsked(all.card_states), '물어본 카드를 규칙으로 판정했으면 "AI 대신 단순 규칙" 안내').toBe(false)
+  })
+
+  it('D-412 하나도 묻지 못했으면 nothingAsked=true(판정할 답이 없었다는 안내), 판정 결과가 없으면 false', async () => {
+    const none = emptyReviewDraft()
+    for (const q of questions) none.items[q.card_id] = { asked: 'not_asked', heard: '', clarity: null, reason: 'no_time' }
+    const res = await generateFinal(toFinalRequest('K-MOCK-0001', PRESETS.A.picks, none, questions))
+    expect(nothingAsked(res.card_states)).toBe(true)
+    expect(nothingAsked([])).toBe(false)
   })
 })

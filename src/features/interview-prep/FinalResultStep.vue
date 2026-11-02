@@ -23,7 +23,7 @@ import GeneratingView from './GeneratingView.vue'
 import { prefOf } from './picks'
 import QuestionCard from './QuestionCard.vue'
 import { FINAL_TONES, evidenceLabel, finalMetaParts, finalStateLabel, finalTypeLabel, finalTypeNote, type MetaParts } from './questionView'
-import { MOOD_LABELS, STATE_LABELS, isTouched, ruleJudgedAskedCount } from './review'
+import { MOOD_LABELS, STATE_LABELS, isTouched, nothingAsked, ruleJudgedAskedCount } from './review'
 
 const props = defineProps<{ applyId: string; posting: Posting }>()
 const emit = defineEmits<{ edit: []; first: []; remake: [] }>()
@@ -54,6 +54,8 @@ const ruleJudged = computed(() => {
 })
 /** 일부만 규칙 판정이어도 규칙 결과가 AI 판정으로 보이지 않게 개수를 알린다 */
 const ruleAskedCount = computed(() => ruleJudgedAskedCount(result.value?.response.card_states ?? []))
+/** 1차 면접에서 물어본 것이 하나도 없음 — 판정할 답이 없었다고 알린다(D-412) */
+const noneAsked = computed(() => nothingAsked(result.value?.response.card_states ?? []))
 
 // 최종 질문을 다 만든 뒤 이 화면 안내(TR-02)
 useScreenTour('prep-final', () => [...FINAL_RESULT_TOUR], { ready: () => !generating.value && !!result.value, titleId: 'final-title' })
@@ -209,7 +211,11 @@ const STANDARD_CONTRACT_URL = 'https://www.moel.go.kr/policy/policydata/view.do?
       <p v-else-if="templateCount > 0" class="notice is-fallback">
         질문 {{ templateCount }}개는 AI 문장이 검사를 통과하지 못해 미리 검수한 문장으로 바꿨어요.
       </p>
-      <p v-if="ruleJudged" class="notice is-fallback">
+      <!-- 물어본 것이 없으면 판정할 답이 없어 규칙 판정뿐이다. AI 실패 안내처럼 보이지 않게 따로 알린다(D-412) -->
+      <p v-if="noneAsked" class="notice">
+        1차 면접에서 물어본 것이 없어 들은 답은 판정하지 않았어요. 못 물은 업무는 "아직 모름"으로 두고 최종 질문을 만들었어요.
+      </p>
+      <p v-else-if="ruleJudged" class="notice is-fallback">
         들은 답은 AI 대신 단순 규칙으로 판정했어요. 답이 구체적이면 "확인됨", 걱정한 업무이거나 답이 모호하거나 묻지 못했으면 "아직 모름"이에요. "기대와 다름"은 AI가 답을 읽어야 나와요.
       </p>
       <p v-else-if="ruleAskedCount > 0" class="notice is-fallback">

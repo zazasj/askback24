@@ -71,7 +71,7 @@ describe('실제 모드: 지금 시연에서도 AI 처리 기관(엔노이아)�
   })
 
   it('A4-21 만드는 중 대기 안내와 A4-22 다시 만들기 안내', () => {
-    expect(REAL.generatingWait).toBe('보통 10~20초 걸려요. 늦어지면 미리 검수한 문장으로 보여 드려요.')
+    expect(REAL.generatingWait).toBe('보통 10~25초 걸려요. 늦어지면 미리 검수한 문장으로 보여 드려요.')
     expect(REAL.remakeHint).toBe('"AI로 다시 만들기"를 누르면 AI 문장을 다시 받아 볼 수 있어요.')
   })
 })
