@@ -17,7 +17,7 @@ def test_fixture(case):
     kind = case.get("kind", "first")
     if kind == "judgement":
         # 근거의 공백 줄이기는 check_judgement 안에서 한다
-        assert check_judgement(case["basis"], case["state"], case["heard"]) == case["expect"]
+        assert check_judgement(case["basis"], case["state"], case["heard"], case.get("clarity")) == case["expect"]
         return
     # TS 시험·generate.ts 와 같이 공백을 한 칸으로 줄인 뒤 검사한다
     text = re.sub(r"\s+", " ", case["text"]).strip()

@@ -1,9 +1,10 @@
 """③-2 최종 면접·처우 질문 문장: 공통 틀(rewrite_loop) 위의 얇은 명세. 설계 확정 9-3."""
 import time
 from collections.abc import Callable
+from pathlib import Path
 
 from ..budget import FINAL_BUDGET_S
-from ..checks import check_final
+from ..checks import check_final, check_final_tone, load_cushions
 from ..llm import Llm
 from ..prompts.final import SYSTEM, user_message
 from ..schemas import FinalDraft, FinalDraftItem, FinalRequest, FinalResponse
@@ -17,10 +18,16 @@ def _cushion_missing(item: FinalDraftItem, text: str) -> bool:
 
 
 class FinalAgent:
-    def __init__(self, llm: Llm, labels: set[str], clock: Callable[[], float] = time.monotonic) -> None:
+    def __init__(
+        self, llm: Llm, labels: set[str], clock: Callable[[], float] = time.monotonic, cushions: tuple[str, ...] | None = None
+    ) -> None:
+        book = load_cushions(Path(__file__).resolve().parents[3]) if cushions is None else cushions
+
         def check(req: FinalRequest, i: FinalDraftItem, text: str) -> list[str]:
             issues = check_final(text, i.state, req.posting, labels)
-            return issues + ["cushion_missing"] if _cushion_missing(i, text) else issues
+            if _cushion_missing(i, text):
+                issues.append("cushion_missing")
+            return issues + check_final_tone(text, i.tone, i.cushion, book)
 
         spec = LoopSpec(
             name="final",
@@ -34,7 +41,7 @@ class FinalAgent:
         )
         self.loop = LoopAgent(spec, llm, clock)
 
-    async def run(self, req: FinalRequest) -> FinalResponse:
-        passed, _, _, model = await self.loop.run(req)
+    async def run(self, req: FinalRequest, budget_s: float | None = None) -> FinalResponse:
+        passed, _, _, model = await self.loop.run(req, budget_s)
         questions = [FinalDraft(key=i.key, text=passed[i.key].strip()) for i in req.items if i.key in passed]
         return FinalResponse(questions=questions, model=model)

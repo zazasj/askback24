@@ -32,7 +32,7 @@ npm run preview        # http://localhost:4173
 
 ### 실제 모드
 
-`npm run build` / `npm run dev`는 실제 모드다. 화면이 `POST /api/questions`(Vercel 함수, `api/questions.ts`)를 부르고, 25초 안에 답이 없거나 오류가 나면 미리 검수한 문장으로 대신 보여 준다. 로컬 `npm run dev`에는 서버 함수가 없으므로 늘 검수 문장으로 대체된다.
+`npm run build` / `npm run dev`는 실제 모드다. 화면이 `POST /api/questions`(Vercel 함수, `api/questions.ts`)를 부르고, 40초 안에 답이 없거나 오류가 나면 미리 검수한 문장으로 대신 보여 준다. 로컬 `npm run dev`에는 서버 함수가 없으므로 늘 검수 문장으로 대체된다.
 
 서버 함수 환경변수는 `.env.example`을 본다. 키는 `api/` 안에서 `process.env`로만 읽고, `VITE_`로 시작하는 변수에 넣지 않는다. `.env`는 커밋하지 않는다.
 
@@ -115,7 +115,7 @@ npm run check          # 위 네 가지(build · test:unit · test:py · test:e2
 4. staging 미리보기에서 질문을 만들어 본다. 먼저 Vercel 함수 로그에서 `[questions] … provider=remote … template=0`을 확인한다. `provider=unconfigured`면 `LLM_PROVIDER`가 `remote`로 들어가지 않은 것이다(오타·빠짐). `template=`이 0이 아니면 `issues=`(걸린 검사)와 `failure=`(오류·시간 초과)를 본다. 그다음 화면에서 ③ 제목 옆 "가짜 응답 모드" 태그가 없고 질문에 "검수 문장" 라벨이 붙지 않는지 본다.
 5. 문제가 없으면 Production 환경변수에도 같은 값을 넣고 main에 합친다. `LLM_PROVIDER=mock`으로 되돌리면 실제 빌드에서는 모두 검수 문장으로 나간다(가짜 문장을 AI 결과로 보이지 않게). 가짜 응답 모드로 돌리려면 `buildCommand`를 `npm run build:mock`으로 돌린다.
 
-AI 서버가 늦거나(20초) 오류를 내거나 응답 모양이 틀리면 우리 서버가 그 질문을 미리 검수한 문장(최종 판정은 단순 규칙)으로 대신하므로 화면은 멈추지 않는다. 로컬 `npm run dev`에는 서버 함수가 없어서 연결은 단위 시험(가짜 fetch, `api/_lib/remote.test.ts`)과 staging 미리보기로 확인한다.
+AI 서버가 늦거나(35초) 오류를 내거나 응답 모양이 틀리면 우리 서버가 그 질문을 미리 검수한 문장(최종 판정은 단순 규칙)으로 대신하므로 화면은 멈추지 않는다. 로컬 `npm run dev`에는 서버 함수가 없어서 연결은 단위 시험(가짜 fetch, `api/_lib/remote.test.ts`)과 staging 미리보기로 확인한다.
 
 명세의 예시 JSON(`docs/api-examples/` 6개)은 코드로 만든다. 규칙·데이터·가짜 공급자를 고친 뒤 아래 명령으로 다시 쓰고, 단위 시험(`scripts/apiExamples.test.ts`)이 파일과 지금 코드가 같은지 비교한다.
 

@@ -107,7 +107,7 @@ def check_final(text: str, state: str | None, posting: dict, card_labels: set[st
     return issues
 
 
-def check_judgement(basis: str, state: str, heard: list[str]) -> list[str]:
+def check_judgement(basis: str, state: str, heard: list[str], clarity: str | None = None) -> list[str]:
     """TS judgementIssues(shared/generate.ts)와 같은 순서."""
     b = squash(basis).strip()
     issues: list[str] = []
@@ -121,6 +121,32 @@ def check_judgement(basis: str, state: str, heard: list[str]) -> list[str]:
         issues.append("basis_heard")
     if any(p.search(b) for p in FORBIDDEN):
         issues.append("forbidden_word")
+    # "모호했어요"는 단순 규칙·명세 모두 아직 모름이다. AI가 확인됨·기대와 다름으로 단정하면 받지 않는다(D-410).
+    if clarity == "vague" and state != "still_unknown":
+        issues.append("vague_decided")
+    return issues
+
+
+# 허락을 구하는 말. 완충 문장("…여쭤도 될까요?") 뒤에 다시 쓰면 한 질문에 허락을 두 번 구한다(D-411).
+PERMISSION = re.compile(r"(?:여쭤|여쭈어|물어)\s*(?:봐|보아)?도\s*(?:될까요|되나요|되겠습니까|괜찮을까요)")
+
+
+def load_cushions(root: Path) -> tuple[str, ...]:
+    """data/final.backend.json 완충 문장(앞뒤 공백 뺌)."""
+    book = json.loads((root / "data" / "final.backend.json").read_text(encoding="utf-8"))
+    return tuple(c.strip() for c in book.get("cushions", []) if isinstance(c, str) and c.strip())
+
+
+def check_final_tone(text: str, tone: str, cushion: str, cushions: tuple[str, ...]) -> list[str]:
+    """완충 문장은 tone cushion 문항의 맨 앞에 한 번만, 허락 구하는 말은 한 문항에 한 번만. Python 에만 있다(TS 는 AI 몫으로 둠)."""
+    t = squash(text).strip()
+    own = squash(cushion).strip()
+    rest = t[len(own):] if tone == "cushion" and own and t.startswith(own) else t
+    issues: list[str] = []
+    if any(c in rest for c in (squash(c) for c in cushions)):
+        issues.append("cushion_leak")
+    if len(PERMISSION.findall(t)) >= 2:
+        issues.append("permission_twice")
     return issues
 
 # 신호 질문은 회사를 평가하는 말도 막는다. 공용 FORBIDDEN(TS와 같은 목록)은 건드리지 않는다.

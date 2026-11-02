@@ -8,8 +8,8 @@ import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { REVIEW_EXAMPLE } from '../../shared/catalog.ts'
 import type { FinalQuestionsResponse, FirstQuestionsResponse } from '../../shared/contract.ts'
-import { generateFinal, generateFirst, type GenerateReport } from '../../shared/generate.ts'
-import { REMOTE_PATHS, createRemoteProvider } from '../../shared/providers/remote.ts'
+import { JUDGE_TIMEOUT_MS, PROVIDER_TIMEOUT_MS, generateFinal, generateFirst, type GenerateReport } from '../../shared/generate.ts'
+import { BUDGET_HEADER, REMOTE_PATHS, createRemoteProvider } from '../../shared/providers/remote.ts'
 import { buildApiExamples, type ApiExampleName } from '../../scripts/apiExamples.ts'
 import { POST } from '../questions.ts'
 import { handleQuestions, type Logger } from './handler.ts'
@@ -115,6 +115,21 @@ describe('AS-07 (a) 정상 응답 → source: "ai"', () => {
     ])
     expect(body.summary).toEqual({ confirmed: 2, mismatch: 1, still_unknown: 2, company_signal: 1 })
     expect(logs).toMatch(/provider=remote .*template=0 .*judged=4/)
+  })
+})
+
+describe('D-409 남은 시간을 AI 서버에 넘긴다', () => {
+  it('호출마다 x-rq-budget-ms: 1차·문장은 서버 한도 안 남은 시간, 판정은 판정 상한', async () => {
+    const calls = stubFetch(exampleServer)
+    await askFirst()
+    await askFinal()
+    const budgets = calls.map((c) => [new URL(c.url).pathname, Number(c.headers.get(BUDGET_HEADER))] as const)
+    expect(budgets.map(([p]) => p)).toEqual([REMOTE_PATHS.first, REMOTE_PATHS.judge, REMOTE_PATHS.final])
+    const [first, judge, final] = budgets.map(([, ms]) => ms)
+    expect(first).toBeGreaterThan(PROVIDER_TIMEOUT_MS - 1_000)
+    expect(first).toBeLessThanOrEqual(PROVIDER_TIMEOUT_MS)
+    expect(judge).toBe(JUDGE_TIMEOUT_MS)
+    expect(final).toBeGreaterThan(PROVIDER_TIMEOUT_MS - 1_000)
   })
 })
 

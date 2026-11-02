@@ -134,9 +134,10 @@ export interface AiErrorResponse {
 export interface LlmProvider {
   /** 로그용 이름(mock · remote) */
   readonly name: string
-  writeFirst(input: FirstDraftInput, signal: AbortSignal): Promise<Draft[]>
+  /** budgetMs: 이 호출에 남은 시간. 원격 공급자는 AI 서버에 넘긴다(그 안에 끝내라고) */
+  writeFirst(input: FirstDraftInput, signal: AbortSignal, budgetMs?: number): Promise<Draft[]>
   /** 없으면 단순 규칙으로 판정한다 */
-  judgeReview?(input: JudgeInput, signal: AbortSignal): Promise<Judgement[]>
+  judgeReview?(input: JudgeInput, signal: AbortSignal, budgetMs?: number): Promise<Judgement[]>
   /** 없으면 최종 질문을 검수 문장으로 쓴다 */
-  writeFinal?(input: FinalDraftInput, signal: AbortSignal): Promise<FinalDraft[]>
+  writeFinal?(input: FinalDraftInput, signal: AbortSignal, budgetMs?: number): Promise<FinalDraft[]>
 }

@@ -1,3 +1,4 @@
+import pytest
 import asyncio
 import copy
 import json
@@ -98,18 +99,65 @@ def test_final_no_heard_field_accepted(ai_log):
 async def test_final_timeout_is_budget():
     llm = FakeLlm([good()])
     await FinalAgent(llm, set(), clock=lambda: 0.0).run(FinalRequest.model_validate(RAW))
-    assert llm.calls[0]["timeout_s"] == 13.0
+    assert llm.calls[0]["timeout_s"] == 23.0
 
 
-def test_final_no_rewrite_at_real_latency(ai_log):
-    # 한 번에 6초면 남은 시간이 8초 문턱 아래라 다시 쓰지 않는다(D-343).
-    no_cushion = "지난 면접에 이어 공고의 '고객사 상주 가능자' 부분을 조금 더 구체적으로 여쭙겠습니다. 첫해 상주 기간은 어느 정도인가요?"
-    llm = FakeLlm([with_text("BE15", no_cushion), good(["BE15"])])
+def test_final_budget_header():
+    # 판정을 건너뛰면 TS 가 남은 시간을 다 넘긴다: 그 − 1초를 쓰고, 커도 50초(maxDuration 60 안)까지.
+    for header, want in (("35000", 34.0), ("90000", 50.0), ("abc", 23.0), ("500", 0.0)):
+        llm = FakeLlm([good()])
+        r = TestClient(create_app({}, llm=llm)).post(URL, json=RAW, headers={"x-rq-budget-ms": header})
+        if want == 0.0:
+            assert r.status_code == 503 and llm.calls == []
+        else:
+            assert llm.calls[0]["timeout_s"] == pytest.approx(want, abs=0.1)  # 실제 시계라 조금 줄어 있다
+
+
+NO_CUSHION = "지난 면접에 이어 공고의 '고객사 상주 가능자' 부분을 조금 더 구체적으로 여쭙겠습니다. 첫해 상주 기간은 어느 정도인가요?"
+
+
+def test_final_rewrites_at_real_latency(ai_log):
+    # 한 번에 6초여도 남은 시간(23 − 6 = 17초)이 8초 문턱을 넘어 걸린 문항을 다시 쓴다(D-409, 예전 13초 예산에선 못 했음).
+    llm = FakeLlm([with_text("BE15", NO_CUSHION), good(["BE15"])])
     clock = lambda: 6.0 * len(llm.calls)  # noqa: E731
+    out = asyncio.run(FinalAgent(llm, set(), clock=clock).run(FinalRequest.model_validate(RAW)))
+    assert len(llm.calls) == 2
+    assert [q.key for q in out.questions] == KEYS
+    assert "retried=1" in ai_log.text
+
+
+def test_final_no_rewrite_when_little_time_left(ai_log):
+    llm = FakeLlm([with_text("BE15", NO_CUSHION), good(["BE15"])])
+    clock = lambda: 16.0 * len(llm.calls)  # noqa: E731  23 − 16 = 7초 < 8초
     out = asyncio.run(FinalAgent(llm, set(), clock=clock).run(FinalRequest.model_validate(RAW)))
     assert len(llm.calls) == 1
     assert "BE15" not in [q.key for q in out.questions]
     assert "retried=0" in ai_log.text
+
+
+def test_final_rewrites_cushion_leak():
+    # 완충 문장은 규칙이 cushion 문항에만 붙인다. basic 문항(BE08)에 베끼면 고칠 점을 주고 다시 쓴다.
+    leak = "괜찮으시다면 여쭤도 될까요? 장애 대응 당번(온콜)이 있다면 신입도 들어가나요?"
+    llm = FakeLlm([with_text("BE08", leak), good(["BE08"])])
+    r = post(llm)
+    assert len(llm.calls) == 2
+    assert "완충 문장은 tone이 cushion인 문항의 맨 앞에만 한 번 쓰세요" in llm.calls[1]["user"]
+    assert [q["key"] for q in r.json()["questions"]] == KEYS
+
+
+def test_final_drops_permission_twice(ai_log):
+    twice = "괜찮으시다면 여쭤도 될까요? 첫해에 신입이 상주 프로젝트에 나가는지 여쭤봐도 될까요?"
+    llm = FakeLlm([with_text("BE15", twice), with_text("BE15", twice)])
+    r = post(llm)
+    assert "BE15" not in [q["key"] for q in r.json()["questions"]]
+    assert "BE15:permission_twice" in ai_log.text
+
+
+def test_final_own_cushion_is_not_a_leak():
+    # 템플릿 그대로(완충 문장 + 질문)는 통과한다 — 다른 cushion 문항(offer:sal)도 마찬가지.
+    llm = FakeLlm([good()])
+    r = post(llm)
+    assert len(llm.calls) == 1 and [q["key"] for q in r.json()["questions"]] == KEYS
 
 
 def test_final_logs_shape(ai_log):

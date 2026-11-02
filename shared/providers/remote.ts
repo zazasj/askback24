@@ -32,6 +32,9 @@ export function endpointAllowed(base: string): boolean {
   return url.protocol === 'https:' || (url.protocol === 'http:' && LOCAL_HOSTS.has(url.hostname))
 }
 
+/** 이 호출에 남은 시간(ms). AI 서버는 여기서 1초를 뺀 만큼만 쓴다(api/_agent/budget.py, D-409) */
+export const BUDGET_HEADER = 'x-rq-budget-ms'
+
 export const REMOTE_PATHS = {
   first: '/v1/first-questions',
   judge: '/v1/final-judgements',
@@ -107,7 +110,7 @@ export function readFinalDrafts(list: readonly unknown[]): FinalDraft[] {
   })
 }
 
-async function post(config: RemoteConfig, path: string, body: unknown, signal: AbortSignal): Promise<unknown> {
+async function post(config: RemoteConfig, path: string, body: unknown, signal: AbortSignal, budgetMs?: number): Promise<unknown> {
   const base = config.endpoint?.trim().replace(/\/+$/, '')
   // 주소가 없거나 https 가 아니거나, 운영인데 키가 없으면 부르지 않는다 → generate 가 모두 검수 문장(A3-r1-08)
   if (!base || !endpointAllowed(base)) throw new RemoteError('not_configured')
@@ -115,6 +118,7 @@ async function post(config: RemoteConfig, path: string, body: unknown, signal: A
   const headers: Record<string, string> = { 'Content-Type': 'application/json; charset=utf-8', Accept: 'application/json' }
   if (config.key) headers.Authorization = `Bearer ${config.key}`
   if (config.bypassSecret) headers['x-vercel-protection-bypass'] = config.bypassSecret
+  if (budgetMs !== undefined && Number.isFinite(budgetMs) && budgetMs > 0) headers[BUDGET_HEADER] = String(Math.floor(budgetMs))
   const doFetch = config.fetch ?? globalThis.fetch
   const res = await doFetch(`${base}${path}`, { method: 'POST', headers, body: JSON.stringify(body), signal })
   if (!res.ok) {
@@ -147,14 +151,14 @@ function listOf(data: unknown, key: 'questions' | 'judgements'): unknown[] {
 export function createRemoteProvider(config: RemoteConfig): LlmProvider {
   return {
     name: 'remote',
-    async writeFirst(input: FirstDraftInput, signal: AbortSignal): Promise<Draft[]> {
-      return readDrafts(listOf(await post(config, REMOTE_PATHS.first, input, signal), 'questions'))
+    async writeFirst(input: FirstDraftInput, signal: AbortSignal, budgetMs?: number): Promise<Draft[]> {
+      return readDrafts(listOf(await post(config, REMOTE_PATHS.first, input, signal, budgetMs), 'questions'))
     },
-    async judgeReview(input: JudgeInput, signal: AbortSignal): Promise<Judgement[]> {
-      return readJudgements(listOf(await post(config, REMOTE_PATHS.judge, input, signal), 'judgements'))
+    async judgeReview(input: JudgeInput, signal: AbortSignal, budgetMs?: number): Promise<Judgement[]> {
+      return readJudgements(listOf(await post(config, REMOTE_PATHS.judge, input, signal, budgetMs), 'judgements'))
     },
-    async writeFinal(input: FinalDraftInput, signal: AbortSignal): Promise<FinalDraft[]> {
-      return readFinalDrafts(listOf(await post(config, REMOTE_PATHS.final, input, signal), 'questions'))
+    async writeFinal(input: FinalDraftInput, signal: AbortSignal, budgetMs?: number): Promise<FinalDraft[]> {
+      return readFinalDrafts(listOf(await post(config, REMOTE_PATHS.final, input, signal, budgetMs), 'questions'))
     },
   }
 }

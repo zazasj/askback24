@@ -33,8 +33,15 @@ export const EXPERIENCE_MAX = 100
 export const HEARD_MAX = 100
 /** 공급자 판정 근거 길이 한도 */
 export const JUDGE_BASIS_MAX = 160
-/** 서버 함수 기본값. 화면은 25초를 기다리므로 그보다 짧게 */
-export const PROVIDER_TIMEOUT_MS = 20_000
+/**
+ * 서버 함수 기본값. 화면은 40초를 기다리므로 그보다 짧게. 20초일 때는 판정 7 + 문장 13초로 나눠 쓰는 데 왕복 여유가 없어
+ * 끊긴 문장이 모두 검수 문장이 됐고, 걸린 문항을 다시 쓸 시간도 없었다(D-409)
+ */
+export const PROVIDER_TIMEOUT_MS = 35_000
+/** 최종 판정 한 호출의 상한. 문장 몫을 남긴다(AI 서버는 이보다 1초 먼저 끝낸다) */
+export const JUDGE_TIMEOUT_MS = 11_000
+/** 판정이 시간 초과여도 이만큼 남아 있으면 문장은 부른다 */
+export const FINAL_MIN_LEFT_MS = 3_000
 
 export type GenerateErrorCode = 'unknown_posting'
 
@@ -66,6 +73,8 @@ export interface GenerateOptions {
   /** 없으면 검수 문장만 쓴다(화면의 대체 결과) */
   provider?: LlmProvider
   timeoutMs?: number
+  /** 최종 판정 호출 상한(시험용). 없으면 JUDGE_TIMEOUT_MS */
+  judgeTimeoutMs?: number
   now?: () => number
   onReport?: (report: GenerateReport) => void
   /** 없으면 시연 사전(getPosting·getAnalysis). 평가 하네스가 사전 밖 공고를 넣을 때 쓴다 */
@@ -137,7 +146,8 @@ function toQuestion(r: RankedPick, rank: number, text: string, source: Question[
   return q
 }
 
-function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T> {
+/** run 에는 끊는 신호와 남은 시간(ms)을 넘긴다. 공급자는 남은 시간을 AI 서버에 알려 그 안에 끝내게 한다 */
+function withTimeout<T>(run: (signal: AbortSignal, budgetMs: number) => Promise<T>, ms: number): Promise<T> {
   const ctrl = new AbortController()
   if (ms <= 0) return Promise.reject(new TimeoutError())
   return new Promise<T>((resolve, reject) => {
@@ -145,7 +155,7 @@ function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>, ms: number): P
       ctrl.abort()
       reject(new TimeoutError())
     }, ms)
-    run(ctrl.signal).then(
+    run(ctrl.signal, ms).then(
       (v) => {
         clearTimeout(timer)
         resolve(v)
@@ -190,7 +200,7 @@ export async function generateFirst(req: FirstQuestionsRequest, options: Generat
       items,
     }
     try {
-      drafts = await withTimeout((signal) => provider.writeFirst(input, signal), options.timeoutMs ?? PROVIDER_TIMEOUT_MS)
+      drafts = await withTimeout((signal, budgetMs) => provider.writeFirst(input, signal, budgetMs), options.timeoutMs ?? PROVIDER_TIMEOUT_MS)
     } catch (e) {
       failure = e instanceof TimeoutError ? 'timeout' : 'error'
     }
@@ -274,7 +284,7 @@ function cleanReview(review: InterviewReview): InterviewReview {
 const JUDGE_STATES: readonly string[] = ['confirmed', 'mismatch', 'still_unknown']
 
 /** 판정 수용 조건에서 걸린 이름(빈 배열이면 수용). Python 검사와 예시 파일로 맞추려고 따로 뺐다 */
-export function judgementIssues(basis: string, state: unknown, heard: readonly string[]): string[] {
+export function judgementIssues(basis: string, state: unknown, heard: readonly string[], clarity?: string): string[] {
   const b = basis.replace(/\s+/g, ' ').trim()
   const issues: string[] = []
   if (!JUDGE_STATES.includes(state as string)) issues.push('bad_state')
@@ -282,6 +292,8 @@ export function judgementIssues(basis: string, state: unknown, heard: readonly s
   if (b.length > JUDGE_BASIS_MAX) issues.push('basis_too_long')
   if (quotesHeard(b, heard)) issues.push('basis_heard')
   if (hasForbiddenWord(b)) issues.push('forbidden_word')
+  // "모호했어요"는 단순 규칙·명세 모두 아직 모름. AI가 확인됨·기대와 다름으로 단정하면 받지 않는다(D-410)
+  if (clarity === 'vague' && state !== 'still_unknown') issues.push('vague_decided')
   return issues
 }
 
@@ -300,7 +312,7 @@ function mergeJudgements(
     const g = (got as Array<Partial<Judgement> | null>).find((x) => x && x.card_id === j.card_id)
     if (!g) return j
     const basis = typeof g.basis === 'string' ? g.basis.replace(/\s+/g, ' ').trim() : ''
-    const ok = judgementIssues(basis, g.state, heard).length === 0
+    const ok = judgementIssues(basis, g.state, heard, j.clarity).length === 0
     if (!ok) {
       issues.push('judge_rejected')
       return j
@@ -410,7 +422,7 @@ export async function generateFinal(req: FinalQuestionsRequest, options: Generat
   if (provider?.judgeReview && judgeItems.length) {
     const judge = provider.judgeReview.bind(provider)
     try {
-      const got = await withTimeout((signal) => judge(judgeInput, signal), left())
+      const got = await withTimeout((signal, budgetMs) => judge(judgeInput, signal, budgetMs), Math.min(left(), options.judgeTimeoutMs ?? JUDGE_TIMEOUT_MS))
       ;({ judged, accepted } = mergeJudgements(judged, got, new Set(judgeItems.map((i) => i.card_id)), heard, issues))
     } catch (e) {
       failure = e instanceof TimeoutError ? 'timeout' : (failure ?? 'error')
@@ -422,10 +434,11 @@ export async function generateFinal(req: FinalQuestionsRequest, options: Generat
 
   // 3) 문장
   let drafts: FinalDraft[] | null = null
-  if (provider?.writeFinal && ranked.length && failure !== 'timeout') {
+  // 판정이 시간 초과여도 판정 상한에 걸린 것이면 문장 몫이 남아 있다
+  if (provider?.writeFinal && ranked.length && (failure !== 'timeout' || left() >= FINAL_MIN_LEFT_MS)) {
     const write = provider.writeFinal.bind(provider)
     try {
-      drafts = await withTimeout((signal) => write({ mode: 'final', posting, items: ranked.map(toFinalDraftItem) }, signal), left())
+      drafts = await withTimeout((signal, budgetMs) => write({ mode: 'final', posting, items: ranked.map(toFinalDraftItem) }, signal, budgetMs), left())
     } catch (e) {
       failure = e instanceof TimeoutError ? 'timeout' : (failure ?? 'error')
     }

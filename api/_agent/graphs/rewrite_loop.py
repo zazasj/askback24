@@ -19,7 +19,7 @@ log = logging.getLogger("askback24.ai")
 class LoopSpec:
     name: str  # 로그 이름표 ([ai] <name> …)
     role: Role
-    budget_s: float
+    budget_s: float  # 헤더(남은 시간)가 없을 때 기본 예산
     system: str
     key_field: str  # LLM 응답 짝 키 이름이자 로그 이름표
     key_of: Callable[[Any], str]
@@ -46,6 +46,7 @@ class State(TypedDict):
     rewrites: int
     rewrite_failed: bool
     started: float
+    budget: float  # 이 요청이 쓸 예산(초)
     model: str
 
 
@@ -55,9 +56,9 @@ class LoopAgent:
         # 요청마다 다시 만들지 않도록 생성할 때 한 번만 compile 한다.
         self.graph = self._build()
 
-    async def _call(self, user: str, started: float, margin: float = 0.0) -> LlmResult:
+    async def _call(self, user: str, s: "State", margin: float = 0.0) -> LlmResult:
         # 마감은 모든 호출에 건다: 남은 예산(−margin)이 곧 호출 제한 시간이다.
-        left = self.spec.budget_s - (self.clock() - started) - margin
+        left = s["budget"] - (self.clock() - s["started"]) - margin
         if left <= 0:
             raise LlmError("timeout")
         return await call_with_deadline(self.llm, self.spec.role, self.spec.system, user, left)
@@ -81,7 +82,7 @@ class LoopAgent:
         spec, clock = self.spec, self.clock
 
         async def write(s: State) -> dict:
-            res = await self._call(spec.user_message(s["req"], None, None), s["started"])
+            res = await self._call(spec.user_message(s["req"], None, None), s)
             return {"drafts": self._pick(res.data, {spec.key_of(i) for i in s["req"].items}), "model": res.model}
 
         def check(s: State) -> dict:
@@ -96,7 +97,7 @@ class LoopAgent:
             return {"issues": issues}
 
         def after_check(s: State) -> str:
-            left = spec.budget_s - (clock() - s["started"])
+            left = s["budget"] - (clock() - s["started"])
             if s["issues"] and s["rewrites"] == 0 and left >= RETRY_MIN_LEFT_S:
                 return "rewrite"
             return "finish"
@@ -104,7 +105,7 @@ class LoopAgent:
         async def rewrite(s: State) -> dict:
             only = list(s["issues"])
             try:
-                res = await self._call(spec.user_message(s["req"], only, s["issues"]), s["started"], REWRITE_SAFETY_S)
+                res = await self._call(spec.user_message(s["req"], only, s["issues"]), s, REWRITE_SAFETY_S)
             except LlmError:
                 return {"rewrites": 1, "rewrite_failed": True}
             return {"drafts": {**s["drafts"], **self._pick(res.data, set(only))}, "model": res.model, "rewrites": 1}
@@ -135,11 +136,12 @@ class LoopAgent:
         g.add_edge("finish", END)
         return g.compile()
 
-    async def run(self, req: Any) -> tuple[dict[str, str], dict[str, list[str]], int, str]:
+    async def run(self, req: Any, budget_s: float | None = None) -> tuple[dict[str, str], dict[str, list[str]], int, str]:
         started = self.clock()
+        budget = self.spec.budget_s if budget_s is None else budget_s
         try:
             final = await self.graph.ainvoke(
-                {"req": req, "drafts": {}, "issues": {}, "rewrites": 0, "rewrite_failed": False, "started": started, "model": ""}
+                {"req": req, "drafts": {}, "issues": {}, "rewrites": 0, "rewrite_failed": False, "started": started, "budget": budget, "model": ""}
             )
         except LlmError as e:
             # 첫 쓰기 실패는 503 이 된다. 로그 한 줄은 여기서만 남긴다.
