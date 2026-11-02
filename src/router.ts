@@ -69,7 +69,7 @@ const routes: RouteRecordRaw[] = [
 
 /** S4 단계 표시(StepNav.vue) */
 const PREP_STEPS = '#prep-steps'
-/** S4 단계 머리띠(StageBand.vue, ③ 질문 화면의 단계 표시 바로 위, D-394) */
+/** S4 단계 머리띠(StageBand.vue, ③ 질문 화면의 단계 표시 바로 위, D-408) */
 const PREP_BAND = '#prep-stage-band'
 /** 휴대폰 폭 */
 const MOBILE = '(max-width: 767px)'
@@ -84,7 +84,7 @@ export const router = createRouter({
     // 휴대폰이나 낮은 화면(높이 860px 미만: 1366×768 노트북·브라우저 확대)에서 S4 단계·면접 종류(쿼리)만 바뀌면
     // 머리 대신 단계 표시부터 보이게 한다. 맨 위로 가면 고용24 틀과 머리가 첫 화면을 거의 다 차지해
     // 만드는 중·카드·질문이 보이지 않는다(DR-r1-02, H1-02 나). 1440×900 같은 높은 화면은 회사 맥락을 남겨 맨 위(D-078)
-    // 휴대폰은 ③ 단계 머리띠가 있으면 머리띠부터(D-394). 낮은 데스크톱 화면은 언제나 단계 표시부터(V-06)
+    // 휴대폰은 ③ 단계 머리띠가 있으면 머리띠부터(D-408). 낮은 데스크톱 화면은 언제나 단계 표시부터(V-06)
     const sameScreen = to.name === 'prep' && to.path === from.path
     const mobile = window.matchMedia(MOBILE).matches
     const target = mobile && document.querySelector(PREP_BAND) ? PREP_BAND : PREP_STEPS

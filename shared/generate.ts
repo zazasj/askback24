@@ -1,11 +1,13 @@
 /**
  * 질문 생성 핵심(서버 함수와 화면의 가짜 응답 모드·대체 결과가 같이 쓴다).
  * 규칙(pickTop5)으로 고른 순서 → 공급자가 문장 → 검사(validate) → 탈락·지연·오류분은 검수 문장으로 대체.
- * 경험 한 줄은 공급자에게 넘길 뿐 여기서 저장·기록하지 않는다(보고에는 개수만).
+ * 경험 한 줄·이력서는 공급자에게 넘길 뿐 여기서 저장·기록하지 않는다(보고에는 개수만).
  */
 import type {
   CardPick,
   CardState,
+  Clarity,
+  FinalPref,
   FinalQuestion,
   FinalQuestionsRequest,
   FinalQuestionsResponse,
@@ -14,14 +16,17 @@ import type {
   InterviewReview,
   Mood,
   NotAskedReason,
+  Posting,
+  PostingAnalysis,
   Pref,
   Question,
 } from './contract.js'
 import { getAnalysis, getCard, getPosting } from './catalog.js'
 import { finalPrefOf, rankFinal, ruleJudgements, summarize, type FinalRanked, type Judged } from './finalRules.js'
+import { citableRanks, cleanResume, resumeText } from './resume.js'
 import { pickTop5, type RankedPick } from './rules.js'
 import { checkFinalQuestion, checkFirstQuestion, hasForbiddenWord, quotesHeard, type Issue } from './validate.js'
-import type { Draft, DraftItem, FinalDraft, FinalDraftItem, FirstDraftInput, JudgeItem, Judgement, LlmProvider } from './providers/types.js'
+import type { Draft, DraftItem, FinalDraft, FinalDraftItem, FirstDraftInput, JudgeInput, JudgeItem, Judgement, LlmProvider } from './providers/types.js'
 
 export const EXPERIENCE_MAX = 100
 /** 들은 답 한 줄 */
@@ -63,7 +68,16 @@ export interface GenerateOptions {
   timeoutMs?: number
   now?: () => number
   onReport?: (report: GenerateReport) => void
+  /** 없으면 시연 사전(getPosting·getAnalysis). 평가 하네스가 사전 밖 공고를 넣을 때 쓴다 */
+  lookup?: PostingLookup
 }
+
+export interface PostingLookup {
+  posting(id: string): Posting | undefined
+  analysis(id: string): PostingAnalysis | undefined
+}
+
+const CATALOG_LOOKUP: PostingLookup = { posting: getPosting, analysis: getAnalysis }
 
 class TimeoutError extends Error {
   constructor() {
@@ -148,14 +162,21 @@ function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>, ms: number): P
 export async function generateFirst(req: FirstQuestionsRequest, options: GenerateOptions = {}): Promise<FirstQuestionsResponse> {
   const now = options.now ?? (() => Date.now())
   const started = now()
-  const posting = getPosting(req.wantedAuthNo)
-  const analysis = getAnalysis(req.wantedAuthNo)
+  const lookup = options.lookup ?? CATALOG_LOOKUP
+  const posting = lookup.posting(req.wantedAuthNo)
+  const analysis = lookup.analysis(req.wantedAuthNo)
   if (!posting || !analysis) throw new GenerateError('unknown_posting')
 
   const picks = cleanPicks(req.picks)
   const experience = cleanExperience(req.experience)
   const ranked = pickTop5({ picks, experience }, analysis)
-  const items = ranked.map((r, i) => toDraftItem(r, i + 1))
+  const resume = cleanResume(req.resume)
+  const citable = citableRanks(ranked, !!resume)
+  const items = ranked.map((r, i) => {
+    const item = toDraftItem(r, i + 1)
+    if (resume) item.can_cite_resume = citable.has(i + 1)
+    return item
+  })
 
   let drafts: Draft[] | null = null
   let failure: GenerateReport['failure']
@@ -165,6 +186,7 @@ export async function generateFirst(req: FirstQuestionsRequest, options: Generat
       mode: 'first',
       posting,
       experience: items.some((i) => i.has_exp) ? experience : '',
+      ...(resume ? { resume } : {}),
       items,
     }
     try {
@@ -181,7 +203,10 @@ export async function generateFirst(req: FirstQuestionsRequest, options: Generat
     if (draft && typeof draft.text === 'string') {
       const text = draft.text.replace(/\s+/g, ' ').trim()
       // 근거는 늘 우리 규칙의 것(API-SPEC 18행). AI가 준 evidence는 읽지 않는다 — 다르면 "근거 보기"·basis·"공고에 없음"이 어긋남(A3-r1-03)
-      const found = checkFirstQuestion({ text, state: r.state, has_exp: r.has_exp, ...(r.evidence ? { evidence: r.evidence } : {}) }, posting)
+      const found = checkFirstQuestion({ text, state: r.state, has_exp: r.has_exp, can_cite_resume: items[i]?.can_cite_resume === true, ...(r.evidence ? { evidence: r.evidence } : {}) }, posting, {
+        // 경험 한 줄·이력서를 붙일 수 있는 문항만 지원자 자신의 낱말이라 지어낸 낱말이 아니다(둘은 더한다)
+        resumeText: [r.has_exp ? experience : '', resume && citable.has(rank) ? resumeText(resume) : ''].filter(Boolean).join('\n'),
+      })
       if (!found.length) return toQuestion(r, rank, text, 'ai')
       issues.push(...found)
     }
@@ -323,6 +348,31 @@ function toFinalQuestion(r: FinalRanked, text: string, source: FinalQuestion['so
   return q
 }
 
+/** 판정 공급자에게 보내는 입력. 화면 요청(generateFinal)과 평가 하네스(정답표 줄)가 같은 꼴로 만든다 */
+export function judgeInputFor(
+  posting: Posting,
+  items: Array<{ card_id: string; pref: FinalPref; heard: string; clarity?: Clarity }>,
+): JudgeInput {
+  return {
+    mode: 'final',
+    posting,
+    items: items.flatMap((i) => {
+      const card = getCard(i.card_id)
+      if (!card) return []
+      const item: JudgeItem = {
+        card_id: card.id,
+        card_label: card.label,
+        pref: i.pref,
+        heard: i.heard,
+        watch_out: i.pref === 'want' ? card.interpretation.mismatch_if_want : card.interpretation.mismatch_if_avoid,
+        good_sign: card.interpretation.good_if,
+      }
+      if (i.clarity) item.clarity = i.clarity
+      return [item]
+    }),
+  }
+}
+
 /**
  * 최종 면접·처우 질문. 단순 규칙 판정 → 공급자 판정(물어본 카드만) → 순서 규칙(finalRules) → 공급자 문장 → 검사.
  * 판정·문장 두 호출은 시간 한도 하나를 나눠 쓴다. 공급자가 없거나 실패하면 단순 규칙 판정과 검수 문장.
@@ -331,8 +381,9 @@ function toFinalQuestion(r: FinalRanked, text: string, source: FinalQuestion['so
 export async function generateFinal(req: FinalQuestionsRequest, options: GenerateOptions = {}): Promise<FinalQuestionsResponse> {
   const now = options.now ?? (() => Date.now())
   const started = now()
-  const posting = getPosting(req.wantedAuthNo)
-  const analysis = getAnalysis(req.wantedAuthNo)
+  const lookup = options.lookup ?? CATALOG_LOOKUP
+  const posting = lookup.posting(req.wantedAuthNo)
+  const analysis = lookup.analysis(req.wantedAuthNo)
   if (!posting || !analysis) throw new GenerateError('unknown_posting')
 
   const picks = cleanPicks(req.picks ?? [])
@@ -347,26 +398,19 @@ export async function generateFinal(req: FinalQuestionsRequest, options: Generat
   // 1) 판정
   let judged = ruleJudgements(review, picks)
   let accepted = 0
-  const judgeItems: JudgeItem[] = review.asked.flatMap((a) => {
-    const card = getCard(a.card_id)
-    const j = judged.find((x) => x.card_id === a.card_id && x.origin === 'asked')
-    if (!card || !j || a.heard === '') return []
-    const pref = finalPrefOf(picks, a.card_id)
-    const item: JudgeItem = {
-      card_id: card.id,
-      card_label: card.label,
-      pref,
-      heard: a.heard,
-      watch_out: pref === 'want' ? card.interpretation.mismatch_if_want : card.interpretation.mismatch_if_avoid,
-      good_sign: card.interpretation.good_if,
-    }
-    if (a.clarity) item.clarity = a.clarity
-    return [item]
-  })
+  const judgeInput = judgeInputFor(
+    posting,
+    review.asked.flatMap((a) => {
+      const j = judged.find((x) => x.card_id === a.card_id && x.origin === 'asked')
+      if (!j || a.heard === '') return []
+      return [{ card_id: a.card_id, pref: finalPrefOf(picks, a.card_id), heard: a.heard, ...(a.clarity ? { clarity: a.clarity } : {}) }]
+    }),
+  )
+  const judgeItems = judgeInput.items
   if (provider?.judgeReview && judgeItems.length) {
     const judge = provider.judgeReview.bind(provider)
     try {
-      const got = await withTimeout((signal) => judge({ mode: 'final', posting, items: judgeItems }, signal), left())
+      const got = await withTimeout((signal) => judge(judgeInput, signal), left())
       ;({ judged, accepted } = mergeJudgements(judged, got, new Set(judgeItems.map((i) => i.card_id)), heard, issues))
     } catch (e) {
       failure = e instanceof TimeoutError ? 'timeout' : (failure ?? 'error')

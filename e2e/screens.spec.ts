@@ -452,7 +452,7 @@ test.describe('SCREENS 6-s1-tour', () => {
   }
 })
 
-// ── 4차 단계 디자인(PLAN-4 T6, 11-02 시안 C 확정 D-394): 1차 ③ · 최종 ② · 최종 ③ → 7-stage-<화면>-<프로젝트>.png 6장 ──
+// ── 4차 단계 디자인(PLAN-4 T6, 11-02 시안 C 확정 D-408): 1차 ③ · 최종 ② · 최종 ③ → 7-stage-<화면>-<프로젝트>.png 6장 ──
 // 첫 화면(데스크톱은 맨 위, 휴대폰은 단계를 옮긴 직후 그대로)을 찍는다. 머리띠는 ③에만 있고 최종 ②는 띠 없이 청록 단계 표시.
 // ③에서는 1번 질문 위끝 y와 머리띠 높이를 annotation(stage-q1-top)으로 남긴다(D-389: 시안 C 최종 ③ 데스크톱 751 · 휴대폰 744)
 const STAGE_SCREENS: ReadonlyArray<{ name: string; third: boolean; setup: (page: Page) => Promise<void> }> = [

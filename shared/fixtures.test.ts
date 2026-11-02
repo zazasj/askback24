@@ -13,6 +13,10 @@ interface FirstCase {
   text: string
   state: PostingState
   has_exp: boolean
+  can_cite_resume?: boolean
+  resume_text?: string
+  /** 공고 칸 값을 바꿔 검사(근접어 예시처럼 시연 공고에 없는 표기) */
+  posting_patch?: Record<string, string>
   expect: string[]
 }
 interface FinalCase {
@@ -49,7 +53,9 @@ describe('검사 예시 파일', () => {
       if (c.state) q.state = c.state
       expect(checkFinalQuestion(q, getPosting(c.posting)!, [])).toEqual(c.expect)
     } else {
-      expect(checkFirstQuestion({ text: squash(c.text), state: c.state, has_exp: c.has_exp }, getPosting(c.posting)!)).toEqual(c.expect)
+      const q = { text: squash(c.text), state: c.state, has_exp: c.has_exp, ...(c.can_cite_resume === undefined ? {} : { can_cite_resume: c.can_cite_resume }) }
+      const posting = { ...getPosting(c.posting)!, ...(c.posting_patch ?? {}) }
+      expect(checkFirstQuestion(q, posting, { resumeText: c.resume_text })).toEqual(c.expect)
     }
   })
 })
