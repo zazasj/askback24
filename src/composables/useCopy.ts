@@ -2,6 +2,7 @@
 import { useToastStore } from '@/stores/toast'
 
 export const COPIED = '복사했어요'
+export const COPY_FAILED = '복사하지 못했어요. 문장을 직접 선택해 복사해 주세요'
 
 export function useCopy() {
   const toast = useToastStore()
@@ -12,7 +13,8 @@ export function useCopy() {
       toast.show(COPIED)
       return true
     } catch {
-      toast.show('복사하지 못했어요. 문장을 길게 눌러 직접 선택해 주세요')
+      // "길게 눌러"는 터치 화면에만 맞아 어느 기기에나 맞는 말로(A4-28)
+      toast.show(COPY_FAILED)
       return false
     }
   }

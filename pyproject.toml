@@ -14,8 +14,9 @@ dependencies = [
 dev = [
     "pytest",
     "pytest-asyncio",
+    "uvicorn>=0.54.0",
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["api/_agent/tests"]
+testpaths = ["api/_agent/tests", "evals/tests"]
 asyncio_mode = "auto"

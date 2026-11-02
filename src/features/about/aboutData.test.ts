@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { CARDS, POSTINGS } from '@shared/catalog'
+import { ANALYSES, CARDS, POSTINGS } from '@shared/catalog'
 import { NCS_CARDS, SMALL_GIANTS } from '@/realData'
-import { TEAM_MEASURE, auditNumbers, sourceRows, wageBlankRate } from './aboutData'
+import { TEAM_MEASURE, analysisMade, auditNumbers, kstDate, sourceRows, wageBlankRate } from './aboutData'
 
 describe('/about-ai 점검 숫자', () => {
   it('카드·공고 수와 근거 인용 수를 데이터에서 센다. 원문에 없는 근거는 0건', () => {
@@ -95,6 +95,44 @@ describe('DATA-06 출처 표의 고용24 오픈API 줄', () => {
     const cards = rows.find((r) => r.data === `업무 카드 ${CARDS.length}개`)
     expect(cards?.source).toBe('모의')
     expect(cards?.note).toBe('공공 자료를 참고해 팀이 나눈 업무예요.')
+  })
+})
+
+// T4 · C4-04 · A4-03·A4-04: 공고 분석 7건을 만든 방법(파이프라인 초안 + 팀 검수, D-374)과 모델·날짜
+describe('공고 분석을 만든 방법', () => {
+  it('kstDate: UTC 시각을 한국 날짜로(밤 9시 넘으면 다음 날)', () => {
+    expect(kstDate('2026-10-30T15:38:49.813128+00:00')).toBe('2026-10-31')
+    expect(kstDate('2026-10-30T14:59:59+00:00')).toBe('2026-10-30')
+    expect(kstDate('날짜 아님')).toBe('')
+  })
+
+  it('시연 공고 분석은 모두 파이프라인 meta(모델·만든 때)를 갖고, 모델·날짜는 그 값에서 읽는다', () => {
+    expect(ANALYSES.length).toBe(POSTINGS.length)
+    for (const a of ANALYSES) {
+      expect(a.meta?.model, a.wantedAuthNo).toBeTruthy()
+      expect(kstDate(a.meta?.created_at ?? ''), a.wantedAuthNo).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    }
+    const made = analysisMade()
+    expect(made.model.split(' · ').sort()).toEqual([...new Set(ANALYSES.map((a) => a.meta?.model))].sort())
+    const days = [...new Set(ANALYSES.map((a) => kstDate(a.meta?.created_at ?? '')))].sort()
+    expect(made.date).toBe(days.length > 1 ? `${days[0]}~${days[days.length - 1]}` : days[0])
+    // UTC 날짜(2026-10-30)가 아니라 한국 날짜
+    expect(made.date).not.toContain('2026-10-30')
+  })
+
+  it('A4-04 출처 표에 "공고 분석 N건" 줄: 파이프라인 초안(엔노이아 모델, 날짜) + 팀 검수, 구분 "모의", 받은 날짜 없음', () => {
+    const rows = sourceRows()
+    const { model, date } = analysisMade()
+    const row = rows.find((r) => r.data === `공고 분석 ${ANALYSES.length}건`)
+    expect(row).toBeDefined()
+    expect(row?.origin).toBe(`AI 공고 분석 파이프라인 초안(엔노이아 ${model}, ${date}) + 팀 검수`)
+    expect(row?.source).toBe('모의')
+    expect(row?.fetched).toBe('')
+    expect(row?.note).toBe('모의 공고를 AI가 분석한 초안이에요. 팀이 공고 원문에 비춰 판정·근거를 고치고 이유 문장을 다듬어 넣었어요.')
+    // 채용 공고 줄 바로 뒤, 회사 참고 정보 앞
+    const at = rows.indexOf(row!)
+    expect(rows[at - 1]?.data).toBe('채용 공고')
+    expect(rows[at + 1]?.data).toBe('회사 참고 정보')
   })
 })
 

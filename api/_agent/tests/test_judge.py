@@ -99,4 +99,4 @@ def test_heard_whitespace_squashed():
 async def test_judge_timeout_is_budget():
     llm = FakeLlm([{"judgements": []}])
     await JudgeAgent(llm, clock=lambda: 0.0).run(JudgeRequest.model_validate(RAW))
-    assert llm.calls[0]["timeout_s"] == 8.0
+    assert llm.calls[0]["timeout_s"] == 7.0

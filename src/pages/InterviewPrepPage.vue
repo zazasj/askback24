@@ -4,6 +4,8 @@
  * 머리(지원 건 요약·준비할 면접 라디오) + 단계 표시(주소 ?step=) + 단계 본문.
  * 1차: ① 공고 확인 → ② 내 기대·걱정 → ③ 질문 받기. 최종: ① 공고 확인 → ② 1차 면접 정리 → ③ 최종 질문 받기.
  * ②의 "질문 만들기"·"최종 질문 만들기"는 질문 저장소에서 만들기를 시작하고 ③으로 간다(③이 만드는 중을 보여 준다).
+ * .s4 의 data-stage 가 final 이면 tokens.css 가 최종 ①②③ 모두 강조색을 청록으로 바꾼다(D-408).
+ * 단계 머리띠(StageBand)는 ③ 질문 화면에만 단계 표시 위에 둔다. ①②에 두면 첫 화면 기준(V-06·F-03)에서 내용이 밀린다(세진 11-02).
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -24,6 +26,7 @@ import PostingLoading from '@/features/interview-prep/PostingLoading.vue'
 import PostingStep from '@/features/interview-prep/PostingStep.vue'
 import PrepHeader from '@/features/interview-prep/PrepHeader.vue'
 import ReviewStep from '@/features/interview-prep/ReviewStep.vue'
+import StageBand from '@/features/interview-prep/StageBand.vue'
 import StepNav from '@/features/interview-prep/StepNav.vue'
 import { loadingQuotes } from '@/features/interview-prep/highlight'
 import { POSTING_FIELD_ORDER } from '@/features/interview-prep/postingRows'
@@ -211,7 +214,7 @@ onMounted(() => {
 
 <template>
   <NotFoundContent v-if="!application || !posting" detail="이 지원 건을 찾을 수 없어요. 지원 내역에서 다시 골라 주세요." />
-  <div v-else class="s4">
+  <div v-else class="s4" :data-stage="mode">
     <PrepHeader
       :corp-nm="posting.corpNm"
       :wanted-title="posting.wantedTitle"
@@ -220,6 +223,7 @@ onMounted(() => {
       @update:mode="changeMode"
     />
 
+    <StageBand v-if="step === 3" class="band" :mode="mode" />
     <StepNav class="steps" :labels="labels" :current="step" />
 
     <PostingLoading v-if="step === 1 && showLoading" :quotes="introQuotes" @done="introDone" />
@@ -267,9 +271,26 @@ onMounted(() => {
   margin: 1.6rem 0 1.6rem;
 }
 
+/* 단계 머리띠(③에만)는 단계 표시에 붙여 둔다 */
+.band {
+  margin-top: 1.2rem;
+}
+
+.band + .steps {
+  margin-top: 0.8rem;
+}
+
 @media (max-width: 767px) {
   .steps {
     margin: 1.2rem 0 1.6rem;
+  }
+
+  .band {
+    margin-top: 1rem;
+  }
+
+  .band + .steps {
+    margin-top: 0.6rem;
   }
 }
 </style>

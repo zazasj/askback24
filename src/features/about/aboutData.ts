@@ -53,6 +53,43 @@ const SIGNAL_NOTES: Record<string, string> = {
 }
 
 const num = (n: number): string => n.toLocaleString('ko-KR')
+
+/** UTC 시각("2026-10-30T15:38:49+00:00") → 한국 날짜("2026-10-31"). 브라우저 시간대와 상관없이 */
+export function kstDate(iso: string): string {
+  const t = Date.parse(iso)
+  return Number.isNaN(t) ? '' : new Date(t + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)
+}
+
+export interface AnalysisMade {
+  /** 분석 파일 meta 의 모델(여럿이면 " · "로 잇는다) */
+  model: string
+  /** 초안을 만든 한국 날짜(여러 날이면 "첫날~끝날") */
+  date: string
+}
+
+/**
+ * 시연 공고 분석을 만든 파이프라인 모델과 날짜(D-374 AI 초안 + 팀 검수). `data/analysis/*.json` meta 에서 읽어
+ * 분석을 다시 만들어도 /about-ai 글이 따로 낡지 않게 한다.
+ */
+export function analysisMade(): AnalysisMade {
+  const metas = ANALYSES.flatMap((a) => (a.meta ? [a.meta] : []))
+  const model = [...new Set(metas.map((m) => m.model))].join(' · ')
+  const days = [...new Set(metas.map((m) => kstDate(m.created_at)).filter(Boolean))].sort()
+  const date = days.length > 1 ? `${days[0]}~${days[days.length - 1]}` : (days[0] ?? '')
+  return { model, date }
+}
+
+/** 데이터 출처 표의 공고 분석 줄. 공고가 모의라 "모의"(업무 카드 줄과 같은 기준) */
+function analysisRow(): SourceRow {
+  const { model, date } = analysisMade()
+  return {
+    data: `공고 분석 ${ANALYSES.length}건`,
+    origin: `AI 공고 분석 파이프라인 초안(엔노이아 ${model}, ${date}) + 팀 검수`,
+    source: '모의',
+    note: '모의 공고를 AI가 분석한 초안이에요. 팀이 공고 원문에 비춰 판정·근거를 고치고 이유 문장을 다듬어 넣었어요.',
+    fetched: '',
+  }
+}
 const openApi = (id: RealSourceId, name: string): string => `고용24 오픈API ${name}(${apiOf(id)})`
 
 /**
@@ -119,7 +156,7 @@ function teamNcsRow(): SourceRow {
   }
 }
 
-/** 데이터 출처 표: 업무 카드 · 고용24 오픈API 4종 · NCS 팀 값 · 공고 · 회사 참고 정보(출처별 한 줄, "실제" 먼저) · 김00 이력서 */
+/** 데이터 출처 표: 업무 카드 · 고용24 오픈API 4종 · NCS 팀 값 · 공고 · 공고 분석 · 회사 참고 정보(출처별 한 줄, "실제" 먼저) · 김00 이력서 */
 export function sourceRows(): SourceRow[] {
   const signals = new Map<string, CompanySignal['source']>()
   for (const p of POSTINGS) for (const s of getSignals(p.wantedAuthNo)) if (!signals.has(s.source_name)) signals.set(s.source_name, s.source)
@@ -150,6 +187,7 @@ export function sourceRows(): SourceRow[] {
       note: '채용정보 오픈API는 개인회원은 쓸 수 없어서 항목 이름만 따랐어요. 회사명과 공고는 예시예요.',
       fetched: '',
     },
+    analysisRow(),
     ...signalRows,
     { data: '김00 이력서', origin: '가상 인물', source: '모의', note: '연락처와 주소는 예시 값이에요.', fetched: '' },
   ]

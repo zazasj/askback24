@@ -260,12 +260,25 @@ export interface InterviewReview {
   impression: { mood: Mood }
 }
 
+/** AI로 보내도 되는 이력서 칸(허용 목록). 이 밖의 칸은 화면도 서버도 보내지·받지 않는다 */
+export interface ResumeForAi {
+  /** 희망 경력 구분(예: 신입) */
+  career: string
+  skills: string[]
+  projects: Array<{ name: string; stack: string; summary: string }>
+  trainings: Array<{ name: string; summary: string }>
+  /** 이름만 */
+  certificates: string[]
+}
+
 export interface FirstQuestionsRequest {
   mode: 'first'
   wantedAuthNo: string
   picks: CardPick[]
   /** 100자 이내. 서버는 저장·기록하지 않는다 */
   experience?: string
+  /** 허용 칸만. 서버는 저장·기록하지 않고 다시 거른다 */
+  resume?: ResumeForAi
 }
 
 export interface FinalQuestionsRequest {
@@ -282,7 +295,7 @@ export interface Question {
   card_id: string
   type: QType
   text: string
-  /** 없으면 "공고에 근거 없음 · 직접 확인" */
+  /** 없으면 화면은 "공고에 근거 없음" */
   evidence?: Evidence
   /** 왜 이 질문인지(분석 reason). 최종 질문의 basis 와 같은 자리 */
   basis: string

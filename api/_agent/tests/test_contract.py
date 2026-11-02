@@ -61,3 +61,12 @@ def test_final_questions_contract():
     for i in raw["items"]:
         if i["tone"] == "cushion":
             assert by_key[i["key"]]["text"].startswith(i["cushion"].strip())
+
+
+def test_first_example_has_no_resume_and_still_valid():
+    from _agent.schemas import FirstRequest
+
+    raw = load("first")
+    assert "resume" not in raw
+    req = FirstRequest.model_validate(raw)
+    assert req.resume is None and all(not i.can_cite_resume for i in req.items)

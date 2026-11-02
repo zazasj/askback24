@@ -98,7 +98,7 @@ def test_final_no_heard_field_accepted(ai_log):
 async def test_final_timeout_is_budget():
     llm = FakeLlm([good()])
     await FinalAgent(llm, set(), clock=lambda: 0.0).run(FinalRequest.model_validate(RAW))
-    assert llm.calls[0]["timeout_s"] == 10.0
+    assert llm.calls[0]["timeout_s"] == 13.0
 
 
 def test_final_no_rewrite_at_real_latency(ai_log):

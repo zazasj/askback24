@@ -12,6 +12,17 @@
   --rq-accent-border: #d6caf3;
   --rq-on-accent: #ffffff;
 
+  /* 최종 단계 색(최종 단계 화면의 강조색과 최종 머리띠, D-408). 청록(색상각 174°): 상태 칩 색(확인됨 초록 133° · 기대와 다름 보라 256° ·
+     아직 모름 노랑 40° · 회사가 먼저 물은 것 파랑 206°)·차이 확인 주황·KRDS 빨강·파랑과 겹치지 않는 계열. 글자 대비는 보라와 같은 6:1 이상(D-387) */
+  --rq-final: #0b6b62;
+  --rq-final-strong: #074c46;
+  --rq-final-subtle: #e0f3f0;
+  --rq-final-subtler: #f2faf8;
+  --rq-final-border: #a9dbd3;
+
+  /* "기대와 다름" 점은 우리 기능 보라로 둔다. 값이 여기(:root)에서 정해져 내려가므로, 최종 단계 화면이 --rq-accent를 청록으로 바꿔도 따라가지 않는다 */
+  --rq-state-mismatch: var(--rq-accent);
+
   /* 유형 칩 "충돌" 주황(DESIGN-REVIEW D7). 오류 빨강(danger)·걱정 호박색(warning)과 다른 색. 흰·연한 바탕 모두 대비 5:1 이상 */
   --rq-tone-orange: #a84300;
   --rq-tone-orange-subtle: #ffede0;
@@ -44,5 +55,31 @@
 @media (max-width: 767px) {
   :root {
     --rq-gutter: 1.6rem;
+  }
+}
+
+/*
+ * 최종 단계 색(D-408). 면접 역질문 준비 화면(.s4)에 data-stage(first|final)가 붙는다.
+ * 최종 단계 범위 안에서만 강조색 토큰을 청록으로 덮어써 단계 표시줄·번호 배지·고른 "준비할 면접"·인쇄 버튼·회사 상자 테두리가 함께 바뀐다. 1차는 보라 그대로.
+ * 화면에서만 바꾼다(@media screen) — 인쇄는 보라 그대로, 머리띠는 인쇄하지 않는다(data-print="hide").
+ */
+@media screen {
+  /* 단계 머리띠(StageBand.vue) 색: 1차는 보라, 최종은 청록 옅은 바탕 */
+  [data-stage='first'] {
+    --rq-band-bg: var(--rq-accent-subtle);
+    --rq-band-line: var(--rq-accent);
+    --rq-band-ink: var(--rq-accent-strong);
+  }
+
+  [data-stage='final'] {
+    --rq-accent: var(--rq-final);
+    --rq-accent-strong: var(--rq-final-strong);
+    --rq-accent-subtle: var(--rq-final-subtle);
+    --rq-accent-subtler: var(--rq-final-subtler);
+    --rq-accent-border: var(--rq-final-border);
+
+    --rq-band-bg: var(--rq-final-subtle);
+    --rq-band-line: var(--rq-final);
+    --rq-band-ink: var(--rq-final-strong);
   }
 }

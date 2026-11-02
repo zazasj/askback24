@@ -1,0 +1,33 @@
+{
+  "career": "신입",
+  "skills": [
+    "Python (FastAPI)",
+    "Java (Spring Boot 기초)",
+    "MySQL",
+    "Git",
+    "AWS EC2",
+    "Docker 기초"
+  ],
+  "projects": [
+    {
+      "name": "졸업 프로젝트 「중고거래 주문·결제 API」",
+      "stack": "Spring Boot · JPA",
+      "summary": "4명 팀에서 DB 설계를 맡았어요."
+    },
+    {
+      "name": "교내 개발 동아리 「학과 공지 알림 서버」",
+      "stack": "Python · AWS EC2",
+      "summary": "학과 공지를 알림으로 보내 주는 서버를 1년 동안 운영했어요."
+    }
+  ],
+  "trainings": [
+    {
+      "name": "국민내일배움카드 「클라우드 기반 백엔드 개발자 과정」",
+      "summary": "팀 프로젝트에서 FastAPI로 예약 API를 설계부터 배포까지 맡았어요. AWS EC2와 Docker로 서비스를 올리는 실습도 했어요."
+    }
+  ],
+  "certificates": [
+    "정보처리기사",
+    "TOEIC 805"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "career": "신입",
+  "skills": [
+    "Java",
+    "Spring",
+    "Kafka",
+    "Oracle",
+    "Jenkins"
+  ],
+  "projects": [
+    {
+      "name": "팀 프로젝트 「주문 접수·재고 차감 서비스」",
+      "stack": "Java · Spring · Kafka",
+      "summary": "주문이 들어오면 재고를 차감하는 흐름을 메시지로 나눠 처리하는 부분을 맡았어요."
+    },
+    {
+      "name": "팀 프로젝트 「결제 승인 내역 정산 배치」",
+      "stack": "Java · Spring · Oracle",
+      "summary": "하루치 결제 승인 내역을 모아 정산 결과를 만드는 배치를 만들었어요."
+    }
+  ],
+  "trainings": [
+    {
+      "name": "직업훈련 「자바 스프링 백엔드 개발자 과정」",
+      "summary": "Java와 Spring으로 주문·결제 흐름을 만드는 팀 프로젝트를 했어요. Jenkins로 빌드를 자동화하는 실습도 했어요."
+    }
+  ],
+  "certificates": [
+    "SQLD"
+  ]
+}
