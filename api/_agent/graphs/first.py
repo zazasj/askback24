@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 from ..budget import FIRST_BUDGET_S
 from ..checks import check_first
+from ..leads import thin_passed
 from ..llm import Llm
 from ..prompts.first import SYSTEM, user_message
 from ..schemas import Draft, DraftItem, FirstRequest, FirstResponse, resume_text
@@ -37,6 +38,7 @@ class FirstAgent:
 
     async def run(self, req: FirstRequest, budget_s: float | None = None) -> FirstResponse:
         passed, _, _, model = await self.loop.run(req, budget_s)
+        passed = thin_passed("first", [i.card_id for i in req.items], passed)
         questions = [Draft(card_id=i.card_id, text=passed[i.card_id].strip()) for i in req.items if i.card_id in passed]
         return FirstResponse(questions=questions, model=model)
 

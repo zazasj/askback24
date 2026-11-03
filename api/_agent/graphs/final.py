@@ -5,6 +5,7 @@ from pathlib import Path
 
 from ..budget import FINAL_BUDGET_S
 from ..checks import check_final, check_final_tone, load_cushions
+from ..leads import thin_passed
 from ..llm import Llm
 from ..prompts.final import SYSTEM, user_message
 from ..schemas import FinalDraft, FinalDraftItem, FinalRequest, FinalResponse
@@ -43,5 +44,6 @@ class FinalAgent:
 
     async def run(self, req: FinalRequest, budget_s: float | None = None) -> FinalResponse:
         passed, _, _, model = await self.loop.run(req, budget_s)
+        passed = thin_passed("final", [i.key for i in req.items], passed)
         questions = [FinalDraft(key=i.key, text=passed[i.key].strip()) for i in req.items if i.key in passed]
         return FinalResponse(questions=questions, model=model)

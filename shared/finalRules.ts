@@ -132,6 +132,24 @@ function recheckLead(card: CardDef, origin: Origin, evidence?: Evidence): string
   return evidence ? fillQuote(L.not_asked_evidence, evidence.quote) : ''
 }
 
+/** 다시 확인 검수 문장을 앞말과 질문으로 나눈 것. 한 결과 안에서 같은 앞말을 되풀이하지 않으려고 rankFinal 이 나눠 쓴다 */
+function recheckParts(
+  card: CardDef,
+  pref: FinalPref,
+  postingState: PostingState,
+  origin: Origin,
+  evidence?: Evidence,
+  found?: Pick<AnalysisCard, 'state' | 'questions'>,
+  clarity?: Clarity,
+): { lead: string; body: string } {
+  const firstType = classify(pref === 'none' ? 'unsure' : pref, postingState, false)?.type ?? 'explore'
+  const body =
+    origin === 'asked' && clarity === 'vague'
+      ? (card.example_question ?? fill(FINAL_BOOK.templates.recheck_example, card.label))
+      : stripAnchor(questionTemplate(card, firstType, found))
+  return { lead: recheckLead(card, origin, evidence), body }
+}
+
 /**
  * 카드 질문의 검수 문장(완충 문장 앞).
  * 다시 확인: 1차 질문을 이어 받는다 — 앞말(recheckLead) + 1차에 가져간 것과 같은 유형의 질문 틀(공고마다 덮어쓴 틀 포함).
@@ -152,13 +170,8 @@ export function finalCardTemplate(
   const T = FINAL_BOOK.templates
   switch (type) {
     case 'recheck': {
-      const firstType = classify(pref === 'none' ? 'unsure' : pref, postingState, false)?.type ?? 'explore'
-      const base =
-        origin === 'asked' && clarity === 'vague'
-          ? (card.example_question ?? fill(T.recheck_example, card.label))
-          : stripAnchor(questionTemplate(card, firstType, found))
-      const lead = recheckLead(card, origin, evidence)
-      return lead ? `${lead} ${base}` : base
+      const { lead, body } = recheckParts(card, pref, postingState, origin, evidence, found, clarity)
+      return lead ? `${lead} ${body}` : body
     }
     case 'scope':
       return fill(T.scope[pref === 'avoid' ? 'avoid' : 'want'], card.label)
@@ -198,7 +211,12 @@ export interface FinalRanked {
   template_text: string
 }
 
-type Candidate = Omit<FinalRanked, 'rank' | 'tone' | 'cushion' | 'template_text'> & { order: number; reason?: NotAskedReason }
+type Candidate = Omit<FinalRanked, 'rank' | 'tone' | 'cushion' | 'template_text'> & {
+  order: number
+  reason?: NotAskedReason
+  /** 다시 확인 앞말을 뺀 질문(앞말이 있을 때만). 앞말은 물어본·못 물은 갈래마다 한 결과에 한 번 */
+  recheck?: { origin: Origin; body: string }
+}
 
 const byPriority = (a: Candidate, b: Candidate) => a.priority - b.priority || a.order - b.order
 
@@ -227,6 +245,10 @@ function cardCandidates(picks: readonly CardPick[], judged: readonly Judged[], a
       good_sign: card.interpretation.good_if,
       template: finalCardTemplate(card, hit.type, pref, postingState, j.origin, found?.evidence, found, j.clarity),
       order: j.order,
+    }
+    if (hit.type === 'recheck') {
+      const { lead, body } = recheckParts(card, pref, postingState, j.origin, found?.evidence, found, j.clarity)
+      if (lead) c.recheck = { origin: j.origin, body }
     }
     if (found?.evidence) c.evidence = found.evidence
     if (j.reason) c.reason = j.reason
@@ -277,6 +299,8 @@ export const CUSHION_LIMIT = 2
  * 위에서부터 CUSHION_LIMIT 개(완충 문장 종류 수까지)만 붙이고, 그 뒤 질문은 기본(보통 앞말) 단계다.
  * 분위기 "편했어요"면 직접(앞말 없이 바로 묻기). 단 첫 처우 질문은 업무 이야기에서 근무 조건으로 넘어가는 자리라
  * 짧은 앞말 하나를 둔다(H2-10 ②).
+ * 다시 확인 앞말("지난 면접에 이어 …"·"공고의 '…' 부분과 관련해 …")은 물어본·못 물은 갈래마다 위에서 한 번만 붙이고,
+ * 그 뒤 문항은 질문만 둔다. 문항마다 같은 앞말이 붙어 AI 문장까지 되풀이됐다(H4-02 (가), #13).
  */
 export function rankFinal(input: FinalRankInput): FinalRanked[] {
   const { limits, cushions } = FINAL_BOOK
@@ -287,7 +311,14 @@ export function rankFinal(input: FinalRankInput): FinalRanked[] {
 
   let used = 0
   let offerSeen = false
+  // 같은 다시 확인 앞말은 한 결과에 한 번: 두 번째부터는 앞말 없이 질문만(H4-02 (가), #13)
+  const leadUsed = new Set<Origin>()
   return all.map((c, i) => {
+    let template = c.template
+    if (c.recheck) {
+      if (leadUsed.has(c.recheck.origin)) template = c.recheck.body
+      leadUsed.add(c.recheck.origin)
+    }
     let wants = c.reason === 'bad_mood'
     const firstOffer = c.origin === 'offer' && !offerSeen
     if (input.mood === 'pressured' && (i === 0 || firstOffer)) wants = true
@@ -308,8 +339,8 @@ export function rankFinal(input: FinalRankInput): FinalRanked[] {
       good_sign: c.good_sign,
       tone,
       cushion,
-      template: c.template,
-      template_text: `${cushion}${c.template}`,
+      template,
+      template_text: `${cushion}${template}`,
     }
     if (c.card_id) ranked.card_id = c.card_id
     if (c.topic) ranked.topic = c.topic

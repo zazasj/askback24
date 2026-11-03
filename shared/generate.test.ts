@@ -464,3 +464,31 @@ describe('이력서 허용 목록 → 공급자 입력과 문항별 허용 글',
     expect(sourceOf(res, 'BE01')).toBe('ai')
   })
 })
+
+describe('#13 1차: AI에는 인용할 근거만 보낸다(D-155와 같게)', () => {
+  it('공고 전부 × 예시 A·B: 근거는 공고에 적힌 카드와 차이 확인의 모호한 표현에만 보내고, 결과 근거는 그대로', async () => {
+    let inferredWithEvidence = 0
+    for (const a of ANALYSES) {
+      for (const key of ['A', 'B'] as const) {
+        let sent: FirstDraftInput | undefined
+        const spy = provider(async (input) => {
+          sent = input
+          return []
+        })
+        const req: FirstQuestionsRequest = { mode: 'first', wantedAuthNo: a.wantedAuthNo, picks: PRESETS[key].picks, experience: PRESETS[key].experience }
+        const res = await generateFirst(req, { provider: spy })
+        for (const i of sent!.items) {
+          const quotable = i.state === 'explicit' || (i.type === 'conflict' && i.state === 'vague')
+          if (!quotable) expect(i.evidence, `${a.wantedAuthNo} ${key} ${i.card_id} ${i.state}/${i.type}`).toBeUndefined()
+          const found = a.cards.find((c) => c.card_id === i.card_id)
+          if (quotable) expect(i.evidence, `${a.wantedAuthNo} ${key} ${i.card_id}`).toEqual(found?.evidence)
+          if (!quotable && found?.evidence) inferredWithEvidence++
+        }
+        // "근거 보기"에 쓰는 결과 근거는 규칙 결과 그대로
+        for (const q of res.questions) expect(q.evidence, q.card_id).toEqual(a.cards.find((c) => c.card_id === q.card_id)?.evidence)
+      }
+    }
+    // 유추 카드에도 근거가 있는 경우가 실제로 있다(시험이 빈 조건을 보지 않게)
+    expect(inferredWithEvidence).toBeGreaterThan(0)
+  })
+})
