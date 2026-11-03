@@ -194,13 +194,18 @@ describe('A3-r1-03 요청과 다른 evidence → 결과 근거는 요청 것', (
     expect(body.questions.map((q) => q.evidence ?? null)).toEqual(req.map((i) => i.evidence ?? null))
   })
 
-  it('A3-r1-03 최종: 근거를 바꿔 돌려줘도 결과는 요청 근거, 모두 ai', async () => {
-    const req = example<{ items: Array<{ key: string; evidence?: unknown }> }>('final-questions-request').items
-    const bent = example<{ questions: Array<Record<string, unknown>> }>('final-questions-response').questions.map((q) => ({ ...q, evidence: OTHER }))
+  // 최종은 앞말을 뺀 다시 확인 문항에 근거를 보내지 않아(#13, D-414) 요청 근거와 결과 근거가 다를 수 있다.
+  // 그래서 "AI가 준 근거를 무시한다"를 AI가 근거를 안 줄 때의 결과와 같은지로 본다.
+  it('A3-r1-03 최종: 근거를 바꿔 돌려줘도 결과 근거는 우리 규칙 것 그대로, 모두 ai', async () => {
+    const plain = example<{ questions: Array<Record<string, unknown>> }>('final-questions-response').questions.map(({ evidence: _, ...q }) => q)
+    stubFetch((path) => (path === REMOTE_PATHS.final ? json({ questions: plain }) : exampleServer(path, null)))
+    const base = (await askFinal()).body.final_questions.map((q) => q.evidence ?? null)
+    expect(base.some((e) => e !== null)).toBe(true)
+    const bent = plain.map((q) => ({ ...q, evidence: OTHER }))
     stubFetch((path) => (path === REMOTE_PATHS.final ? json({ questions: bent }) : exampleServer(path, null)))
     const { body } = await askFinal()
     expect(body.final_questions.every((q) => q.source === 'ai')).toBe(true)
-    expect(body.final_questions.map((q) => q.evidence ?? null)).toEqual(req.map((i) => i.evidence ?? null))
+    expect(body.final_questions.map((q) => q.evidence ?? null)).toEqual(base)
   })
 })
 

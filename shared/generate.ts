@@ -126,7 +126,9 @@ function toDraftItem(r: RankedPick, rank: number): DraftItem {
     template_text: r.template_text,
     has_exp: r.has_exp,
   }
-  if (r.evidence) item.evidence = r.evidence
+  // 프롬프트가 근거마다 인용을 시켜, 유추 카드 근거까지 보내면 AI가 질문과 상관없는 "공고의 '…'과 관련해" 앞말을
+  // 문항마다 붙였다(#13). 가짜 공급자 앞말(D-155)처럼 공고에 적힌 카드와 차이 확인의 모호한 표현만 인용하게 보낸다.
+  if (r.evidence && (r.state === 'explicit' || (r.type === 'conflict' && r.state === 'vague'))) item.evidence = r.evidence
   return item
 }
 
@@ -339,7 +341,8 @@ function toFinalDraftItem(r: FinalRanked): FinalDraftItem {
   if (r.topic) item.topic = r.topic
   if (r.posting_state) item.state = r.posting_state
   if (r.review_state) item.review_state = r.review_state
-  if (r.evidence) item.evidence = r.evidence
+  // 앞말을 뺀 다시 확인 문항에 근거를 보내면 AI가 인용 앞말을 다시 붙인다(#13). 틀이 인용한 근거만 보낸다
+  if (r.evidence && (r.type !== 'recheck' || r.template.includes(`'${r.evidence.quote}'`))) item.evidence = r.evidence
   return item
 }
 

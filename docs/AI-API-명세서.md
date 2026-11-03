@@ -363,12 +363,11 @@ curl -X POST "{AI_ENDPOINT}/v1/final-questions" \
       "origin": "asked",
       "tone": "cushion",
       "cushion": "괜찮으시다면 여쭤도 될까요? ",
-      "template": "지난 면접에 이어 공고의 '고객사 상주 가능자' 부분을 조금 더 구체적으로 여쭙겠습니다. 첫해에 신입이 상주 프로젝트에 나간 기간이 보통 어느 정도였는지 예를 들어 주실 수 있을까요?",
-      "template_text": "괜찮으시다면 여쭤도 될까요? 지난 면접에 이어 공고의 '고객사 상주 가능자' 부분을 조금 더 구체적으로 여쭙겠습니다. 첫해에 신입이 상주 프로젝트에 나간 기간이 보통 어느 정도였는지 예를 들어 주실 수 있을까요?",
+      "template": "첫해에 신입이 상주 프로젝트에 나간 기간이 보통 어느 정도였는지 예를 들어 주실 수 있을까요?",
+      "template_text": "괜찮으시다면 여쭤도 될까요? 첫해에 신입이 상주 프로젝트에 나간 기간이 보통 어느 정도였는지 예를 들어 주실 수 있을까요?",
       "card_id": "BE15",
       "state": "explicit",
-      "review_state": "still_unknown",
-      "evidence": { "field": "pfCond", "quote": "고객사 상주 가능자" }
+      "review_state": "still_unknown"
     },
     {
       "rank": 4,
@@ -393,8 +392,7 @@ curl -X POST "{AI_ENDPOINT}/v1/final-questions" \
   "questions": [
     {
       "key": "BE15",
-      "text": "괜찮으시다면 여쭤도 될까요? 지난 면접에 이어 공고의 '고객사 상주 가능자' 부분을 조금 더 구체적으로 여쭙겠습니다. 첫해에 신입이 상주 프로젝트에 나간 기간이 보통 어느 정도였는지 예를 들어 주실 수 있을까요?",
-      "evidence": { "field": "pfCond", "quote": "고객사 상주 가능자" }
+      "text": "괜찮으시다면 여쭤도 될까요? 첫해에 신입이 상주 프로젝트에 나간 기간이 보통 어느 정도였는지 예를 들어 주실 수 있을까요?"
     },
     {
       "key": "BE08",

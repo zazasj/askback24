@@ -5,7 +5,7 @@ import type { CardPick, Evidence, FinalPref, FinalQuestionsRequest, InterviewRev
 import { PROVIDER_TIMEOUT_MS, generateFinal } from './generate'
 import { classifyFinal, finalCardTemplate, rankFinal, ruleJudgements, type Origin } from './finalRules'
 import { createMockProvider } from './providers/mock'
-import type { FinalDraft, LlmProvider } from './providers/types'
+import type { FinalDraft, FinalDraftItem, LlmProvider } from './providers/types'
 import { checkFinalQuestion } from './validate'
 
 const OO = 'K-MOCK-0001'
@@ -277,18 +277,30 @@ describe('Q-01 다시 확인은 1차 질문을 이어 받는다(DA-02)', () => {
   const CUSHIONS = /^(?:[^?]*여쭤도 될까요\? )+/
 
   // H1-13(세진 승인 2026-10-25): 1차 답이 모호했으면 1차 본문을 되풀이하지 않고 구체적인 예를 묻는다. "상주"+"기간"은 지킴
-  it('Q-01 (주)OO소프트 + R-04 최종 1번: 공고 인용으로 이어 받고 "상주"·"기간"을 구체적인 예로 묻는다(가짜 공급자·검수 문장)', async () => {
+  // H4-02 (다)(2026-11-04 세진 요청 #13): R-04는 압박이라 1번에 완충 문장이 붙고, 그러면 다시 확인 앞말 없이 "완충 + 질문"(D-099와 같게)
+  it('Q-01 (주)OO소프트 + R-04 최종 1번: 완충 + 질문으로 "상주"·"기간"을 구체적인 예로 묻는다(가짜 공급자·검수 문장)', async () => {
     for (const options of [{ provider: createMockProvider() }, {}]) {
       const res = await generateFinal(reqR04(), options)
       const first = res.final_questions[0]!
       expect(first.type).toBe('recheck')
+      expect(first.text).toMatch(CUSHIONS)
       const body = first.text.replace(CUSHIONS, '')
-      expect(body, first.text).toMatch(/^지난 면접에 이어 공고의 '고객사 상주 가능자' 부분을/)
+      expect(body, first.text).not.toMatch(/^지난 면접에 이어|^공고의 '/)
       for (const word of ['상주', '기간', '예를']) expect(first.text).toContain(word)
       expect(first.text).not.toMatch(ASK_FROM_SCRATCH)
       // 1차에 가져간 차이 확인 틀을 그대로 되풀이하지 않는다
       expect(first.text).not.toContain(getCard('BE15')!.questions.conflict)
       for (const q of res.final_questions) expect(q.text).not.toMatch(QUOTE_WORDS)
+    }
+  })
+
+  it('Q-01 완충 문장이 없으면(분위기 보통) 최종 1번은 공고 인용 앞말로 1차 질문을 이어 받는다', async () => {
+    for (const options of [{ provider: createMockProvider() }, {}]) {
+      const res = await generateFinal(reqR04({ ...r04Review(), impression: { mood: 'normal' } }), options)
+      const first = res.final_questions[0]!
+      expect(first.type).toBe('recheck')
+      expect(first.text, first.text).toMatch(/^지난 면접에 이어 공고의 '고객사 상주 가능자' 부분을/)
+      for (const word of ['상주', '기간', '예를']) expect(first.text).toContain(word)
     }
   })
 
@@ -500,5 +512,99 @@ describe('H3-r2-02 걱정돼요 카드의 "기대와 다름" 근거는 "걱정�
     expect(res.summary.mismatch).toBe(1)
     expect(be07?.basis.startsWith(FINAL_BOOK.basis.mismatch_avoid), be07?.basis).toBe(true)
     expect(be07?.basis).not.toContain('내 기대와 달라요')
+  })
+})
+
+describe('H4-02 (가) · #13 한 결과 안에서 다시 확인 앞말은 한 번만', () => {
+  /** 질문 앞의 "…다." 앞말. 따옴표 인용과 카드 이름만 다른 앞말은 같은 앞말로 본다 */
+  const leadKeyOf = (template: string, label: string): string | null => {
+    const m = /^(.*?다\.)\s+\S/.exec(template)
+    return m ? m[1]!.replace(/'[^']*'/g, 'Q').split(label).join('L') : null
+  }
+  const everyCard = (picks: readonly CardPick[], how: 'not_asked' | 'asked'): InterviewReview => ({
+    asked: how === 'asked' ? picks.map((p, i) => ({ question_id: `q${i + 1}`, card_id: p.card_id, heard: '들은 답', clarity: 'vague' as const })) : [],
+    not_asked: how === 'not_asked' ? picks.map((p, i) => ({ question_id: `q${i + 1}`, card_id: p.card_id, reason: 'forgot' as const })) : [],
+    received: [],
+    impression: { mood: 'normal' },
+  })
+  const cases = ANALYSES.flatMap((analysis) =>
+    (['A', 'B'] as const).flatMap((preset) => (['not_asked', 'asked'] as const).map((how) => ({ analysis, preset, how }))),
+  )
+
+  it('공고 전부 × 예시 A·B × 전부 못 물음·전부 모호: 같은 다시 확인 앞말은 한 번, 두 번째부터는 질문만', () => {
+    let dropped = 0
+    for (const { analysis, preset, how } of cases) {
+      const picks = PRESETS[preset].picks
+      const ranked = rankFinal({ picks, judged: ruleJudgements(everyCard(picks, how), picks), mood: 'normal', analysis })
+      const seen = new Map<string, number>()
+      for (const r of ranked.filter((x) => x.type === 'recheck')) {
+        const key = leadKeyOf(r.template, r.label)
+        if (key === null) continue
+        seen.set(key, (seen.get(key) ?? 0) + 1)
+      }
+      for (const [key, n] of seen) expect(n, `${analysis.wantedAuthNo} ${preset} ${how}: "${key}"`).toBe(1)
+      const rechecks = ranked.filter((x) => x.type === 'recheck')
+      dropped += rechecks.filter((r) => leadKeyOf(r.template, r.label) === null).length
+    }
+    // 앞말 없이 바로 묻는 다시 확인 문항이 실제로 생긴다
+    expect(dropped).toBeGreaterThan(0)
+  })
+
+  it('앞말을 뺀 다시 확인 문항은 AI에 근거를 보내지 않는다(AI가 인용 앞말을 다시 붙이지 않게)', async () => {
+    const OO_ANALYSIS = ANALYSES.find((a) => a.wantedAuthNo === OO)!
+    let sent: FinalDraftItem[] = []
+    const spy: LlmProvider = {
+      name: 'spy',
+      writeFirst: async () => [],
+      writeFinal: async (input) => {
+        sent = input.items
+        return []
+      },
+    }
+    await generateFinal(reqR04(everyCard(PRESETS.A.picks, 'not_asked')), { provider: spy })
+    const rechecks = sent.filter((i) => i.type === 'recheck')
+    expect(rechecks.length).toBeGreaterThan(1)
+    for (const i of rechecks) {
+      const quoted = !!i.evidence && i.template.includes(`'${i.evidence.quote}'`)
+      expect(!!i.evidence, `${i.key}: ${i.template}`).toBe(quoted)
+    }
+    // 규칙 결과(근거 보기)의 근거는 그대로 남는다
+    const res = await generateFinal(reqR04(everyCard(PRESETS.A.picks, 'not_asked')), {})
+    for (const q of res.final_questions.filter((x) => x.type === 'recheck')) {
+      const found = OO_ANALYSIS.cards.find((c) => c.card_id === q.card_id)
+      expect(q.evidence, q.card_id).toEqual(found?.evidence)
+    }
+  })
+
+  it('H4-02 (다) 완충 문장이 붙은 다시 확인은 앞말 없이 "완충 + 질문", 그 갈래의 앞말은 다음 문항이 쓴다', () => {
+    let cushioned = 0
+    let handedOn = 0
+    for (const { analysis, preset, how } of cases) {
+      const picks = PRESETS[preset].picks
+      const review = { ...everyCard(picks, how), impression: { mood: 'pressured' as const } }
+      const ranked = rankFinal({ picks, judged: ruleJudgements(review, picks), mood: 'pressured', analysis })
+      const rechecks = ranked.filter((r) => r.type === 'recheck')
+      rechecks.forEach((r, i) => {
+        if (!r.cushion) return
+        cushioned++
+        expect(leadKeyOf(r.template, r.label), `${analysis.wantedAuthNo} ${preset} ${how}: ${r.template_text}`).toBeNull()
+        expect(r.template_text).toBe(`${r.cushion}${r.template}`)
+        if (rechecks.slice(i + 1).some((x) => leadKeyOf(x.template, x.label) !== null)) handedOn++
+      })
+    }
+    expect(cushioned).toBeGreaterThan(0)
+    // 완충 문항이 앞말을 쓰지 않았으니 같은 갈래 다음 문항이 앞말을 받는 경우가 있다
+    expect(handedOn).toBeGreaterThan(0)
+  })
+
+  it('검수 문장(공급자 없음)도 같은 앞말이 되풀이되지 않는다', async () => {
+    for (const how of ['not_asked', 'asked'] as const) {
+      const res = await generateFinal(reqR04(everyCard(PRESETS.A.picks, how)), {})
+      const keys = res.final_questions
+        .filter((q) => q.type === 'recheck')
+        .map((q) => leadKeyOf(q.text, getCard(q.card_id!)!.label))
+        .filter((k): k is string => k !== null)
+      expect(new Set(keys).size, `${how}: ${keys.join(' | ')}`).toBe(keys.length)
+    }
   })
 })
