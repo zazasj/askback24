@@ -277,18 +277,30 @@ describe('Q-01 다시 확인은 1차 질문을 이어 받는다(DA-02)', () => {
   const CUSHIONS = /^(?:[^?]*여쭤도 될까요\? )+/
 
   // H1-13(세진 승인 2026-10-25): 1차 답이 모호했으면 1차 본문을 되풀이하지 않고 구체적인 예를 묻는다. "상주"+"기간"은 지킴
-  it('Q-01 (주)OO소프트 + R-04 최종 1번: 공고 인용으로 이어 받고 "상주"·"기간"을 구체적인 예로 묻는다(가짜 공급자·검수 문장)', async () => {
+  // H4-02 (다)(2026-11-04 세진 요청 #13): R-04는 압박이라 1번에 완충 문장이 붙고, 그러면 다시 확인 앞말 없이 "완충 + 질문"(D-099와 같게)
+  it('Q-01 (주)OO소프트 + R-04 최종 1번: 완충 + 질문으로 "상주"·"기간"을 구체적인 예로 묻는다(가짜 공급자·검수 문장)', async () => {
     for (const options of [{ provider: createMockProvider() }, {}]) {
       const res = await generateFinal(reqR04(), options)
       const first = res.final_questions[0]!
       expect(first.type).toBe('recheck')
+      expect(first.text).toMatch(CUSHIONS)
       const body = first.text.replace(CUSHIONS, '')
-      expect(body, first.text).toMatch(/^지난 면접에 이어 공고의 '고객사 상주 가능자' 부분을/)
+      expect(body, first.text).not.toMatch(/^지난 면접에 이어|^공고의 '/)
       for (const word of ['상주', '기간', '예를']) expect(first.text).toContain(word)
       expect(first.text).not.toMatch(ASK_FROM_SCRATCH)
       // 1차에 가져간 차이 확인 틀을 그대로 되풀이하지 않는다
       expect(first.text).not.toContain(getCard('BE15')!.questions.conflict)
       for (const q of res.final_questions) expect(q.text).not.toMatch(QUOTE_WORDS)
+    }
+  })
+
+  it('Q-01 완충 문장이 없으면(분위기 보통) 최종 1번은 공고 인용 앞말로 1차 질문을 이어 받는다', async () => {
+    for (const options of [{ provider: createMockProvider() }, {}]) {
+      const res = await generateFinal(reqR04({ ...r04Review(), impression: { mood: 'normal' } }), options)
+      const first = res.final_questions[0]!
+      expect(first.type).toBe('recheck')
+      expect(first.text, first.text).toMatch(/^지난 면접에 이어 공고의 '고객사 상주 가능자' 부분을/)
+      for (const word of ['상주', '기간', '예를']) expect(first.text).toContain(word)
     }
   })
 
@@ -562,6 +574,27 @@ describe('H4-02 (가) · #13 한 결과 안에서 다시 확인 앞말은 한 �
       const found = OO_ANALYSIS.cards.find((c) => c.card_id === q.card_id)
       expect(q.evidence, q.card_id).toEqual(found?.evidence)
     }
+  })
+
+  it('H4-02 (다) 완충 문장이 붙은 다시 확인은 앞말 없이 "완충 + 질문", 그 갈래의 앞말은 다음 문항이 쓴다', () => {
+    let cushioned = 0
+    let handedOn = 0
+    for (const { analysis, preset, how } of cases) {
+      const picks = PRESETS[preset].picks
+      const review = { ...everyCard(picks, how), impression: { mood: 'pressured' as const } }
+      const ranked = rankFinal({ picks, judged: ruleJudgements(review, picks), mood: 'pressured', analysis })
+      const rechecks = ranked.filter((r) => r.type === 'recheck')
+      rechecks.forEach((r, i) => {
+        if (!r.cushion) return
+        cushioned++
+        expect(leadKeyOf(r.template, r.label), `${analysis.wantedAuthNo} ${preset} ${how}: ${r.template_text}`).toBeNull()
+        expect(r.template_text).toBe(`${r.cushion}${r.template}`)
+        if (rechecks.slice(i + 1).some((x) => leadKeyOf(x.template, x.label) !== null)) handedOn++
+      })
+    }
+    expect(cushioned).toBeGreaterThan(0)
+    // 완충 문항이 앞말을 쓰지 않았으니 같은 갈래 다음 문항이 앞말을 받는 경우가 있다
+    expect(handedOn).toBeGreaterThan(0)
   })
 
   it('검수 문장(공급자 없음)도 같은 앞말이 되풀이되지 않는다', async () => {

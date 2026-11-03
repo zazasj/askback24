@@ -301,6 +301,7 @@ export const CUSHION_LIMIT = 2
  * 짧은 앞말 하나를 둔다(H2-10 ②).
  * 다시 확인 앞말("지난 면접에 이어 …"·"공고의 '…' 부분과 관련해 …")은 물어본·못 물은 갈래마다 위에서 한 번만 붙이고,
  * 그 뒤 문항은 질문만 둔다. 문항마다 같은 앞말이 붙어 AI 문장까지 되풀이됐다(H4-02 (가), #13).
+ * 완충 문장이 붙은 다시 확인은 앞말 없이 "완충 + 질문"으로 둔다(H4-02 (다)).
  */
 export function rankFinal(input: FinalRankInput): FinalRanked[] {
   const { limits, cushions } = FINAL_BOOK
@@ -314,17 +315,18 @@ export function rankFinal(input: FinalRankInput): FinalRanked[] {
   // 같은 다시 확인 앞말은 한 결과에 한 번: 두 번째부터는 앞말 없이 질문만(H4-02 (가), #13)
   const leadUsed = new Set<Origin>()
   return all.map((c, i) => {
-    let template = c.template
-    if (c.recheck) {
-      if (leadUsed.has(c.recheck.origin)) template = c.recheck.body
-      leadUsed.add(c.recheck.origin)
-    }
     let wants = c.reason === 'bad_mood'
     const firstOffer = c.origin === 'offer' && !offerSeen
     if (input.mood === 'pressured' && (i === 0 || firstOffer)) wants = true
     if (c.origin === 'offer') offerSeen = true
     const cushioned = wants && used < cushionLimit
     const cushion = cushioned ? (cushions[used++] ?? '') : ''
+    let template = c.template
+    if (c.recheck) {
+      // 완충 문장이 붙으면 "완충 + 질문"(H4-02 (다), D-099와 같게). 앞말은 쓰지 않았으니 같은 갈래 다음 문항이 쓴다
+      if (cushioned || leadUsed.has(c.recheck.origin)) template = c.recheck.body
+      else leadUsed.add(c.recheck.origin)
+    }
     // 완충을 바랐지만 한도를 넘은 질문은 "편했어요"여도 직접이 아니라 기본 앞말로 묻는다
     const tone: Tone = cushioned ? 'cushion' : wants || firstOffer || input.mood !== 'relaxed' ? 'basic' : 'direct'
     const ranked: FinalRanked = {
