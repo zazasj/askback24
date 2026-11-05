@@ -1,12 +1,13 @@
 <script setup lang="ts">
 /**
  * S4 ③ 1차·기술 면접 질문. ②에서 "질문 만들기"를 누르면 만드는 중 → 질문 5개.
- * 결과는 지원 건마다 저장되어 새로고침해도 그대로다. 결과가 없이 이 단계를 열면 지금 선택으로 바로 만든다.
+ * 결과는 지원 건마다 저장되어 새로고침해도 그대로다. 결과가 없이 이 단계를 열면(주소로 바로·만드는 중 새로고침) 만들지 않고
+ * "질문 만들기"를 보인다 — AI는 누를 때만 부른다(/about-ai).
  * 처우 질문은 여기서 주지 않는다(D-012). 1차 면접을 다녀오면 최종 단계로 넘긴다.
  * 아래 고정 바는 ①②처럼 다음 단계("면접 다녀왔어요") 하나만(F-05). "전체 복사"·인쇄는 오른쪽 상자에 하나씩(RS-02),
  * 상자가 질문 아래로 쌓이는 폭에서는 그 둘만 질문 위로 올린다(RS-03).
  */
-import { computed, nextTick, onMounted, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, useTemplateRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { CARD_BOOK, getAnalysis, getCard } from '@shared/catalog'
 import type { Posting, Question } from '@shared/contract'
@@ -56,10 +57,10 @@ function make(): void {
   void store.makeFirst(props.applyId, props.posting.wantedAuthNo, { apiFail: props.apiFail === true })
 }
 
-onMounted(() => {
-  // 주소로 바로 열었거나 새로고침 때 결과가 없으면 지금 선택으로 만든다
-  if (!generating.value && !result.value && selection.value.picks.length > 0) make()
-})
+/** 결과가 없을 때의 "질문 만들기"(②와 같이 만드는 중이면 다시 부르지 않는다) */
+function makeFromEmpty(): void {
+  store.ensureFirst(props.applyId, props.posting.wantedAuthNo, { apiFail: props.apiFail === true })
+}
 
 // 만드는 중 ↔ 결과가 바뀔 때 누른 버튼이 사라지므로 초점을 제목으로 옮긴다
 const title = useTemplateRef<HTMLElement>('title')
@@ -266,6 +267,15 @@ function printSheet(): void {
       <p>질문을 만들지 못했어요. 잠시 뒤 다시 시도해 주세요.</p>
       <div class="empty-actions">
         <button type="button" class="btn btn-accent" @click="make">AI로 다시 만들기</button>
+        <button type="button" class="btn btn-tertiary" @click="emit('change')">선택 바꾸기</button>
+      </div>
+    </div>
+
+    <!-- 고른 카드는 있고 결과는 없음(③ 주소로 바로 열기·만드는 중 새로고침). 누르기 전에는 만들지 않는다 -->
+    <div v-else-if="selection.picks.length > 0" class="empty">
+      <p>고른 카드 {{ selection.picks.length }}개로 아직 질문을 만들지 않았어요. "질문 만들기"를 누르면 만들어 드려요.</p>
+      <div class="empty-actions">
+        <button type="button" class="btn btn-accent" @click="makeFromEmpty">질문 만들기</button>
         <button type="button" class="btn btn-tertiary" @click="emit('change')">선택 바꾸기</button>
       </div>
     </div>

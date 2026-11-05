@@ -328,6 +328,8 @@ const terms = computed(() => cardTerms(props.card))
   .choice.is-want input:checked + .chip,
   .choice.is-avoid input:checked + .chip,
   .choice.is-unsure input:checked + .chip {
+    /* 크롬이 글자 뒤에 바탕판을 그려 고른 칩 글자가 안 보였다 */
+    forced-color-adjust: none;
     border-color: Highlight;
     background-color: Highlight;
     color: HighlightText;

@@ -14,6 +14,7 @@ import { usePostingIntroStore } from '@/stores/postingIntro'
 import { useToastStore } from '@/stores/toast'
 import { TOUR_OFF_TOAST, testTourOff, useTourStore, type ScreenTour, type TourKey, type TourStep } from '@/stores/tour'
 import { boxWidth, placeDesktop, placeSheet, scrollDelta, sheetScrollDelta, type Rect, type View } from './tourLayout'
+import { isShown } from './visibility'
 
 const tour = useTourStore()
 const tools = useDemoToolsStore()
@@ -259,7 +260,7 @@ function rectOf(el: Element): Rect {
 
 function shown(el: HTMLElement): boolean {
   const r = el.getBoundingClientRect()
-  return r.width > 1 && r.height > 1 && el.checkVisibility({ visibilityProperty: true, opacityProperty: true })
+  return r.width > 1 && r.height > 1 && isShown(el)
 }
 
 /** 단계의 대상: 이름 순서대로 그 폭에서 보이는 첫 요소(데스크톱 표·휴대폰 카드처럼 둘 다 있는 것은 보이는 쪽) */

@@ -9,6 +9,7 @@
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useEventListener } from '@vueuse/core'
 import { PRESETS, getAnalysis, getPosting, getSignals, type PresetKey } from '@shared/catalog'
 import type { Mode } from '@shared/contract'
 import NotFoundContent from '@/components/ui/NotFoundContent.vue'
@@ -151,11 +152,27 @@ function startFinal(): void {
   if (app && p) void questions.makeFinal(app.apply_id, p.wantedAuthNo, { apiFail: apiFail.value })
 }
 
-/** "최종 질문 만들기" → ③ 최종 질문 받기(③이 만드는 중을 보여 준다) */
+/** "최종 질문 만들기" → ③ 최종 질문 받기(③이 만드는 중을 보여 준다). 이미 만드는 중이면 AI를 다시 부르지 않고 ③만 연다 */
 function makeFinal(): void {
-  startFinal()
+  const app = application.value
+  if (app && !questions.isGeneratingFinal(app.apply_id)) startFinal()
   void goStep(3)
 }
+
+/**
+ * 최종 질문을 만드는 동안 떠나면 정리 입력(메모리, R-09)과 만들던 질문이 함께 사라진다. ②의 확인 창(H2-22)은 ③으로 오면
+ * 없어지므로 만드는 동안만 여기서 띄운다(다 만들면 결과가 저장되어 뗀다). 머리 라디오로 1차로 바꿔도 그대로
+ */
+const finalGenerating = computed(() => !!(application.value && questions.isGeneratingFinal(application.value.apply_id)))
+useEventListener<BeforeUnloadEvent>(
+  () => (finalGenerating.value ? window : null),
+  'beforeunload',
+  (e) => {
+    e.preventDefault()
+    // 옛 브라우저는 returnValue 를 채워야 창을 띄운다
+    e.returnValue = ''
+  },
+)
 
 /** 시연 도구 "1차 면접 다녀온 것으로 채우기"(R-04). 채우기만 하고 만들기는 사람이 누른다 */
 function fillReviewExample(): void {

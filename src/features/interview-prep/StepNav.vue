@@ -127,6 +127,8 @@ function stepTo(n: number) {
   }
 
   .step.is-active .no {
+    /* 크롬이 글자 뒤에 바탕판을 그려 지금 단계 번호가 안 보였다 */
+    forced-color-adjust: none;
     border-color: Highlight;
     background-color: Highlight;
     color: HighlightText;
