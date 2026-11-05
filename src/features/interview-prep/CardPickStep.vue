@@ -15,6 +15,7 @@ import { PICK_TOUR } from '@/features/tour/tourSteps'
 import { useScreenTour } from '@/features/tour/useScreenTour'
 import { useDemoToolsStore } from '@/stores/demoTools'
 import { usePrepStore } from '@/stores/prep'
+import { useQuestionsStore } from '@/stores/questions'
 import { postingTag } from './checkpoints'
 import { EXPERIENCE_MAX, PREFS, countByPref, experienceTarget, oneLine, prefOf } from './picks'
 import TaskCard from './TaskCard.vue'
@@ -23,6 +24,7 @@ const props = defineProps<{ applyId: string; analysis?: PostingAnalysis }>()
 const emit = defineEmits<{ make: [] }>()
 
 const prep = usePrepStore()
+const questions = useQuestionsStore()
 
 // 처음 들어오면 이 화면 안내(TR-02)
 useScreenTour('prep-pick', () => [...PICK_TOUR], { titleId: 'pick-step-title' })
@@ -54,6 +56,8 @@ function tagOf(cardId: string): string | null {
 
 const counts = computed(() => countByPref(picks.value))
 const total = computed(() => picks.value.length)
+/** ③에서 뒤로 와도 만드는 중이면 다시 누르지 못하게(AI를 두 번 부르지 않는다) */
+const generating = computed(() => questions.isGenerating(props.applyId))
 const breakdown = computed(() => PREFS.map((p) => `${CARD_BOOK.preference_options[p]} ${counts.value[p]}`).join(' · '))
 
 function toggle(cardId: string, pref: Pref): void {
@@ -185,7 +189,7 @@ const experienceHint = computed(() => {
         <!-- 카드 17개 아래 맨 끝의 "경험 한 줄"을 직접 고르는 사람도 보게(H2-20). 경험이 비어 있을 때만 -->
         <button v-if="!experience.trim()" type="button" class="exp-jump tap-target" @click="jumpToExperience">경험 한 줄 붙이기(선택)</button>
       </div>
-      <button type="button" class="btn btn-accent btn-lg make" :disabled="total === 0" @click="emit('make')">
+      <button type="button" class="btn btn-accent btn-lg make" :disabled="total === 0 || generating" @click="emit('make')">
         질문 만들기
       </button>
     </div>

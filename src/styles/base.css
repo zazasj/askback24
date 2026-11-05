@@ -285,9 +285,11 @@ h2[tabindex='-1']:focus-visible {
   border-color: var(--krds-light-color-border-primary);
 }
 
+/* 아이폰 사파리는 16px보다 작은 입력칸에 초점이 가면 화면을 확대한다. 휴대폰 폭에서는 16px(더 크게 정한 칸은 그대로) */
 @media (max-width: 767px) {
   .input {
     min-height: var(--rq-touch);
+    font-size: 1.6rem;
   }
 }
 

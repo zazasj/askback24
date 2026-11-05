@@ -222,13 +222,18 @@ async function closeGuide(): Promise<void> {
             <input id="search-to" v-model="form.to" type="date" class="input" />
           </div>
         </div>
-        <fieldset class="search-row">
-          <legend class="search-label">열람여부</legend>
-          <div class="radio-row">
-            <label v-for="o in VIEWED_OPTIONS" :key="o.value" class="radio">
-              <input v-model="form.viewed" type="radio" name="search-viewed" :value="o.value" />
-              <span>{{ o.label }}</span>
-            </label>
+        <!-- legend 는 이름(화면낭독기)만, 보이는 이름은 안쪽 줄의 글자. 떠 있는 legend 를 grid 칸으로 쓰면
+             사파리(WebKit)만 legend 를 따로 한 줄에 둬 라디오가 세로로 쌓였다 -->
+        <fieldset>
+          <legend class="sr-only">열람여부</legend>
+          <div class="search-row">
+            <span class="search-label" aria-hidden="true">열람여부</span>
+            <div class="radio-row">
+              <label v-for="o in VIEWED_OPTIONS" :key="o.value" class="radio">
+                <input v-model="form.viewed" type="radio" name="search-viewed" :value="o.value" />
+                <span>{{ o.label }}</span>
+              </label>
+            </div>
           </div>
         </fieldset>
         <div class="search-row">
@@ -493,10 +498,6 @@ async function closeGuide(): Promise<void> {
   font-size: var(--krds-pc-font-size-label-small);
   font-weight: 700;
   color: var(--krds-light-color-text-bolder);
-}
-
-fieldset.search-row > legend {
-  float: left;
 }
 
 .date-range {

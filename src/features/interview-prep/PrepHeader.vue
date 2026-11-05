@@ -35,21 +35,26 @@ const MODES: readonly Mode[] = ['first', 'final']
           <span class="stage">준비 중: <b>최종 면접</b></span>
         </template>
       </p>
+      <!-- legend 는 이름(화면낭독기)만, 보이는 이름은 안쪽 줄의 글자. 떠 있는 legend 를 flex 칸으로 쓰면
+           사파리(WebKit)만 legend 를 따로 한 줄에 둬 머리가 34px 높아졌다 -->
       <fieldset class="mode">
-        <legend class="mode-legend">준비할 면접</legend>
-        <div class="mode-options">
-          <label v-for="m in MODES" :key="m" class="mode-option">
-            <input
-              type="radio"
-              name="prep-mode"
-              class="sr-only"
-              :value="m"
-              :checked="mode === m"
-              aria-describedby="prep-mode-hint"
-              @change="emit('update:mode', m)"
-            />
-            <span class="chip">{{ MODE_LABELS[m] }}</span>
-          </label>
+        <legend class="sr-only">준비할 면접</legend>
+        <div class="mode-row">
+          <span class="mode-legend" aria-hidden="true">준비할 면접</span>
+          <div class="mode-options">
+            <label v-for="m in MODES" :key="m" class="mode-option">
+              <input
+                type="radio"
+                name="prep-mode"
+                class="sr-only"
+                :value="m"
+                :checked="mode === m"
+                aria-describedby="prep-mode-hint"
+                @change="emit('update:mode', m)"
+              />
+              <span class="chip">{{ MODE_LABELS[m] }}</span>
+            </label>
+          </div>
         </div>
       </fieldset>
     </div>
@@ -130,7 +135,7 @@ const MODES: readonly Mode[] = ['first', 'final']
   color: var(--rq-accent-strong);
 }
 
-.mode {
+.mode-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -138,7 +143,6 @@ const MODES: readonly Mode[] = ['first', 'final']
 }
 
 .mode-legend {
-  float: left;
   margin-right: 1.2rem;
   font-size: var(--krds-pc-font-size-label-small);
   font-weight: 700;
@@ -186,6 +190,8 @@ const MODES: readonly Mode[] = ['first', 'final']
 /* 고대비(forced-colors)에서 "준비할 면접" 고른 칸이 굵기로만 구분되지 않게 시스템 선택 색(A3-r2-06) */
 @media (forced-colors: active) {
   .mode-option input:checked + .chip {
+    /* 크롬이 글자 뒤에 바탕판을 그려 고른 칸 글자가 안 보였다 */
+    forced-color-adjust: none;
     border-color: Highlight;
     background-color: Highlight;
     color: HighlightText;
@@ -251,12 +257,12 @@ const MODES: readonly Mode[] = ['first', 'final']
     color: var(--krds-light-color-text-subtle);
   }
 
-  .mode {
+  .mode-row {
     display: block;
   }
 
   .mode-legend {
-    float: none;
+    display: block;
     margin: 0 0 0.4rem;
     font-size: var(--krds-pc-font-size-label-xsmall);
     line-height: 1.4;

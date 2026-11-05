@@ -167,10 +167,11 @@ export const useQuestionsStore = defineStore('questions', () => {
 
   /**
    * ② "질문 만들기". 지금 선택으로 만든 결과가 이미 있으면 다시 만들지 않는다: 문장이 바뀌면 인쇄해 둔 것과 어긋나고
-   * 실제 모드에서는 AI를 한 번 더 부른다. 다시 만들기는 "AI로 다시 만들기"(makeFirst)만 한다. 새로 만들기 시작했으면 true
+   * 실제 모드에서는 AI를 한 번 더 부른다. 다시 만들기는 "AI로 다시 만들기"(makeFirst)만 한다. 새로 만들기 시작했으면 true.
+   * 만드는 중(③에서 뒤로 가기 등)에도 다시 부르지 않는다: ③이 그 진행을 보여 준다
    */
   function ensureFirst(applyId: string, wantedAuthNo: string, options: { apiFail?: boolean } = {}): boolean {
-    if (isCurrent(applyId, wantedAuthNo)) return false
+    if (isGenerating(applyId) || isCurrent(applyId, wantedAuthNo)) return false
     void makeFirst(applyId, wantedAuthNo, options)
     return true
   }

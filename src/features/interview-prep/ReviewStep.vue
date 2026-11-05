@@ -48,6 +48,8 @@ const item = (cardId: string) => itemOf(draft.value, cardId)
 const done = computed(() => questions.value.filter((q) => isItemDone(item(q.card_id))).length)
 const touched = computed(() => isTouched(draft.value))
 const hasPicks = computed(() => prep.selectionOf(props.applyId).picks.length > 0)
+/** ③에서 뒤로 와도 만드는 중이면 다시 누르지 못하게(AI를 두 번 부르지 않는다) */
+const generatingFinal = computed(() => store.isGeneratingFinal(props.applyId))
 
 // 정리할 1차 질문이 있을 때 이 화면 안내(TR-02). 빈 상태("먼저 1차 면접 질문을 만들어 주세요")에는 띄우지 않는다
 useScreenTour('prep-review', () => [...REVIEW_TOUR], { ready: () => questions.value.length > 0, titleId: 'review-title' })
@@ -228,7 +230,7 @@ function setMood(m: Mood): void {
           <strong class="count">정리한 질문 {{ done }}/{{ questions.length }}개</strong>
           <span class="count-tip">정리하지 않은 질문은 "아직 모름"으로 보고, 최종 질문을 만들 때 다시 물을 후보로 넘겨요.</span>
         </p>
-        <button type="button" class="btn btn-accent btn-lg make" :disabled="!touched" data-tour="review-make" @click="emit('make')">최종 질문 만들기</button>
+        <button type="button" class="btn btn-accent btn-lg make" :disabled="!touched || generatingFinal" data-tour="review-make" @click="emit('make')">최종 질문 만들기</button>
       </div>
       <p v-if="!hasPicks" class="hint">고른 카드가 없어 회사가 물어본 업무와 처우 질문 위주로 만들어요.</p>
     </template>

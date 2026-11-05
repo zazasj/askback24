@@ -68,6 +68,17 @@ describe('A2-01 같은 선택이면 "질문 만들기"가 다시 만들지 않�
     expect(fetchFirst).toHaveBeenCalledTimes(2)
   })
 
+  it('만드는 중(③에서 뒤로 와서)에 "질문 만들기"를 다시 누르면 새로 부르지 않는다', async () => {
+    const store = useQuestionsStore()
+    usePrepStore().fillPreset(ROW1.apply_id, 'A')
+    expect(store.ensureFirst(ROW1.apply_id, ROW1.wantedAuthNo)).toBe(true)
+    expect(store.ensureFirst(ROW1.apply_id, ROW1.wantedAuthNo)).toBe(false)
+    expect(store.isGenerating(ROW1.apply_id)).toBe(true)
+    await vi.advanceTimersByTimeAsync(MIN_LOADING_MS)
+    expect(fetchFirst).toHaveBeenCalledTimes(1)
+    expect(store.firstOf(ROW1.apply_id)?.response.questions).toHaveLength(5)
+  })
+
   it('S1 2행 시드(예시 A × (주)△△커머스)는 시드와 같은 선택이면 "질문 만들기"가 시드 결과를 그대로 보인다(S4-16)', () => {
     const store = useQuestionsStore()
     expect(store.firstOf(ROW2.apply_id)?.seed).toBe(true)

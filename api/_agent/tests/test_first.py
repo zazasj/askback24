@@ -311,7 +311,7 @@ def test_resume_text_matches_ts_order():
 
 
 async def test_feeling_question_is_rewritten_with_hint():
-    # "…궁금한가요?"는 면접관의 마음을 묻는 꼴이라 고칠 점을 주고 그 문항만 다시 쓴다(D-418).
+    # "…궁금한가요?"는 면접관의 마음을 묻는 꼴이라 고칠 점을 주고 그 문항만 다시 쓴다(D-425).
     d = good()
     for q in d["questions"]:
         if q["card_id"] == "BE01":
