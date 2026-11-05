@@ -3,7 +3,7 @@ import time
 from collections.abc import Callable
 
 from ..budget import FIRST_BUDGET_S
-from ..checks import check_first
+from ..checks import check_ending, check_first
 from ..leads import thin_passed
 from ..llm import Llm
 from ..prompts.first import SYSTEM, user_message
@@ -31,7 +31,8 @@ class FirstAgent:
                 # 경험 한 줄·이력서를 살려 쓴 문항은 지원자 자신의 낱말이라 지어낸 낱말이 아니다(둘은 더한다)
                 resume_text=allowed_text(req, i),
                 can_cite_resume=i.can_cite_resume,
-            ),
+            )
+            + check_ending(text),
             user_message=user_message,
         )
         self.loop = LoopAgent(spec, llm, clock)

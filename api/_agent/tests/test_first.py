@@ -308,3 +308,16 @@ def test_resume_text_matches_ts_order():
     r = req(resume={**RESUME, "projects": [{"name": "주문 API", "stack": "", "summary": "개발"}], "trainings": [{"name": "국비", "summary": ""}]}).resume
     from _agent.schemas import resume_text
     assert resume_text(r) == "신입 Spring Boot 주문 API 개발 국비 정보처리기사"
+
+
+async def test_feeling_question_is_rewritten_with_hint():
+    # "…궁금한가요?"는 면접관의 마음을 묻는 꼴이라 고칠 점을 주고 그 문항만 다시 쓴다(D-418).
+    d = good()
+    for q in d["questions"]:
+        if q["card_id"] == "BE01":
+            q["text"] = "이 팀에서는 신입이 새 API를 설계부터 배포까지 맡는지, 정해진 스펙을 구현하는지 궁금한가요?"
+    llm = FakeLlm([d, good(["BE01"])])
+    res = await run_first(req(), llm, LABELS)
+    assert len(llm.calls) == 2
+    assert "'…궁금합니다.'로 맺거나 '…나요, 아니면 …인가요?'로 바로 물으세요" in llm.calls[1]["user"]
+    assert len(res.questions) == 5 and not any(q.text.endswith("궁금한가요?") for q in res.questions)

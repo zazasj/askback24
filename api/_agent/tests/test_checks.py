@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from _agent.checks import check_final, check_first, check_judgement, load_card_labels
+from _agent.checks import check_ending, check_final, check_first, check_judgement, load_card_labels
 
 ROOT = Path(__file__).resolve().parents[3]
 CASES = json.loads((ROOT / "shared/fixtures/validate-cases.json").read_text(encoding="utf-8"))["cases"]
@@ -40,3 +40,23 @@ def test_unknown_term_goes_last_and_resume_allows():
     text = "제가 Kafka를 해 봤는데, 이 팀에서는 신입도 맡나요?"
     assert check_first(text, "explicit", False, posting, LABELS) == ["experience_claim", "unknown_term"]
     assert check_first(text, "explicit", True, posting, LABELS, resume_text="Kafka 프로젝트") == []
+
+
+@pytest.mark.parametrize(
+    "text,expect",
+    [
+        # 운영에서 나온 문장(11-04, 예시 A × (주)OO소프트 BE01 깊이 확인)
+        ("직업훈련 팀 프로젝트에서 FastAPI로 API를 설계부터 배포까지 맡아 본 경험이 있는데, 신입이 새 API를 설계부터 배포까지 맡는지, 정해진 스펙을 구현하는 역할인지 궁금한가요?", ["feeling_question"]),
+        ("입사 후 어떤 교육을 받게 되는지 궁금하신가요?", ["feeling_question"]),
+        ("신입에게 어떤 역할을 맡기실지 알고 싶으신가요?", ["feeling_question"]),
+        ("신입이 설계까지 맡는지, 정해진 명세에 따른 구현을 주로 맡는지 궁금합니다. 어느 쪽인가요?", ["ask_twice"]),
+        ("신입이 맡는 일이 어떤 조건에서 달라지는지 궁금한데요, 맡는 범위가 어떻게 되나요?", ["ask_twice"]),
+        # 통과해야 하는 것
+        ("새 API를 만들 때 신입이 어디까지 맡나요? 설계부터 배포까지인지, 정해진 스펙의 구현까지인지 궁금합니다.", []),
+        ("신입이 맡게 될 일 중 걱정되는 부분이 있나요?", []),
+        ("신입은 설계부터 배포까지 맡나요, 아니면 정해진 스펙을 구현하는 데 집중하나요?", []),
+        ("기타 업무 지원에 어떤 업무가 포함되는지 궁금합니다. 기존 시스템 유지보수와 새 기능 개발의 비중은 대략 어떻게 되나요?", []),
+    ],
+)
+def test_check_ending(text, expect):
+    assert check_ending(text) == expect
