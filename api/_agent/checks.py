@@ -149,6 +149,23 @@ def check_final_tone(text: str, tone: str, cushion: str, cushions: tuple[str, ..
         issues.append("permission_twice")
     return issues
 
+# 마음을 나타내는 말(궁금·기대되·걱정되·알고 싶)로 물으면 면접관의 마음을 묻는 꼴이 된다("…궁금한가요?", D-425).
+FEELING_QUESTION = re.compile(r"(?<![가-힣])(?:궁금|기대되|걱정되|알고\s*싶)[가-힣]*\?")
+# "…궁금합니다." 뒤에 짧은 물음(24자 안)이 또 붙으면 같은 것을 두 번 묻는다("…궁금합니다. 어느 쪽인가요?").
+ASK_TWICE = re.compile(r"궁금(?:합니다\.|해요\.|한데요,?)\s*[^.?!]{1,24}\?\s*$")
+
+
+def check_ending(text: str) -> list[str]:
+    """끝맺음 검사(①·② 문장 공통). Python 에만 있다(TS 는 AI 몫으로 둠, cushion_leak 과 같은 방식)."""
+    t = squash(text).strip()
+    issues: list[str] = []
+    if FEELING_QUESTION.search(t):
+        issues.append("feeling_question")
+    if ASK_TWICE.search(t):
+        issues.append("ask_twice")
+    return issues
+
+
 # 신호 질문은 회사를 평가하는 말도 막는다. 공용 FORBIDDEN(TS와 같은 목록)은 건드리지 않는다.
 SIGNAL_FORBIDDEN = [
     re.compile(r"퇴사(?:가|율이?|자가?)\s*(?:많|높|잦)|이직률|사람이\s*(?:많이\s*)?(?:나가|그만)|자주\s*(?:그만|퇴사)"),

@@ -176,3 +176,12 @@ def test_prompt_shape():
         assert f'"{k}"' in msg
     for w in ("recheck", "signal", "scope", "offer", "opportunity", "asked", "not_asked", "received", "basic", "cushion", "direct", "10자 이상 260자 이하"):
         assert w in SYSTEM
+
+
+def test_final_drops_ask_twice(ai_log):
+    twice = "첫해에 신입이 상주 프로젝트에 나가는지 궁금합니다. 어느 쪽인가요?"
+    llm = FakeLlm([with_text("BE15", twice), with_text("BE15", twice)])
+    r = post(llm)
+    assert len(llm.calls) == 2
+    assert "BE15" not in [q["key"] for q in r.json()["questions"]]
+    assert "BE15:ask_twice" in ai_log.text

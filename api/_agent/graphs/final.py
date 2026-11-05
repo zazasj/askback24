@@ -4,7 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from ..budget import FINAL_BUDGET_S
-from ..checks import check_final, check_final_tone, load_cushions
+from ..checks import check_ending, check_final, check_final_tone, load_cushions
 from ..leads import thin_passed
 from ..llm import Llm
 from ..prompts.final import SYSTEM, user_message
@@ -28,7 +28,7 @@ class FinalAgent:
             issues = check_final(text, i.state, req.posting, labels)
             if _cushion_missing(i, text):
                 issues.append("cushion_missing")
-            return issues + check_final_tone(text, i.tone, i.cushion, book)
+            return issues + check_final_tone(text, i.tone, i.cushion, book) + check_ending(text)
 
         spec = LoopSpec(
             name="final",
