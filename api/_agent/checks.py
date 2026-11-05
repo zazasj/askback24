@@ -151,8 +151,8 @@ def check_final_tone(text: str, tone: str, cushion: str, cushions: tuple[str, ..
 
 # 마음을 나타내는 말(궁금·기대되·걱정되·알고 싶)로 물으면 면접관의 마음을 묻는 꼴이 된다("…궁금한가요?", D-418).
 FEELING_QUESTION = re.compile(r"(?<![가-힣])(?:궁금|기대되|걱정되|알고\s*싶)[가-힣]*\?")
-# "…궁금합니다." 뒤에 짧은 물음이 또 붙으면 같은 것을 두 번 묻는다("…궁금합니다. 어느 쪽인가요?").
-ASK_TWICE = re.compile(r"궁금(?:합니다\.|해요\.|한데요,?)\s*[^.?!]{1,16}\?\s*$")
+# "…궁금합니다." 뒤에 짧은 물음(24자 안)이 또 붙으면 같은 것을 두 번 묻는다("…궁금합니다. 어느 쪽인가요?").
+ASK_TWICE = re.compile(r"궁금(?:합니다\.|해요\.|한데요,?)\s*[^.?!]{1,24}\?\s*$")
 
 
 def check_ending(text: str) -> list[str]:
